@@ -1,0 +1,29 @@
+{
+  "name": "@bubllio/keycloak-theme",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "engines": {
+    "node": "^24.15.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:keycloak": "npm run build && keycloakify build"
+  },
+  "dependencies": {
+    "@iconify-icons/keyline-icons": "2.0.15",
+    "@iconify/react": "6.0.2",
+    "keycloakify": "11.16.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.28",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "typescript": "5.9.3",
+    "vite": "6.4.1"
+  }
+}

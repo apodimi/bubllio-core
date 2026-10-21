@@ -53,6 +53,35 @@ curl --fail http://127.0.0.1:8180/realms/bubllio/.well-known/openid-configuratio
 - Local administrator: `admin` / `local-keycloak-admin-password`
 - Disposable user: `spike-user` / `local-spike-password`
 - Core API health: <http://127.0.0.1:3100/health>
+- Core web client: <http://127.0.0.1:5174>
+
+Run the browser client in a second terminal:
+
+```bash
+cd apps/web
+npm ci
+npm run dev
+```
+
+The login, reset, and MFA screens come from the React/TypeScript Keycloakify
+theme in `apps/keycloak-theme`. Compose builds it into the local Keycloak image,
+so theme changes require rebuilding and recreating that service:
+
+```bash
+docker compose --env-file .env.example build keycloak
+docker compose --env-file .env.example up -d --force-recreate keycloak
+```
+
+Open <http://127.0.0.1:5174>. Anonymous visitors are redirected directly to the
+Bubllio-branded Keycloak login; an existing suite session returns without a
+second login. Sign in with the disposable user and call the protected `/me`
+endpoint. The user must belong to a Keycloak organization so the access token
+carries the tenant context required by Core.
+
+The realm import selects the Bubllio login theme on a fresh local database. If
+the realm already existed before the theme was added, select `bubllio` under
+`Realm settings → Themes → Login theme`, or reset the disposable local database
+using the command below.
 
 Run the API checks independently with:
 

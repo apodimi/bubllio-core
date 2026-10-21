@@ -5,8 +5,11 @@
 .idea/
 .vscode/
 .local/
+.impeccable/hook.cache.json
+.playwright-cli/
 coverage/
 dist/
+dist_keycloak/
 node_modules/
 *.log
 

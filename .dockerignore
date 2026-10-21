@@ -1,0 +1,7 @@
+.git
+.idea
+.playwright-cli
+**/dist
+**/dist_keycloak
+**/node_modules
+**/*.log

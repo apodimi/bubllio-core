@@ -39,8 +39,9 @@ directly from an unreviewed working tree or a mutable branch reference.
 
 - Docker Desktop or Docker Engine with Compose v2
 - Node.js 24 LTS and npm when running API checks outside Docker
+- Java 21 and Apache Maven only when building the Keycloak theme JAR outside Docker
 - `curl` for smoke checks
-- Free loopback ports `8180` and `3100`
+- Free loopback ports `8180`, `3100`, and `5174`
 
 ### Start
 
@@ -65,6 +66,7 @@ Local endpoints:
 | Keycloak | <http://127.0.0.1:8180> |
 | Keycloak administration | <http://127.0.0.1:8180/admin/> |
 | Core API health | <http://127.0.0.1:3100/health> |
+| Core web client | <http://127.0.0.1:5174> |
 
 Local-only credentials:
 
@@ -75,6 +77,40 @@ Demo user:      spike-user / local-spike-password
 
 These values must never appear in UAT or Production.
 
+Run the browser client outside Compose in a second terminal:
+
+```bash
+cd apps/web
+npm ci
+npm run dev
+```
+
+The browser uses Authorization Code with PKCE and requires authentication when
+it starts. Access and refresh tokens remain in memory; the application does not
+persist them in local or session storage. For `/me` to succeed, add the demo
+user to one Keycloak organization before signing in.
+
+Fresh local realms select the `bubllio` Keycloakify login theme automatically.
+The theme is compiled to a provider JAR while Compose builds the Keycloak image;
+it is not a runtime source mount. An existing realm must select it once under
+`Realm settings → Themes → Login theme`, because Keycloak does not overwrite an
+imported realm on restart.
+
+To iterate on the identity UI, first install its dependencies and build the JAR:
+
+```bash
+cd apps/keycloak-theme
+npm ci
+npm run build:keycloak
+```
+
+Then rebuild and recreate Keycloak from the repository root:
+
+```bash
+docker compose --env-file .env.example build keycloak
+docker compose --env-file .env.example up -d --force-recreate keycloak
+```
+
 ### Run checks
 
 ```bash
@@ -83,6 +119,15 @@ npm ci
 npm run format:check
 npm test
 npm run build
+
+cd ../web
+npm ci
+npm run format:check
+npm run build
+
+cd ../keycloak-theme
+npm ci
+npm run build:keycloak
 ```
 
 ### Stop or reset
@@ -113,7 +158,7 @@ Required artifacts:
 1. A production Core API image built from `apps/api` after its production gates
    are implemented and verified.
 2. An optimized Keycloak image pinned to an approved digest, including the
-   versioned Bubllio login/email theme when available.
+   versioned Bubllio Keycloakify provider JAR.
 3. Versioned, secret-free realm/client configuration and an idempotent apply
    mechanism.
 4. Database migration artifacts with documented forward and rollback behavior.

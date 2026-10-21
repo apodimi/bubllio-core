@@ -12,6 +12,14 @@ async function bootstrap(): Promise<void> {
   )
   const port = Number.parseInt(process.env.PORT ?? '3100', 10)
 
+  // Browser clients may call the API only from the explicitly configured UI.
+  // Keeping this as one exact origin avoids accidentally allowing arbitrary sites.
+  app.enableCors({
+    origin: process.env.WEB_ORIGIN ?? 'http://127.0.0.1:5174',
+    methods: ['GET'],
+    allowedHeaders: ['Authorization', 'Content-Type'],
+  })
+
   await app.listen(port, '0.0.0.0')
 }
 

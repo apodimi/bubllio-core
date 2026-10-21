@@ -19,7 +19,10 @@ services:
       - keycloak_postgres_data:/var/lib/postgresql/data
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244
+    build:
+      context: .
+      dockerfile: infrastructure/keycloak/Dockerfile
+    image: bubllio/keycloak:local
     command: ['start-dev', '--import-realm', '--health-enabled=true']
     environment:
       KC_DB: postgres
@@ -55,6 +58,7 @@ services:
       OIDC_ISSUER: http://127.0.0.1:${KEYCLOAK_PORT:-8180}/realms/bubllio
       OIDC_JWKS_URL: http://keycloak:8080/realms/bubllio/protocol/openid-connect/certs
       OIDC_AUDIENCE: bubllio-core-api
+      WEB_ORIGIN: http://127.0.0.1:${CORE_WEB_PORT:-5174}
     depends_on:
       keycloak:
         condition: service_healthy
