@@ -31,6 +31,7 @@ Prove one vertical slice before building the platform:
 | What must the first experiment prove? | [`docs/spikes/keycloak-sso.md`](docs/spikes/keycloak-sso.md) |
 | Which decisions are proposed? | [`docs/decisions/README.md`](docs/decisions/README.md) |
 | How do environments run safely? | [`docs/deployment/README.md`](docs/deployment/README.md) |
+| How may the software be used? | [`LICENSE`](LICENSE) and [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) |
 
 Workspace-wide guidance lives in [`../AGENTS.md`](../AGENTS.md). This
 repository's [`AGENTS.md`](AGENTS.md) owns Core-specific rules.
@@ -71,4 +72,16 @@ docker compose --env-file .env.example down
 
 To reset all disposable local identity data, run
 `docker compose --env-file .env.example down --volumes`, then start it again.
+
+## License
+
+Bubllio Core is source-available under the
+[Elastic License 2.0](LICENSE). Self-hosting, modification, redistribution, and
+paid installation or support are permitted subject to the license. Providing a
+substantial set of Bubllio functionality as a third-party hosted or managed
+service requires a separate [commercial agreement](COMMERCIAL-LICENSE.md).
+
+The Bubllio name and brand assets are governed separately by the
+[trademark policy](TRADEMARKS.md). Bubllio Core is source-available and must not
+be described as OSI-approved open source.
 
