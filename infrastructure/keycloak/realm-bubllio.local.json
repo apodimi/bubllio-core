@@ -1,0 +1,97 @@
+{
+  "realm": "bubllio",
+  "enabled": true,
+  "displayName": "Bubllio",
+  "organizationsEnabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "clients": [
+    {
+      "clientId": "bubllio-core-api",
+      "name": "Bubllio Core API",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "bubllio-core-web",
+      "name": "Bubllio Core Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": ["http://127.0.0.1:5174/*"],
+      "webOrigins": ["http://127.0.0.1:5174"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:5174/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "core-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "bubllio-core-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "bubllio-crm-web",
+      "name": "Bubllio CRM Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": ["http://127.0.0.1:5173/*"],
+      "webOrigins": ["http://127.0.0.1:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:5173/*"
+      }
+    },
+    {
+      "clientId": "bubllio-board-web",
+      "name": "Bubllio Board Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": ["http://127.0.0.1:5175/*"],
+      "webOrigins": ["http://127.0.0.1:5175"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:5175/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "spike-user",
+      "email": "spike-user@example.test",
+      "firstName": "Spike",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "local-spike-password",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,36 @@
+{
+  "name": "@bubllio/core-api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Bubllio Core control-plane API",
+  "type": "module",
+  "engines": {
+    "node": "^24.15.0"
+  },
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.2.0",
+    "@nestjs/core": "12.2.0",
+    "@nestjs/platform-fastify": "12.2.0",
+    "jose": "6.2.13",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "12.0.10",
+    "@nestjs/schematics": "12.0.10",
+    "@nestjs/testing": "12.2.0",
+    "@types/node": "24.19.2",
+    "prettier": "3.9.10",
+    "typescript": "6.0.2",
+    "vitest": "5.0.5"
+  }
+}
