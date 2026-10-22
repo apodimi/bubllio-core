@@ -80,6 +80,9 @@ Before production implementation:
 - Give each page one primary question.
 - Record long-lived choices as ADRs with context, alternatives, and consequences.
 - Put spike evidence in the matching spike document.
+- Keep working implementation plans local under `plan/`; do not commit them.
+  Promote only accepted decisions, implemented invariants, public contracts, and
+  sanitized operational guidance into `docs/`.
 - Every completed change must report checks run, skipped checks, and residual
   identity, tenant, compatibility, or deployment risks.
 

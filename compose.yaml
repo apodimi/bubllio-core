@@ -1,4 +1,22 @@
 services:
+  mailpit:
+    image: axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+    environment:
+      MP_LABEL: Bubllio Local Mail
+      MP_MAX_MESSAGES: "500"
+      MP_MAX_AGE: 7d
+      MP_ALLOWED_HOSTS: localhost:${MAILPIT_UI_PORT:-8025},127.0.0.1:${MAILPIT_UI_PORT:-8025}
+      MP_BLOCK_REMOTE_CSS_AND_FONTS: "true"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    restart: unless-stopped
+
   keycloak-db:
     image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     environment:
@@ -7,10 +25,7 @@ services:
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
     healthcheck:
       test:
-        [
-          'CMD-SHELL',
-          'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"',
-        ]
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 12
@@ -23,7 +38,7 @@ services:
       context: .
       dockerfile: infrastructure/keycloak/Dockerfile
     image: bubllio/keycloak:local
-    command: ['start-dev', '--import-realm', '--health-enabled=true']
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME:-keycloak}
@@ -34,10 +49,12 @@ services:
     depends_on:
       keycloak-db:
         condition: service_healthy
+      mailpit:
+        condition: service_healthy
     healthcheck:
       test:
         [
-          'CMD-SHELL',
+          "CMD-SHELL",
           "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep 'HTTP/1.1 200 OK' <&3",
         ]
       interval: 10s
@@ -45,7 +62,7 @@ services:
       retries: 18
       start_period: 30s
     ports:
-      - '127.0.0.1:${KEYCLOAK_PORT:-8180}:8080'
+      - "127.0.0.1:${KEYCLOAK_PORT:-8180}:8080"
     restart: unless-stopped
     volumes:
       - ./infrastructure/keycloak/realm-bubllio.local.json:/opt/keycloak/data/import/realm-bubllio.json:ro
@@ -54,7 +71,7 @@ services:
     build:
       context: ./apps/api
     environment:
-      PORT: '3100'
+      PORT: "3100"
       OIDC_ISSUER: http://127.0.0.1:${KEYCLOAK_PORT:-8180}/realms/bubllio
       OIDC_JWKS_URL: http://keycloak:8080/realms/bubllio/protocol/openid-connect/certs
       OIDC_AUDIENCE: bubllio-core-api
@@ -65,17 +82,16 @@ services:
     healthcheck:
       test:
         [
-          'CMD',
-          'node',
-          '-e',
+          "CMD",
+          "node",
+          "-e",
           "fetch('http://127.0.0.1:3100/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 10s
       timeout: 5s
       retries: 12
     ports:
-      - '127.0.0.1:${CORE_API_PORT:-3100}:3100'
+      - "127.0.0.1:${CORE_API_PORT:-3100}:3100"
 
 volumes:
   keycloak_postgres_data:
-

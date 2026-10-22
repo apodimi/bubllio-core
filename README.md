@@ -22,16 +22,16 @@ Prove one vertical slice before building the platform:
 
 ## Start here
 
-| Question | Document |
-| --- | --- |
-| What product are we building? | [`PRODUCT.md`](PRODUCT.md) |
-| How is the suite divided? | [`docs/architecture/system-context.md`](docs/architecture/system-context.md) |
-| Who owns identity and organizations? | [`docs/architecture/identity-and-organizations.md`](docs/architecture/identity-and-organizations.md) |
-| How will applications communicate? | [`docs/architecture/cross-app-contracts.md`](docs/architecture/cross-app-contracts.md) |
-| What must the first experiment prove? | [`docs/spikes/keycloak-sso.md`](docs/spikes/keycloak-sso.md) |
-| Which decisions are proposed? | [`docs/decisions/README.md`](docs/decisions/README.md) |
-| How do environments run safely? | [`docs/deployment/README.md`](docs/deployment/README.md) |
-| How may the software be used? | [`LICENSE`](LICENSE) and [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) |
+| Question                              | Document                                                                                             |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| What product are we building?         | [`PRODUCT.md`](PRODUCT.md)                                                                           |
+| How is the suite divided?             | [`docs/architecture/system-context.md`](docs/architecture/system-context.md)                         |
+| Who owns identity and organizations?  | [`docs/architecture/identity-and-organizations.md`](docs/architecture/identity-and-organizations.md) |
+| How will applications communicate?    | [`docs/architecture/cross-app-contracts.md`](docs/architecture/cross-app-contracts.md)               |
+| What must the first experiment prove? | [`docs/spikes/keycloak-sso.md`](docs/spikes/keycloak-sso.md)                                         |
+| Which decisions are proposed?         | [`docs/decisions/README.md`](docs/decisions/README.md)                                               |
+| How do environments run safely?       | [`docs/deployment/README.md`](docs/deployment/README.md)                                             |
+| How may the software be used?         | [`LICENSE`](LICENSE) and [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)                            |
 
 Workspace-wide guidance lives in [`../AGENTS.md`](../AGENTS.md). This
 repository's [`AGENTS.md`](AGENTS.md) owns Core-specific rules.
@@ -55,6 +55,7 @@ curl --fail http://127.0.0.1:8180/realms/bubllio/.well-known/openid-configuratio
 - Administration console: <http://127.0.0.1:8180/admin/>
 - Local administrator: `admin` / `local-keycloak-admin-password`
 - Disposable user: `spike-user` / `local-spike-password`
+- Local email inbox: <http://127.0.0.1:8025>
 - Core API health: <http://127.0.0.1:3100/health>
 - Core web client: <http://127.0.0.1:5174>
 
@@ -85,6 +86,32 @@ The realm import selects the Bubllio login theme on a fresh local database. If
 the realm already existed before the theme was added, select `bubllio` under
 `Realm settings → Themes → Login theme`, or reset the disposable local database
 using the command below.
+
+### Inspect local emails
+
+Keycloak sends local password-reset and verification messages to Mailpit. Open
+<http://127.0.0.1:8025> to inspect them; no message is delivered to a real mail
+provider. To verify the complete reset flow, select **Forgot Password** on the
+Bubllio login screen, submit `spike-user`, open the new message in Mailpit, and
+follow its reset link.
+
+Captured messages and their action links are local secrets. Do not share them
+in screenshots, logs, or test artifacts. The inbox is intentionally disposable:
+it is not backed by a Docker volume and is cleared when the Mailpit container is
+recreated. Override only the host UI port with `MAILPIT_UI_PORT`; SMTP remains
+available exclusively to Compose services at `mailpit:1025`.
+
+Keycloak applies realm imports only when the realm is first created. Developers
+with an older disposable local database can either configure `Realm settings →
+Email` manually or run `docker compose --env-file .env.example down --volumes`
+once before starting the stack again. The latter removes all local Keycloak
+users and organizations.
+
+Identity emails are authored as MJML in
+`apps/keycloak-theme/src/email/templates`. The Keycloak image compiles them to
+responsive HTML and plain-text FreeMarker templates during its normal build.
+After changing a template, rebuild and recreate the `keycloak` service, then
+request a fresh email; messages already stored in Mailpit do not change.
 
 Run the API checks independently with:
 
@@ -130,4 +157,3 @@ service requires a separate [commercial agreement](COMMERCIAL-LICENSE.md).
 The Bubllio name and brand assets are governed separately by the
 [trademark policy](TRADEMARKS.md). Bubllio Core is source-available and must not
 be described as OSI-approved open source.
-

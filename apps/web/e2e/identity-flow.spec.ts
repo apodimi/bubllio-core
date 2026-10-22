@@ -1,7 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import {
+  clearLocalInbox,
+  getLocalEmailContent,
+  waitForLocalEmail,
+} from "./support/mailpit";
+
 const username = process.env.E2E_USERNAME ?? "spike-user";
 const password = process.env.E2E_PASSWORD ?? "local-spike-password";
+const email = process.env.E2E_EMAIL ?? "spike-user@example.test";
 
 test("user signs in, verifies organization context, and signs out", async ({
   page,
@@ -56,6 +63,33 @@ test("password reset keeps its value and switches between English and Greek", as
     page.getByRole("heading", { name: "Forgot Your Password?" }),
   ).toBeVisible();
   await expect(page.getByLabel("Username or email")).toHaveValue(username);
+});
+
+test("password reset delivers an email to the local inbox", async ({
+  page,
+}) => {
+  await clearLocalInbox();
+  await openLogin(page);
+  await enterUsername(page);
+  await openPasswordReset(page);
+  await switchToEnglish(page);
+
+  await page.getByRole("button", { name: "Submit" }).click();
+
+  const message = await waitForLocalEmail(email);
+  expect(message.From).toEqual({
+    Address: "identity@bubllio.test",
+    Name: "Bubllio Identity",
+  });
+  expect(message.To).toContainEqual({ Address: email, Name: "" });
+  expect(message.Subject).toBe("Reset your Bubllio password");
+
+  const content = await getLocalEmailContent(message.ID);
+  expect(content.HTML).toContain("bubllio");
+  expect(content.HTML).toContain("Reset your password");
+  expect(content.HTML).toContain("15 minutes");
+  expect(content.Text).toContain("Bubllio Identity");
+  expect(content.Text).toContain("15 minutes");
 });
 
 test("password reset fits a narrow mobile viewport without horizontal overflow", async ({

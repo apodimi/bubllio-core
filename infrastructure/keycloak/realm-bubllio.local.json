@@ -3,6 +3,7 @@
   "enabled": true,
   "displayName": "Bubllio",
   "loginTheme": "bubllio",
+  "emailTheme": "bubllio",
   "internationalizationEnabled": true,
   "supportedLocales": ["en", "el"],
   "defaultLocale": "en",
@@ -11,7 +12,17 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
+  "actionTokenGeneratedByUserLifespan": 900,
   "rememberMe": true,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "identity@bubllio.test",
+    "fromDisplayName": "Bubllio Identity",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
   "clientScopes": [
     {
       "name": "organization",
@@ -131,4 +142,3 @@
     }
   ]
 }
-

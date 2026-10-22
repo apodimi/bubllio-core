@@ -9,6 +9,8 @@
 .playwright-cli/
 playwright-report/
 test-results/
+# Working plans may contain unresolved risks and operational security details.
+plan/
 coverage/
 dist/
 dist_keycloak/
