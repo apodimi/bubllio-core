@@ -135,3 +135,20 @@ Decision impact:
   receives its verified principal through `@CurrentIdentity()`. Runtime smoke
   checks returned `200` for `/health` and `401` for `/me` without a token.
 
+### 2026-10-22 — browser login and organization claim
+
+- **Scenario:** Sign in through the Vite client with Authorization Code and PKCE,
+  request the built-in `organization` scope, call the protected Core `/me`
+  endpoint, and sign out of the shared Keycloak session.
+- **Observed:** Login and logout completed successfully. Before the organization
+  mapper included IDs, Keycloak emitted `organization` as an alias list and Core
+  rejected it. Enabling `Add organization id` emitted an object keyed by alias
+  with the immutable organization ID, and `/me` returned the verified subject,
+  `demo-workspace` organization, and `bubllio-core-api` audience.
+- **Security result:** Core correctly rejected the weaker alias-only claim. The
+  local realm now versions the mapper setting instead of relying on a manual
+  administrator change.
+- **Remaining evidence:** Multiple-organization selection, two-organization
+  isolation, refresh/revocation behavior, and cross-application SSO are still
+  unresolved.
+

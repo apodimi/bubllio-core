@@ -15,6 +15,8 @@ The first browser identity slice is implemented:
   the Bubllio visual system, responsive form controls, password visibility, and
   English/Greek switching.
 - The local realm selects the `bubllio` theme and enables `en` and `el`.
+- The organization mapper includes immutable organization IDs, which Core
+  requires instead of trusting mutable aliases alone.
 - Compose builds an immutable local Keycloak image containing the generated
   provider JAR; the former FreeMarker source mount has been removed.
 
@@ -48,9 +50,8 @@ The isolated build used the same Node image and successfully produced the JAR.
    npm run dev
    ```
 
-3. Open <http://127.0.0.1:5174> and verify the complete path:
-   redirect → English/Greek login → authenticated `/me` → logout → protected
-   redirect.
+3. Open <http://127.0.0.1:5174>. Login, organization-aware `/me`, and logout were
+   verified manually on 2026-10-22; repeat them only after identity changes.
 4. Exercise the password-reset page and the narrow mobile layout. Email delivery
    is not complete until local SMTP behavior is explicitly configured.
 5. Record the observed browser evidence in `docs/spikes/keycloak-sso.md`.

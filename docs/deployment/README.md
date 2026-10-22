@@ -124,11 +124,17 @@ cd ../web
 npm ci
 npm run format:check
 npm run build
+npm run test:e2e
 
 cd ../keycloak-theme
 npm ci
 npm run build:keycloak
 ```
+
+The web end-to-end checks require the local Compose services and Google Chrome.
+Their global setup safely ensures that `spike-user` belongs to the disposable
+`demo-workspace` organization and that organization IDs are present in tokens.
+It can be run repeatedly without duplicating either fixture.
 
 ### Stop or reset
 

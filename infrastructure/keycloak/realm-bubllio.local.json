@@ -12,6 +12,39 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "rememberMe": true,
+  "clientScopes": [
+    {
+      "name": "organization",
+      "description": "Additional claims about the organization a subject belongs to",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "consent.screen.text": "${organizationScopeConsentText}",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "organization",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-organization-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "multivalued": "true",
+            "userinfo.token.claim": "false",
+            "addOrganizationAttributes": "false",
+            "id.token.claim": "true",
+            "lightweight.claim": "false",
+            "access.token.claim": "true",
+            "addOrganizationDomain": "false",
+            "claim.name": "organization",
+            "jsonType.label": "JSON",
+            "addOrganizationId": "true"
+          }
+        }
+      ]
+    }
+  ],
   "clients": [
     {
       "clientId": "bubllio-core-api",

@@ -7,6 +7,8 @@
 .local/
 .impeccable/hook.cache.json
 .playwright-cli/
+playwright-report/
+test-results/
 coverage/
 dist/
 dist_keycloak/

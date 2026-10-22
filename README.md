@@ -93,6 +93,20 @@ npm test
 npm run build
 ```
 
+Run the browser identity journeys while the local stack is running. The suite
+uses the installed Google Chrome and prepares its disposable Keycloak
+organization fixture idempotently:
+
+```bash
+cd apps/web
+npm ci
+npm run test:e2e
+```
+
+The browser suite covers the two-step sign-in, protected `/me` organization
+context, suite logout, password reset, English/Greek switching, and the narrow
+mobile layout.
+
 Stop the environment while retaining its database:
 
 ```bash
