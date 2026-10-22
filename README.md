@@ -41,6 +41,9 @@ repository's [`AGENTS.md`](AGENTS.md) owns Core-specific rules.
 The environment is isolated to localhost and uses disposable credentials from
 `.env.example`.
 
+Use Node.js 24.22.1 LTS for every JavaScript workspace. With nvm, run
+`nvm use` from the repository root; compatible IDEs can read `.node-version`.
+
 ```bash
 docker compose --env-file .env.example up -d --build
 docker compose --env-file .env.example ps

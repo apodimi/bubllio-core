@@ -38,7 +38,8 @@ directly from an unreviewed working tree or a mutable branch reference.
 ### Prerequisites
 
 - Docker Desktop or Docker Engine with Compose v2
-- Node.js 24 LTS and npm when running API checks outside Docker
+- Node.js 24.22.1 LTS and npm when running checks outside Docker. The root
+  `.nvmrc` and `.node-version` keep terminals and IDEs on the same release.
 - Java 21 and Apache Maven only when building the Keycloak theme JAR outside Docker
 - `curl` for smoke checks
 - Free loopback ports `8180`, `3100`, and `5174`
