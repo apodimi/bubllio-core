@@ -1,8 +1,11 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey, type JWTVerifyOptions } from 'jose'
 
-import type { VerifiedIdentity } from '../identity.types.js'
+import type { VerifiedSubject } from '../identity.types.js'
 import {
   parseAudienceClaim,
+  parseOptionalBooleanClaim,
+  parseOptionalNumericDateClaim,
+  parseOptionalStringClaim,
   parseOrganizationClaim,
   parseRequiredStringClaim,
 } from './oidc-claims.parser.js'
@@ -13,7 +16,7 @@ export async function verifyAccessToken(
   token: string,
   config: OidcConfig,
   getKey: JWTVerifyGetKey,
-): Promise<VerifiedIdentity> {
+): Promise<VerifiedSubject> {
   const options: JWTVerifyOptions = {
     audience: config.audience,
     issuer: config.issuer,
@@ -22,6 +25,9 @@ export async function verifyAccessToken(
 
   return {
     audience: parseAudienceClaim(payload.aud),
+    authenticatedAt: parseOptionalNumericDateClaim(payload.auth_time, 'auth_time'),
+    email: parseOptionalStringClaim(payload.email, 'email'),
+    emailVerified: parseOptionalBooleanClaim(payload.email_verified, 'email_verified'),
     issuer: parseRequiredStringClaim(payload.iss, 'iss'),
     organization: parseOrganizationClaim(payload.organization),
     subject: parseRequiredStringClaim(payload.sub, 'sub'),

@@ -15,6 +15,9 @@ async function createToken(overrides: Record<string, unknown> = {}): Promise<{
 }> {
   const { privateKey, publicKey } = await generateKeyPair('RS256')
   const token = await new SignJWT({
+    auth_time: 1_798_800_000,
+    email: 'owner@example.test',
+    email_verified: true,
     organization: {
       demo: { id: '00000000-0000-0000-0000-000000000001' },
     },
@@ -37,6 +40,9 @@ describe('verifyAccessToken', () => {
 
     await expect(verifyAccessToken(token, config, async () => publicKey)).resolves.toEqual({
       audience: ['bubllio-core-api'],
+      authenticatedAt: 1_798_800_000,
+      email: 'owner@example.test',
+      emailVerified: true,
       issuer: config.issuer,
       organization: {
         demo: { id: '00000000-0000-0000-0000-000000000001' },
@@ -65,12 +71,18 @@ describe('verifyAccessToken', () => {
     ).rejects.toThrow()
   })
 
-  it('rejects a token without organization context', async () => {
+  it('returns a verified subject without granting organization context', async () => {
     const { publicKey, token } = await createToken({ organization: undefined })
 
-    await expect(verifyAccessToken(token, config, async () => publicKey)).rejects.toThrow(
-      "Token claim 'organization' must be an object",
-    )
+    await expect(verifyAccessToken(token, config, async () => publicKey)).resolves.toEqual({
+      audience: ['bubllio-core-api'],
+      authenticatedAt: 1_798_800_000,
+      email: 'owner@example.test',
+      emailVerified: true,
+      issuer: config.issuer,
+      organization: {},
+      subject: '00000000-0000-0000-0000-000000000002',
+    })
   })
 
   it('rejects malformed organization entries', async () => {
@@ -85,13 +97,44 @@ describe('verifyAccessToken', () => {
     const { publicKey, token } = await createToken({ organization: { demo: { id: 42 } } })
 
     await expect(verifyAccessToken(token, config, async () => publicKey)).rejects.toThrow(
-      "Token claim 'organization' contains an invalid id",
+      "Token claim 'organization' must contain a non-empty id",
     )
+  })
+
+  it('rejects organization entries without immutable identifiers', async () => {
+    const { publicKey, token } = await createToken({ organization: { demo: {} } })
+
+    await expect(verifyAccessToken(token, config, async () => publicKey)).rejects.toThrow(
+      "Token claim 'organization' must contain a non-empty id",
+    )
+  })
+
+  it('rejects malformed identity assurance claims', async () => {
+    const invalidVerification = await createToken({ email_verified: 'true' })
+    const invalidAuthenticationTime = await createToken({ auth_time: 1.5 })
+
+    await expect(
+      verifyAccessToken(
+        invalidVerification.token,
+        config,
+        async () => invalidVerification.publicKey,
+      ),
+    ).rejects.toThrow("Token claim 'email_verified' must be a boolean")
+
+    await expect(
+      verifyAccessToken(
+        invalidAuthenticationTime.token,
+        config,
+        async () => invalidAuthenticationTime.publicKey,
+      ),
+    ).rejects.toThrow("Token claim 'auth_time' must be a non-negative integer")
   })
 
   it('rejects an expired token', async () => {
     const { privateKey, publicKey } = await generateKeyPair('RS256')
-    const token = await new SignJWT({ organization: { demo: {} } })
+    const token = await new SignJWT({
+      organization: { demo: { id: '00000000-0000-0000-0000-000000000001' } },
+    })
       .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
       .setIssuer(config.issuer)
       .setAudience(config.audience)

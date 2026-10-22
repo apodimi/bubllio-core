@@ -56,6 +56,8 @@ curl --fail http://127.0.0.1:8180/realms/bubllio/.well-known/openid-configuratio
 - Local administrator: `admin` / `local-keycloak-admin-password`
 - Disposable user: `spike-user` / `local-spike-password`
 - Local email inbox: <http://127.0.0.1:8025>
+- Core PostgreSQL stays private inside Compose; `core-migrate` applies committed
+  migrations before the API starts.
 - Core API health: <http://127.0.0.1:3100/health>
 - Core web client: <http://127.0.0.1:5174>
 
@@ -112,6 +114,25 @@ Identity emails are authored as MJML in
 responsive HTML and plain-text FreeMarker templates during its normal build.
 After changing a template, rebuild and recreate the `keycloak` service, then
 request a fresh email; messages already stored in Mailpit do not change.
+
+### Core persistence
+
+Core owns a separate PostgreSQL database for product organizations, suite roles,
+provisioning progress, and security audit events. It never reads the Keycloak,
+CRM, or Board databases. Local startup waits for the database and applies
+committed migrations through the one-shot `core-migrate` service.
+
+To create a development migration after editing
+`apps/api/prisma/schema.prisma`, run from `apps/api`:
+
+```bash
+DATABASE_URL=postgresql://bubllio_core:local-core-db-password@127.0.0.1:5432/bubllio_core \
+  npm run db:migrate -- --name describe_the_change
+```
+
+The database port is intentionally not published by the default Compose file.
+Use an explicit temporary override when interactive migration development is
+needed; do not publish it in shared production configuration.
 
 Run the API checks independently with:
 

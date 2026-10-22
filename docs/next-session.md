@@ -1,64 +1,66 @@
 # Next session
 
-Last updated: 2026-10-22
+Last updated: 2026-10-23
 
 ## Where we stopped
 
-The first browser identity slice is implemented:
+The secure first-run foundation is ready:
 
-- `apps/web` is a Vite React/TypeScript client using Authorization Code with
-  PKCE through `keycloak-js`.
-- Anonymous visitors are sent directly to Keycloak and tokens remain in memory.
-- The Core API accepts the configured browser origin and keeps `/me` protected
-  by the existing OIDC guard.
-- `apps/keycloak-theme` is a standalone React/TypeScript Keycloakify theme with
-  the Bubllio visual system, responsive form controls, password visibility, and
-  English/Greek switching.
-- The local realm selects the `bubllio` theme and enables `en` and `el`.
-- The organization mapper includes immutable organization IDs, which Core
-  requires instead of trusting mutable aliases alone.
-- Compose builds an immutable local Keycloak image containing the generated
-  provider JAR; the former FreeMarker source mount has been removed.
+- Prisma 7.10.1 connects the Core API to its own PostgreSQL database through
+  `apps/api/prisma.config.ts`.
+- Three migrations create the organization foundation, the installation setup
+  singleton, and claim idempotency support.
+- OIDC verification accepts an authenticated user without an organization for
+  the narrow setup flow, while malformed organization claims are rejected.
+- Tenant endpoints can require an exact immutable organization ID through
+  `OrganizationContextGuard` and `@RequireOrganizationContext()`.
+- Setup access requires a recently authenticated, verified-email identity and
+  a time-limited setup secret whose SHA-256 digest is stored in configuration.
+- `InstallationSetup` models the first-run state machine. The database prevents
+  changes or deletion after the installation reaches `READY`.
+- `SetupRepository.claim()` atomically handles the initial claim, safe replay
+  with the same idempotency key, and conflicts from another claimant.
+- `SetupModule` contains the setup repository and guards, but it is deliberately
+  not imported by `AppModule` yet because the HTTP controller is the next slice.
+
+The detailed implementation plan remains local at
+`plan/feature-first-run-setup-1.md` and is intentionally ignored by Git.
 
 ## Verification completed
 
-- The theme TypeScript and Vite production build pass.
-- Keycloakify 11.16.4 produces both supported provider JAR variants; the
-  Keycloak 26+ JAR contains `theme/bubllio/login/theme.properties` and its
-  compiled frontend resources.
-- `docker compose --env-file .env.example config --quiet` passes.
-- Generated dependency, Vite, browser, and JAR artifacts are ignored and were
-  removed from the working tree.
-
-The complete Keycloak image build was not rerun after Maven was added to its
-build stage because the agent sandbox lost access to the local Docker socket.
-The isolated build used the same Node image and successfully produced the JAR.
+- API tests: 35 passing across 8 test files.
+- API production build passes.
+- Formatting and `git diff --check` pass.
+- Both installation setup SQL integration scripts pass against PostgreSQL:
+  `installation-setup.sql` and `installation-setup-claim.sql`.
+- All three local migrations are applied.
+- The local installation record remains `NOT_STARTED` at version 1 because the
+  integration tests run inside transactions and roll back.
+- The temporary integration-test database container was removed.
 
 ## Start here tomorrow
 
-1. From the repository root, rebuild and start the local stack:
+1. Build `POST /api/v1/setup/claim` test-first.
+2. Connect the guard chain in this order: authentication,
+   `SetupSubjectGuard`, `SetupSecretGuard`, then `SetupRepository.claim()`.
+3. Validate the idempotency header and return the OpenAPI-defined outcomes:
+   `201` for the first claim, `200` for a replay, and a generic conflict for a
+   competing claimant.
+4. Import `SetupModule` into `AppModule`, allow the required POST/custom headers
+   in CORS, and add `Cache-Control: no-store` to setup responses.
+5. Add HTTP tests covering a signed organization-less token, wrong secret,
+   stale authentication, unverified email, competing claimant, and replay.
+6. After the claim endpoint is complete, implement the setup status endpoint.
 
-   ```bash
-   docker compose --env-file .env.example up -d --build
-   ```
+Useful verification command:
 
-2. Start the browser client:
+```bash
+cd apps/api
+npm test && npm run build && npm run format:check
+```
 
-   ```bash
-   cd apps/web
-   npm ci
-   npm run dev
-   ```
+To inspect the local services:
 
-3. Open <http://127.0.0.1:5174>. Login, organization-aware `/me`, and logout were
-   verified manually on 2026-10-22; repeat them only after identity changes.
-4. Exercise the password-reset page and the narrow mobile layout. Email delivery
-   is not complete until local SMTP behavior is explicitly configured.
-5. Record the observed browser evidence in `docs/spikes/keycloak-sso.md`.
-
-## Next product milestone
-
-After the local browser flow is recorded, prove organization context with two
-users in different organizations, then begin the additive CRM integration. Do
-not start Board domain work until SSO, logout, and cross-organization rejection
-have evidence.
+```bash
+docker compose --env-file .env.example ps
+```

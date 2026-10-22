@@ -33,6 +33,22 @@ services:
     volumes:
       - keycloak_postgres_data:/var/lib/postgresql/data
 
+  core-db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: ${CORE_DB_NAME:-bubllio_core}
+      POSTGRES_USER: ${CORE_DB_USER:-bubllio_core}
+      POSTGRES_PASSWORD: ${CORE_DB_PASSWORD:?Set CORE_DB_PASSWORD}
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    volumes:
+      - core_postgres_data:/var/lib/postgresql/data
+
   keycloak:
     build:
       context: .
@@ -67,6 +83,18 @@ services:
     volumes:
       - ./infrastructure/keycloak/realm-bubllio.local.json:/opt/keycloak/data/import/realm-bubllio.json:ro
 
+  core-migrate:
+    build:
+      context: ./apps/api
+      target: build
+    command: ["npm", "run", "db:deploy"]
+    environment:
+      DATABASE_URL: postgresql://${CORE_DB_USER:-bubllio_core}:${CORE_DB_PASSWORD:?Set CORE_DB_PASSWORD}@core-db:5432/${CORE_DB_NAME:-bubllio_core}
+    depends_on:
+      core-db:
+        condition: service_healthy
+    restart: "no"
+
   core-api:
     build:
       context: ./apps/api
@@ -76,7 +104,12 @@ services:
       OIDC_JWKS_URL: http://keycloak:8080/realms/bubllio/protocol/openid-connect/certs
       OIDC_AUDIENCE: bubllio-core-api
       WEB_ORIGIN: http://127.0.0.1:${CORE_WEB_PORT:-5174}
+      DATABASE_URL: postgresql://${CORE_DB_USER:-bubllio_core}:${CORE_DB_PASSWORD:?Set CORE_DB_PASSWORD}@core-db:5432/${CORE_DB_NAME:-bubllio_core}
     depends_on:
+      core-db:
+        condition: service_healthy
+      core-migrate:
+        condition: service_completed_successfully
       keycloak:
         condition: service_healthy
     healthcheck:
@@ -94,4 +127,5 @@ services:
       - "127.0.0.1:${CORE_API_PORT:-3100}:3100"
 
 volumes:
+  core_postgres_data:
   keycloak_postgres_data:

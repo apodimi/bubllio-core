@@ -1,13 +1,16 @@
 export interface OrganizationClaim {
   [alias: string]: {
-    id?: string
+    id: string
     [attribute: string]: unknown
   }
 }
 
-/** Minimal trusted identity exposed to application controllers. */
-export interface VerifiedIdentity {
+/** Authenticated OIDC subject; organization context may be empty before first-run setup. */
+export interface VerifiedSubject {
   audience: string[]
+  authenticatedAt: number | undefined
+  email: string | undefined
+  emailVerified: boolean | undefined
   issuer: string
   organization: OrganizationClaim
   subject: string
@@ -16,6 +19,8 @@ export interface VerifiedIdentity {
 export interface AuthenticatedRequest {
   headers: {
     authorization?: string
+    'x-bubllio-setup-secret'?: string
   }
-  identity?: VerifiedIdentity
+  identity?: VerifiedSubject
+  params?: Record<string, string | undefined>
 }

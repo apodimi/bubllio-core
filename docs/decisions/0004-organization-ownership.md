@@ -1,6 +1,6 @@
 # ADR 0004: Split identity and product organization ownership
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-21
 
 ## Context
@@ -13,10 +13,15 @@ duplicate credential-related state in Core.
 
 ## Decision
 
-Keycloak owns identity organizations and membership. Core owns the corresponding
-product organization and stores the immutable Keycloak organization ID. Domain
-applications keep local organization records linked to the Core and identity
-identifiers required by their authorization boundary.
+Keycloak owns identity organizations and final identity membership. Core owns
+the corresponding product organization, suite roles (`owner`, `admin`, and
+`member`), invitation and access-request workflows, and the immutable Keycloak
+organization ID. Domain applications keep local organization records linked to
+the Core and identity identifiers required by their authorization boundary.
+
+Every privileged Core operation requires both current Keycloak membership in
+the exact organization ID and a sufficient Core suite role. Suite roles do not
+grant CRM or Board domain permissions.
 
 Organization provisioning is an idempotent multi-system workflow with observable
 partial state, retry, and carefully bounded compensation.
@@ -36,4 +41,5 @@ partial state, retry, and carefully bounded compensation.
 - Provisioning cannot rely on one database transaction.
 - Reconciliation and operator-visible failure states are mandatory.
 - Domain permissions remain inside the application that understands them.
-
+- Core can record workflow intent and audit without becoming a credential or
+  session authority.

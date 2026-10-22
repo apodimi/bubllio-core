@@ -14,6 +14,7 @@ plan/
 coverage/
 dist/
 dist_keycloak/
+apps/api/src/generated/prisma/
 node_modules/
 *.log
 

@@ -8,6 +8,8 @@ The Core documentation is organized by purpose:
 - [`spikes/`](spikes/) defines time-boxed experiments and their evidence.
 - [`deployment/`](deployment/) documents environment setup, release promotion,
   and operational safety gates.
+- [`contracts/`](contracts/) contains versioned machine-readable API contracts.
+- [`operations/`](operations/) contains safe installation and recovery runbooks.
 - [`next-session.md`](next-session.md) records the current handoff and the first
   concrete step for the next working session.
 

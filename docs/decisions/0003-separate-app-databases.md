@@ -1,6 +1,6 @@
 # ADR 0003: Give each application its own database
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-21
 
 ## Context
@@ -29,6 +29,7 @@ communicate through authenticated, versioned contracts.
 - Applications can migrate and restore independently.
 - Local and production orchestration must manage multiple databases or isolated
   schemas and credentials.
+- Core runs its own PostgreSQL database and migration lifecycle. Its credentials
+  do not grant access to the Keycloak, CRM, or Board databases.
 - Reporting across the suite becomes a later integration concern, not a reason
   to break domain ownership.
-

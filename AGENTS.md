@@ -53,6 +53,10 @@ Before production implementation:
 
 ## Developer experience
 
+- Before choosing a framework pattern, check the current official vendor
+  guidance and the established community convention. Prefer the vendor's
+  recommended path when it fits Bubllio; document the concrete reason for any
+  deviation instead of inventing a project-local default.
 - Organize source code by product feature first, then by technical responsibility
   only when that split makes navigation clearer.
 - Prefer small, cohesive files with names that reveal their single responsibility.

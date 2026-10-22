@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { JWTVerifyGetKey } from 'jose'
 
-import type { VerifiedIdentity } from './identity.types.js'
+import type { VerifiedSubject } from './identity.types.js'
 import { readOidcConfig } from './oidc/oidc.config.js'
 import { createOidcKeyResolver, verifyAccessToken } from './oidc/oidc-token.verifier.js'
 import type { OidcConfig } from './oidc/oidc.types.js'
@@ -17,7 +17,7 @@ export class AuthService {
     this.getKey = createOidcKeyResolver(this.config)
   }
 
-  verify(token: string): Promise<VerifiedIdentity> {
+  verify(token: string): Promise<VerifiedSubject> {
     return verifyAccessToken(token, this.config, this.getKey)
   }
 }
