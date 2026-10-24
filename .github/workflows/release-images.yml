@@ -88,6 +88,10 @@ jobs:
             key: coreMigrate
             dockerfile: apps/api/Dockerfile.production
             target: migration
+          - image: core-identity-setup-agent
+            key: identitySetupAgent
+            dockerfile: apps/api/Dockerfile.production
+            target: identity-setup-agent
           - image: core-web
             key: coreWeb
             dockerfile: apps/web/Dockerfile.production
@@ -171,7 +175,7 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           RELEASE_REF: ${{ github.ref_name }}
         run: |
-          node -e "const fs=require('node:fs'); const images=Object.fromEntries(fs.readdirSync('release-fragments').sort().map(file=>{const item=JSON.parse(fs.readFileSync('release-fragments/'+file)); if(!/@sha256:[a-f0-9]{64}$/.test(item.image)||item.image.includes(':latest'))throw new Error('Invalid immutable image reference'); return [item.key,item.image]})); if(JSON.stringify(Object.keys(images).sort())!==JSON.stringify(['coreApi','coreMigrate','coreWeb','keycloak']))throw new Error('Release manifest image set is incomplete'); fs.writeFileSync('release-manifest.json',JSON.stringify({schemaVersion:'1',releaseRef:process.env.RELEASE_REF,commitSha:process.env.COMMIT_SHA,images},null,2)+'\n')"
+          node -e "const fs=require('node:fs'); const images=Object.fromEntries(fs.readdirSync('release-fragments').sort().map(file=>{const item=JSON.parse(fs.readFileSync('release-fragments/'+file)); if(!/@sha256:[a-f0-9]{64}$/.test(item.image)||item.image.includes(':latest'))throw new Error('Invalid immutable image reference'); return [item.key,item.image]})); if(JSON.stringify(Object.keys(images).sort())!==JSON.stringify(['coreApi','coreMigrate','coreWeb','identitySetupAgent','keycloak']))throw new Error('Release manifest image set is incomplete'); fs.writeFileSync('release-manifest.json',JSON.stringify({schemaVersion:'1',releaseRef:process.env.RELEASE_REF,commitSha:process.env.COMMIT_SHA,images},null,2)+'\n')"
       - uses: actions/upload-artifact@v4
         with:
           name: bubllio-core-release-${{ github.sha }}

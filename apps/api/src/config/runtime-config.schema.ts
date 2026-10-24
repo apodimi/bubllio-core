@@ -81,6 +81,27 @@ export function parseRuntimeConfig(environment: RuntimeEnvironmentSource): Runti
     throw new Error('Enabled setup claims require Keycloak administration configuration')
   }
 
+  const identitySetupAgentUrl = environment.CORE_IDENTITY_SETUP_AGENT_URL
+    ? parseUrl(environment.CORE_IDENTITY_SETUP_AGENT_URL, {
+        name: 'CORE_IDENTITY_SETUP_AGENT_URL',
+        production: mode === 'production',
+        allowInternalHttp: true,
+      })
+    : undefined
+  const identitySetupAgentToken = environment.CORE_IDENTITY_SETUP_AGENT_TOKEN
+  if ((identitySetupAgentUrl === undefined) !== (identitySetupAgentToken === undefined)) {
+    throw new Error('Identity setup agent URL and token must be configured together')
+  }
+  if (
+    identitySetupAgentToken !== undefined &&
+    (identitySetupAgentToken.length < 32 || identitySetupAgentToken.length > 512)
+  ) {
+    throw new Error('CORE_IDENTITY_SETUP_AGENT_TOKEN must contain 32 to 512 characters')
+  }
+  if (claimEnabled && (!identitySetupAgentUrl || !identitySetupAgentToken)) {
+    throw new Error('Enabled setup claims require the identity setup agent')
+  }
+
   const applicationManifestPath = environment.CORE_APPLICATION_MANIFEST_PATH
   if (mode === 'production' && !applicationManifestPath) {
     throw new Error('CORE_APPLICATION_MANIFEST_PATH must be configured in production')
@@ -97,6 +118,10 @@ export function parseRuntimeConfig(environment: RuntimeEnvironmentSource): Runti
     oidc: Object.freeze({ audience, issuer, jwksUrl }),
     setup: Object.freeze({ claimEnabled, localRehearsal, secretSha256, secretExpiresAt }),
     keycloak: Object.freeze({ adminUrl, clientSecret }),
+    identitySetupAgent: Object.freeze({
+      url: identitySetupAgentUrl,
+      token: identitySetupAgentToken,
+    }),
     applicationManifestPath,
     localApplicationRegistrationEnabled,
   })

@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module.js'
 import { AuthService } from '../src/auth/auth.service.js'
 import type { VerifiedSubject } from '../src/auth/identity.types.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
+import { EmailDeliveryRepository } from '../src/email-delivery/email-delivery.repository.js'
 import { SetupRepository } from '../src/setup/setup.repository.js'
 import { SetupProvisioningService } from '../src/setup/setup-provisioning.service.js'
 
@@ -35,6 +36,7 @@ const provisioning = {
   retry: vi.fn(),
 }
 const auth = { verify: vi.fn() }
+const emailDelivery = { isReady: vi.fn(), status: vi.fn() }
 
 function identity(overrides: Partial<VerifiedSubject> = {}): VerifiedSubject {
   return {
@@ -74,12 +76,16 @@ describe('first-run setup HTTP boundary', () => {
     process.env.CORE_SETUP_SECRET_EXPIRES_AT = '2099-01-01T00:00:00.000Z'
     process.env.CORE_KEYCLOAK_ADMIN_URL = 'http://127.0.0.1:8180'
     process.env.CORE_KEYCLOAK_CLIENT_SECRET = 'test-client-secret-value'
+    process.env.CORE_IDENTITY_SETUP_AGENT_URL = 'http://127.0.0.1:3200'
+    process.env.CORE_IDENTITY_SETUP_AGENT_TOKEN = 'a'.repeat(32)
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
       .useValue({})
       .overrideProvider(SetupRepository)
       .useValue(repository)
+      .overrideProvider(EmailDeliveryRepository)
+      .useValue(emailDelivery)
       .overrideProvider(SetupProvisioningService)
       .useValue(provisioning)
       .overrideProvider(AuthService)
@@ -95,6 +101,8 @@ describe('first-run setup HTTP boundary', () => {
     auth.verify.mockResolvedValue(identity())
     repository.claim.mockResolvedValue({ outcome: 'claimed', version: 2 })
     repository.readPublicStatus.mockResolvedValue({ setupRequired: true, phase: 'new' })
+    emailDelivery.isReady.mockResolvedValue(true)
+    emailDelivery.status.mockResolvedValue({ status: 'ready' })
     provisioning.current.mockResolvedValue({ state: 'claimed' })
     provisioning.start.mockResolvedValue(operation)
     provisioning.read.mockResolvedValue(operation)
@@ -110,6 +118,8 @@ describe('first-run setup HTTP boundary', () => {
     delete process.env.CORE_SETUP_LOCAL_REHEARSAL
     delete process.env.CORE_KEYCLOAK_ADMIN_URL
     delete process.env.CORE_KEYCLOAK_CLIENT_SECRET
+    delete process.env.CORE_IDENTITY_SETUP_AGENT_URL
+    delete process.env.CORE_IDENTITY_SETUP_AGENT_TOKEN
     delete process.env.OIDC_ISSUER
   })
 
@@ -151,6 +161,18 @@ describe('first-run setup HTTP boundary', () => {
     })
     expect(replay.statusCode).toBe(200)
     expect(replay.json()).toEqual({ status: 'claimed' })
+  })
+
+  it('denies account claim until email delivery is ready', async () => {
+    emailDelivery.isReady.mockResolvedValueOnce(false)
+    const response = await app.getHttpAdapter().getInstance().inject({
+      method: 'POST',
+      url: '/api/v1/setup/claim',
+      headers: claimHeaders(),
+      payload: {},
+    })
+    expect(response.statusCode).toBe(404)
+    expect(repository.claim).not.toHaveBeenCalled()
   })
 
   it('rejects an unauthenticated claim before checking the secret', async () => {

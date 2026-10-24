@@ -28,6 +28,14 @@ enum InstallationSetupStatus {
   NEEDS_ATTENTION
 }
 
+enum EmailDeliverySetupStatus {
+  REQUIRED
+  TEST_PENDING
+  AWAITING_CONFIRMATION
+  READY
+  ATTENTION
+}
+
 enum ProvisioningOperationType {
   CREATE_ORGANIZATION
   ADD_MEMBER
@@ -75,6 +83,26 @@ model InstallationSetup {
   organization        Organization?           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   @@map("installation_setup")
+}
+
+model EmailDeliverySetup {
+  id                       Int                      @id @default(1)
+  status                   EmailDeliverySetupStatus @default(REQUIRED)
+  configurationFingerprint String?                  @map("configuration_fingerprint") @db.Char(64)
+  codeHmac                 String?                  @map("code_hmac") @db.Char(64)
+  codeExpiresAt            DateTime?                @map("code_expires_at") @db.Timestamptz(3)
+  codeAttemptCount         Int                      @default(0) @map("code_attempt_count")
+  testIdempotencyKey       String?                  @map("test_idempotency_key") @db.VarChar(255)
+  confirmIdempotencyKey    String?                  @map("confirm_idempotency_key") @db.VarChar(255)
+  safeErrorCode            String?                  @map("safe_error_code") @db.VarChar(100)
+  confirmationRetryable    Boolean                  @default(false) @map("confirmation_retryable")
+  version                  Int                      @default(1)
+  testedAt                 DateTime?                @map("tested_at") @db.Timestamptz(3)
+  confirmedAt              DateTime?                @map("confirmed_at") @db.Timestamptz(3)
+  createdAt                DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("email_delivery_setup")
 }
 
 model OrganizationRoleAssignment {

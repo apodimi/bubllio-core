@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// Disposable localhost rehearsal. Only a digest and machine secret are saved
-// in ignored, mode-0600 local configuration; the human setup secret prints once.
+// Disposable localhost rehearsal. Only the digest and machine credentials are
+// saved in ignored, mode-0600 local files; the human setup secret prints once.
 import { randomBytes, createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile, chmod } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
@@ -12,6 +12,9 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const local = resolve(root, '.local')
 const configPath = resolve(local, 'setup-rehearsal.env')
 const realmPath = resolve(local, 'realm-bubllio.setup.json')
+const runtimeSecretPath = resolve(local, 'core-identity-client-secret')
+const bootstrapSecretPath = resolve(local, 'keycloak-bootstrap-client-secret')
+const setupAgentTokenPath = resolve(local, 'identity-setup-agent-token')
 const project = 'bubllio-core-setup-rehearsal'
 const ports = { keycloak: '8280', api: '3200', web: '5274', mail: '8125' }
 const identityScopes = JSON.parse(await readFile(resolve(root, 'infrastructure/keycloak/realm-bubllio.local.json'), 'utf8')).clientScopes.filter((scope) => ['profile', 'email'].includes(scope.name))
@@ -27,24 +30,39 @@ if (existingConfig && !resume) {
   throw new Error('Local rehearsal already exists. Resume it; do not generate a second setup secret.')
 }
 if (!existingConfig && resume) throw new Error('No local rehearsal exists to resume')
+if (
+  resume &&
+  !existingConfig.includes('CORE_IDENTITY_SETUP_AGENT_TOKEN=')
+) {
+  throw new Error(
+    'This local rehearsal predates the isolated email bootstrap flow and cannot be upgraded safely. Start a fresh disposable rehearsal; no existing data was changed.',
+  )
+}
 
 let setupSecret
 let runtimeSecret
+let bootstrapSecret
+let setupAgentToken
 let expiresAt
 if (resume) {
   runtimeSecret = readEnvValue(existingConfig, 'CORE_KEYCLOAK_CLIENT_SECRET')
+  bootstrapSecret = await readSecretFile(bootstrapSecretPath)
+  setupAgentToken = readEnvValue(existingConfig, 'CORE_IDENTITY_SETUP_AGENT_TOKEN')
   expiresAt = readEnvValue(existingConfig, 'CORE_SETUP_SECRET_EXPIRES_AT')
 } else {
   setupSecret = randomBytes(32).toString('base64url')
   runtimeSecret = randomBytes(32).toString('base64url')
+  bootstrapSecret = randomBytes(32).toString('base64url')
+  setupAgentToken = randomBytes(32).toString('base64url')
   const digest = createHash('sha256').update(setupSecret).digest('hex')
   expiresAt = new Date(Date.now() + 30 * 60_000).toISOString()
   const realm = JSON.parse(await readFile(resolve(root, 'infrastructure/keycloak/realm-bubllio.local.json'), 'utf8'))
-  // Keep the general identity registration policy in the isolated rehearsal.
-  realm.registrationAllowed = true
+  // The setup agent opens registration only after it has committed working
+  // email delivery and removed its temporary bootstrap authority.
+  realm.registrationAllowed = false
   realm.registrationEmailAsUsername = true
   realm.verifyEmail = true
-  realm.clientScopes.push(...identityScopes)
+  delete realm.smtpServer
   const webClient = realm.clients.find((client) => client.clientId === 'bubllio-core-web')
   webClient.redirectUris = [`http://127.0.0.1:${ports.web}/*`]
   webClient.webOrigins = [`http://127.0.0.1:${ports.web}`]
@@ -61,7 +79,15 @@ if (resume) {
     `CORE_SETUP_SECRET_SHA256=${digest}`,
     `CORE_SETUP_SECRET_EXPIRES_AT=${expiresAt}`,
     `CORE_KEYCLOAK_CLIENT_SECRET=${runtimeSecret}`,
+    'CORE_IDENTITY_SETUP_AGENT_URL=http://identity-setup-agent:3200',
+    `CORE_IDENTITY_SETUP_AGENT_TOKEN=${setupAgentToken}`,
+    `CORE_IDENTITY_CLIENT_SECRET_FILE=${runtimeSecretPath}`,
+    `KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE=${bootstrapSecretPath}`,
+    `IDENTITY_SETUP_AGENT_TOKEN_FILE=${setupAgentTokenPath}`,
   ]
+  await writeSecretFile(runtimeSecretPath, runtimeSecret)
+  await writeSecretFile(bootstrapSecretPath, bootstrapSecret)
+  await writeSecretFile(setupAgentTokenPath, setupAgentToken)
   await writeFile(configPath, `${lines.join('\n')}\n`, { mode: 0o600 })
   await chmod(configPath, 0o600)
   if (process.env.CORE_SETUP_SHOW_SECRET !== 'false') {
@@ -94,17 +120,6 @@ async function admin(method, path, body) {
   })
   if (!response.ok) throw new Error(`Keycloak bootstrap operation failed: ${method} ${path.split('?')[0]} (${response.status})`)
   return response
-}
-
-// Existing rehearsal volumes may predate browser registration. Realm updates
-// make --resume upgrade that isolated realm without recreating its users.
-const realmSettings = await (await admin('GET', '')).json()
-if (!realmSettings.registrationAllowed || !realmSettings.registrationEmailAsUsername || !realmSettings.verifyEmail) {
-  await admin('PUT', '', {
-    registrationAllowed: true,
-    registrationEmailAsUsername: true,
-    verifyEmail: true,
-  })
 }
 
 const clientScopes = await (await admin('GET', '/client-scopes')).json()
@@ -154,10 +169,28 @@ const managementClient = (await (await admin('GET', '/clients?clientId=realm-man
 if (!runtimeClient?.id || !managementClient?.id) throw new Error('Keycloak client lookup failed')
 const serviceUser = await (await admin('GET', `/clients/${runtimeClient.id}/service-account-user`)).json()
 const roles = []
-for (const name of ['query-organizations', 'view-organizations', 'manage-organizations', 'view-users']) {
+for (const name of ['query-organizations', 'view-organizations', 'manage-organizations', 'view-users', 'view-realm']) {
   roles.push(await (await admin('GET', `/clients/${managementClient.id}/roles/${name}`)).json())
 }
 await admin('POST', `/users/${serviceUser.id}/role-mappings/clients/${managementClient.id}`, roles)
+
+const bootstrapClientId = 'bubllio-identity-bootstrap'
+const existingBootstrapClients = await (await admin('GET', `/clients?clientId=${bootstrapClientId}`)).json()
+if (!existingBootstrapClients.length) {
+  await admin('POST', '/clients', {
+    clientId: bootstrapClientId, name: 'Bubllio identity bootstrap', enabled: true,
+    publicClient: false, serviceAccountsEnabled: true, standardFlowEnabled: false,
+    directAccessGrantsEnabled: false, secret: bootstrapSecret,
+  })
+}
+const bootstrapClient = (await (await admin('GET', `/clients?clientId=${bootstrapClientId}`)).json())[0]
+if (!bootstrapClient?.id) throw new Error('Keycloak bootstrap client lookup failed')
+const bootstrapServiceUser = await (await admin('GET', `/clients/${bootstrapClient.id}/service-account-user`)).json()
+const bootstrapRoles = []
+for (const name of ['manage-realm', 'manage-clients']) {
+  bootstrapRoles.push(await (await admin('GET', `/clients/${managementClient.id}/roles/${name}`)).json())
+}
+await admin('POST', `/users/${bootstrapServiceUser.id}/role-mappings/clients/${managementClient.id}`, bootstrapRoles)
 
 const runtimeTokenResponse = await fetch(`http://127.0.0.1:${ports.keycloak}/realms/bubllio/protocol/openid-connect/token`, {
   method: 'POST',
@@ -172,13 +205,24 @@ const runtimeToken = (await runtimeTokenResponse.json()).access_token
 const restricted = await fetch(`${base}/clients`, { headers: { Authorization: `Bearer ${runtimeToken}` } })
 if (restricted.status !== 403) throw new Error('Core runtime unexpectedly has client-administration visibility')
 
-console.log(`Local setup services are ready. Register your first owner through the browser; verification email arrives at http://127.0.0.1:${ports.mail}.`)
+console.log(`Local setup services are ready. Configure email delivery, then create the first owner; verification email arrives at http://127.0.0.1:${ports.mail}.`)
 console.log(`Open Core setup at http://127.0.0.1:${ports.web}/setup.`)
 
 function readEnvValue(contents, name) {
   const line = contents.split('\n').find((item) => item.startsWith(`${name}=`))
   if (!line) throw new Error(`Missing ${name} in local example configuration`)
   return line.slice(name.length + 1)
+}
+
+async function writeSecretFile(path, value) {
+  await writeFile(path, `${value}\n`, { mode: 0o600 })
+  await chmod(path, 0o600)
+}
+
+async function readSecretFile(path) {
+  const value = (await readFile(path, 'utf8')).trim()
+  if (!value) throw new Error(`Local setup secret is empty: ${path}`)
+  return value
 }
 
 async function command(binary, args, cwd) {

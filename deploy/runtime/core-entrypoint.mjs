@@ -21,13 +21,16 @@ if (mode === "api") {
   environment.CORE_SETUP_SECRET_SHA256 = await readRequiredSecret(
     environment.CORE_SETUP_SECRET_SHA256_FILE,
   );
-  environment.CORE_INSTALLATION_MASTER_KEY = await readRequiredSecret(
-    environment.CORE_INSTALLATION_MASTER_KEY_FILE,
+  environment.CORE_IDENTITY_SETUP_AGENT_TOKEN = await readRequiredSecret(
+    environment.CORE_IDENTITY_SETUP_AGENT_TOKEN_FILE,
   );
 }
 
-const command = mode === "api" ? process.execPath : "/usr/local/bin/npm";
-const arguments_ = mode === "api" ? ["dist/main.js"] : ["run", "db:deploy"];
+const command = mode === "migrate" ? "/usr/local/bin/npm" : process.execPath;
+const arguments_ =
+  mode === "api"
+    ? ["dist/main.js"]
+    : ["run", "db:deploy"];
 const child = spawn(command, arguments_, {
   cwd: "/app",
   env: environment,

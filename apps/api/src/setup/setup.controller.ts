@@ -20,6 +20,7 @@ import { CurrentIdentity } from '../auth/decorators/current-identity.decorator.j
 import { Public } from '../auth/decorators/public.decorator.js'
 import type { VerifiedSubject } from '../auth/identity.types.js'
 import { RUNTIME_CONFIG, type RuntimeConfig } from '../config/runtime-config.js'
+import { EmailDeliveryRepository } from '../email-delivery/email-delivery.repository.js'
 import { SetupAvailabilityGuard } from './guards/setup-availability.guard.js'
 import { SetupSecretGuard } from './guards/setup-secret.guard.js'
 import { SetupSubjectGuard } from './guards/setup-subject.guard.js'
@@ -41,6 +42,7 @@ export class SetupController {
   constructor(
     private readonly setupRepository: SetupRepository,
     private readonly provisioning: SetupProvisioningService,
+    private readonly emailDeliveryRepository: EmailDeliveryRepository,
     @Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig,
   ) {}
 
@@ -100,6 +102,10 @@ export class SetupController {
       Object.keys(body).length
     ) {
       throw new UnprocessableEntityException('Invalid setup request')
+    }
+
+    if (!(await this.emailDeliveryRepository.isReady())) {
+      throw new NotFoundException('Setup is unavailable')
     }
 
     const claimedAt = new Date()

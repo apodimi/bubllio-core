@@ -39,6 +39,30 @@ services:
       retries: 20
     restart: unless-stopped
 
+  identity-vault-init:
+    image: ${KEYCLOAK_IMAGE:?Use the digest-pinned Keycloak release image}
+    pull_policy: always
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - >-
+        umask 077;
+        mkdir -p /opt/keycloak/vault;
+        chown 1000:0 /opt/keycloak/vault;
+        chmod 0700 /opt/keycloak/vault
+    network_mode: none
+    volumes:
+      - identity_vault:/opt/keycloak/vault
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    restart: "no"
+
   identity-bootstrap:
     image: ${KEYCLOAK_IMAGE:?Use the digest-pinned Keycloak release image}
     pull_policy: always
@@ -50,6 +74,7 @@ services:
       ]
     environment:
       CORE_KEYCLOAK_CLIENT_SECRET_FILE: /run/secrets/core_identity_client_secret
+      KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE: /run/secrets/keycloak_bootstrap_client_secret
       CORE_WEB_URL: ${CORE_WEB_URL:?Set the public Core web origin}
       KC_DB_URL: jdbc:postgresql://identity-db:5432/keycloak
       KC_DB_USERNAME: keycloak
@@ -61,6 +86,7 @@ services:
     secrets:
       - core_identity_client_secret
       - identity_database_password
+      - keycloak_bootstrap_client_secret
     networks:
       - identity_data
     depends_on:
@@ -83,14 +109,22 @@ services:
       KC_HOSTNAME: ${KEYCLOAK_URL:?Set the public identity origin}
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
+      KC_VAULT: file
+      KC_VAULT_DIR: /opt/keycloak/vault
     secrets:
       - identity_database_password
     networks:
-      - edge
-      - identity_control
-      - identity_data
+      edge: {}
+      identity_control: {}
+      identity_data: {}
+      smtp_egress:
+        gw_priority: 1
+    volumes:
+      - identity_vault:/opt/keycloak/vault:ro
     depends_on:
       identity-bootstrap:
+        condition: service_completed_successfully
+      identity-vault-init:
         condition: service_completed_successfully
     healthcheck:
       test:
@@ -109,6 +143,52 @@ services:
       - ${KEYCLOAK_PROXY_LABEL_4:-bubllio.adapter.identity.label-4=unused}
       - ${KEYCLOAK_PROXY_LABEL_5:-bubllio.adapter.identity.label-5=unused}
       - ${KEYCLOAK_PROXY_LABEL_6:-bubllio.adapter.identity.label-6=unused}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  identity-setup-agent:
+    image: ${IDENTITY_SETUP_AGENT_IMAGE:?Use the digest-pinned identity setup agent release image}
+    pull_policy: always
+    environment:
+      NODE_ENV: production
+      PORT: "3200"
+      IDENTITY_SETUP_AGENT_TOKEN_FILE: /run/secrets/identity_setup_agent_token
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE: /run/secrets/keycloak_bootstrap_client_secret
+      KEYCLOAK_RUNTIME_CLIENT_SECRET_FILE: /run/secrets/core_identity_client_secret
+    secrets:
+      - core_identity_client_secret
+      - identity_setup_agent_token
+      - keycloak_bootstrap_client_secret
+    volumes:
+      - identity_vault:/opt/keycloak/vault
+    networks:
+      - identity_control
+      - smtp_egress
+    depends_on:
+      identity-vault-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('node:net').connect(3200,'127.0.0.1').on('connect',function(){this.end()}).on('error',()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    init: true
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -155,11 +235,12 @@ services:
       CORE_DB_USER: bubllio_core
       CORE_KEYCLOAK_ADMIN_URL: http://keycloak:8080
       CORE_KEYCLOAK_CLIENT_SECRET_FILE: /run/secrets/core_identity_client_secret
+      CORE_IDENTITY_SETUP_AGENT_URL: http://identity-setup-agent:3200
+      CORE_IDENTITY_SETUP_AGENT_TOKEN_FILE: /run/secrets/identity_setup_agent_token
       CORE_SETUP_CLAIM_ENABLED: "true"
       CORE_SETUP_LOCAL_REHEARSAL: "false"
       CORE_SETUP_SECRET_SHA256_FILE: /run/secrets/setup_secret_digest
       CORE_SETUP_SECRET_EXPIRES_AT: ${CORE_SETUP_SECRET_EXPIRES_AT:?Prepare the installation first}
-      CORE_INSTALLATION_MASTER_KEY_FILE: /run/secrets/installation_master_key
       CORE_APPLICATION_MANIFEST_PATH: /run/config/applications.json
     configs:
       - source: application_manifest
@@ -168,7 +249,7 @@ services:
     secrets:
       - core_database_password
       - core_identity_client_secret
-      - installation_master_key
+      - identity_setup_agent_token
       - setup_secret_digest
     networks:
       - core_data
@@ -178,6 +259,8 @@ services:
       core-migrate:
         condition: service_completed_successfully
       keycloak:
+        condition: service_healthy
+      identity-setup-agent:
         condition: service_healthy
     healthcheck:
       test:
@@ -261,8 +344,10 @@ secrets:
     file: ${KEYCLOAK_DATABASE_PASSWORD_FILE:?Prepare the installation first}
   core_identity_client_secret:
     file: ${CORE_IDENTITY_CLIENT_SECRET_FILE:?Prepare the installation first}
-  installation_master_key:
-    file: ${INSTALLATION_MASTER_KEY_FILE:?Prepare the installation first}
+  identity_setup_agent_token:
+    file: ${IDENTITY_SETUP_AGENT_TOKEN_FILE:?Prepare the installation first}
+  keycloak_bootstrap_client_secret:
+    file: ${KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE:?Prepare the installation first}
   setup_secret_digest:
     file: ${CORE_SETUP_SECRET_DIGEST_FILE:?Prepare the installation first}
 
@@ -271,6 +356,8 @@ volumes:
     name: ${CORE_DATABASE_VOLUME:?Set the Core database volume name}
   identity_database:
     name: ${KEYCLOAK_DATABASE_VOLUME:?Set the identity database volume name}
+  identity_vault:
+    name: ${KEYCLOAK_VAULT_VOLUME:?Set the identity vault volume name}
 
 networks:
   core_data:
@@ -279,6 +366,7 @@ networks:
     internal: true
   identity_data:
     internal: true
+  smtp_egress:
   edge:
     external: true
     name: ${BUBLLIO_EDGE_NETWORK:?Set the reverse-proxy network name}

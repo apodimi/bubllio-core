@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 
 import { PrismaModule } from '../prisma/prisma.module.js'
+import { EmailDeliveryModule } from '../email-delivery/email-delivery.module.js'
 import { SetupAvailabilityGuard } from './guards/setup-availability.guard.js'
 import { SetupSecretGuard } from './guards/setup-secret.guard.js'
 import { SetupSubjectGuard } from './guards/setup-subject.guard.js'
@@ -13,7 +14,7 @@ import { SetupProvisioningService } from './setup-provisioning.service.js'
 @Module({
   controllers: [SetupController],
   exports: [SetupRepository, SetupSecretGuard, SetupSubjectGuard],
-  imports: [PrismaModule],
+  imports: [PrismaModule, EmailDeliveryModule],
   providers: [
     KeycloakOrganizationClient,
     SetupAvailabilityGuard,

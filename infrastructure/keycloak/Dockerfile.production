@@ -16,13 +16,15 @@ COPY --from=theme-build --chown=keycloak:keycloak \
     /theme/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar \
     /opt/keycloak/providers/bubllio-theme.jar
 RUN touch -m --date=@1761264000 /opt/keycloak/providers/bubllio-theme.jar && \
-    /opt/keycloak/bin/kc.sh build
+    /opt/keycloak/bin/kc.sh build --vault=file
 
 FROM quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244 AS runtime
 
 ENV KC_DB=postgres \
     KC_HEALTH_ENABLED=true \
-    KC_METRICS_ENABLED=true
+    KC_METRICS_ENABLED=true \
+    KC_VAULT=file \
+    KC_VAULT_DIR=/opt/keycloak/vault
 COPY --from=keycloak-build --chown=keycloak:keycloak /opt/keycloak/ /opt/keycloak/
 COPY --chown=keycloak:keycloak --chmod=755 deploy/runtime/keycloak-entrypoint.sh /opt/keycloak/bin/bubllio-entrypoint.sh
 USER keycloak

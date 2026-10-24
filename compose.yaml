@@ -49,6 +49,32 @@ services:
     volumes:
       - core_postgres_data:/var/lib/postgresql/data
 
+  identity-vault-init:
+    build:
+      context: .
+      dockerfile: infrastructure/keycloak/Dockerfile
+    image: bubllio/keycloak:local
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - >-
+        umask 077;
+        mkdir -p /opt/keycloak/vault;
+        chown 1000:0 /opt/keycloak/vault;
+        chmod 0700 /opt/keycloak/vault
+    network_mode: none
+    volumes:
+      - identity_secret_vault:/opt/keycloak/vault
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    restart: "no"
+
   keycloak:
     build:
       context: .
@@ -62,11 +88,15 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD:?Set KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_VAULT: file
+      KC_VAULT_DIR: /opt/keycloak/vault
     depends_on:
       keycloak-db:
         condition: service_healthy
       mailpit:
         condition: service_healthy
+      identity-vault-init:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -82,6 +112,54 @@ services:
     restart: unless-stopped
     volumes:
       - ${KEYCLOAK_REALM_FILE:-./infrastructure/keycloak/realm-bubllio.local.json}:/opt/keycloak/data/import/realm-bubllio.json:ro
+      - identity_secret_vault:/opt/keycloak/vault:ro
+
+  identity-setup-agent:
+    profiles: ["setup-rehearsal"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.production
+      target: identity-setup-agent
+    image: bubllio/identity-setup-agent:local
+    environment:
+      NODE_ENV: production
+      PORT: "3200"
+      IDENTITY_SETUP_AGENT_TOKEN_FILE: /run/secrets/identity_setup_agent_token
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE: /run/secrets/keycloak_bootstrap_client_secret
+      KEYCLOAK_RUNTIME_CLIENT_SECRET_FILE: /run/secrets/core_identity_client_secret
+      IDENTITY_SETUP_AGENT_ALLOW_INSECURE_SMTP: "true"
+    secrets:
+      - core_identity_client_secret
+      - identity_setup_agent_token
+      - keycloak_bootstrap_client_secret
+    volumes:
+      - identity_secret_vault:/opt/keycloak/vault
+    depends_on:
+      identity-vault-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('node:net').connect(3200,'127.0.0.1').on('connect',function(){this.end()}).on('error',()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
   core-migrate:
     build:
@@ -110,6 +188,8 @@ services:
       CORE_SETUP_SECRET_EXPIRES_AT: ${CORE_SETUP_SECRET_EXPIRES_AT:-}
       CORE_KEYCLOAK_ADMIN_URL: http://keycloak:8080
       CORE_KEYCLOAK_CLIENT_SECRET: ${CORE_KEYCLOAK_CLIENT_SECRET:-}
+      CORE_IDENTITY_SETUP_AGENT_URL: ${CORE_IDENTITY_SETUP_AGENT_URL:-}
+      CORE_IDENTITY_SETUP_AGENT_TOKEN: ${CORE_IDENTITY_SETUP_AGENT_TOKEN:-}
       DATABASE_URL: postgresql://${CORE_DB_USER:-bubllio_core}:${CORE_DB_PASSWORD:?Set CORE_DB_PASSWORD}@core-db:5432/${CORE_DB_NAME:-bubllio_core}
     depends_on:
       core-db:
@@ -118,6 +198,9 @@ services:
         condition: service_completed_successfully
       keycloak:
         condition: service_healthy
+      identity-setup-agent:
+        condition: service_healthy
+        required: false
     healthcheck:
       test:
         [
@@ -154,3 +237,12 @@ services:
 volumes:
   core_postgres_data:
   keycloak_postgres_data:
+  identity_secret_vault:
+
+secrets:
+  core_identity_client_secret:
+    file: ${CORE_IDENTITY_CLIENT_SECRET_FILE:-.local/core-identity-client-secret}
+  identity_setup_agent_token:
+    file: ${IDENTITY_SETUP_AGENT_TOKEN_FILE:-.local/identity-setup-agent-token}
+  keycloak_bootstrap_client_secret:
+    file: ${KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE:-.local/keycloak-bootstrap-client-secret}

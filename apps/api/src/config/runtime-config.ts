@@ -20,6 +20,10 @@ export interface RuntimeConfig {
     adminUrl?: string
     clientSecret?: string
   }>
+  readonly identitySetupAgent: Readonly<{
+    url?: string
+    token?: string
+  }>
   readonly applicationManifestPath?: string
   readonly localApplicationRegistrationEnabled: boolean
 }

@@ -70,6 +70,8 @@ const configuration = JSON.parse(
 );
 verifyPrivateDatabases(configuration);
 verifyConfiguredImages(configuration, contract.release.images);
+verifyIdentitySetupBoundary(configuration);
+verifyRealmBootstrapContract();
 
 if (options.validateOnly) {
   process.stdout.write(
@@ -142,6 +144,162 @@ function verifyConfiguredImages(configuration, images) {
   }
 }
 
+function verifyIdentitySetupBoundary(configuration) {
+  const agent = configuration.services?.["identity-setup-agent"];
+  const keycloak = configuration.services?.keycloak;
+  const vaultInit = configuration.services?.["identity-vault-init"];
+  if (!agent || !keycloak || !vaultInit) {
+    throw new Error("Compose adapter is missing the identity setup boundary");
+  }
+  if (agent.ports?.length || agent.network_mode === "host") {
+    throw new Error("identity-setup-agent must not publish a host port");
+  }
+  const agentNetworks = Array.isArray(agent.networks)
+    ? agent.networks
+    : Object.keys(agent.networks ?? {});
+  const privateNetworks = agentNetworks.filter(
+    (network) => configuration.networks?.[network]?.internal === true,
+  );
+  const egressNetworks = agentNetworks.filter(
+    (network) => configuration.networks?.[network]?.internal !== true,
+  );
+  if (
+    agentNetworks.length !== 2 ||
+    privateNetworks.length !== 1 ||
+    egressNetworks.length !== 1 ||
+    configuration.networks?.[egressNetworks[0]]?.external === true
+  ) {
+    throw new Error(
+      "identity-setup-agent must use one private control network and one Compose-owned SMTP egress network",
+    );
+  }
+  const egressNetwork = egressNetworks[0];
+  const keycloakNetworks = Array.isArray(keycloak.networks)
+    ? keycloak.networks
+    : Object.keys(keycloak.networks ?? {});
+  if (!keycloakNetworks.includes(egressNetwork)) {
+    throw new Error(
+      "Keycloak must share the reviewed SMTP egress network with the setup agent",
+    );
+  }
+  if ((keycloak.networks?.[egressNetwork]?.gw_priority ?? 0) < 1) {
+    throw new Error(
+      "Keycloak must prefer the reviewed SMTP egress network as its default gateway",
+    );
+  }
+  for (const [serviceName, service] of Object.entries(
+    configuration.services ?? {},
+  )) {
+    if (serviceName === "identity-setup-agent" || serviceName === "keycloak")
+      continue;
+    const serviceNetworks = Array.isArray(service.networks)
+      ? service.networks
+      : Object.keys(service.networks ?? {});
+    if (serviceNetworks.includes(egressNetwork)) {
+      throw new Error(
+        `SMTP egress network must be limited to the setup agent and Keycloak, not ${serviceName}`,
+      );
+    }
+  }
+  if (agent.environment?.IDENTITY_SETUP_AGENT_ALLOW_INSECURE_SMTP === "true") {
+    throw new Error("Portable production must not permit insecure SMTP");
+  }
+  const expectedAgentEnvironment = {
+    PORT: "3200",
+    IDENTITY_SETUP_AGENT_TOKEN_FILE:
+      "/run/secrets/identity_setup_agent_token",
+    KEYCLOAK_ADMIN_URL: "http://keycloak:8080",
+    KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE:
+      "/run/secrets/keycloak_bootstrap_client_secret",
+    KEYCLOAK_RUNTIME_CLIENT_SECRET_FILE:
+      "/run/secrets/core_identity_client_secret",
+  };
+  for (const [name, expected] of Object.entries(expectedAgentEnvironment)) {
+    if (agent.environment?.[name] !== expected) {
+      throw new Error(`identity-setup-agent has an invalid ${name} contract`);
+    }
+  }
+  const coreEnvironment = configuration.services?.["core-api"]?.environment;
+  if (
+    coreEnvironment?.CORE_IDENTITY_SETUP_AGENT_URL !==
+      "http://identity-setup-agent:3200" ||
+    coreEnvironment?.CORE_IDENTITY_SETUP_AGENT_TOKEN_FILE !==
+      "/run/secrets/identity_setup_agent_token"
+  ) {
+    throw new Error("Core API has an invalid identity setup agent contract");
+  }
+  if (vaultInit.network_mode !== "none") {
+    throw new Error("Identity vault initialization must not have network access");
+  }
+
+  const agentVault = findMount(agent, "/opt/keycloak/vault");
+  const keycloakVault = findMount(keycloak, "/opt/keycloak/vault");
+  const initVault = findMount(vaultInit, "/opt/keycloak/vault");
+  if (!agentVault || !keycloakVault || !initVault) {
+    throw new Error("Identity vault must be mounted by init, setup agent, and Keycloak");
+  }
+  if (
+    agentVault.source !== keycloakVault.source ||
+    agentVault.source !== initVault.source ||
+    keycloakVault.read_only !== true ||
+    agentVault.read_only === true
+  ) {
+    throw new Error("Identity vault ownership or read-only boundaries are invalid");
+  }
+  if (
+    keycloak.environment?.KC_VAULT !== "file" ||
+    keycloak.environment?.KC_VAULT_DIR !== "/opt/keycloak/vault"
+  ) {
+    throw new Error("Keycloak file vault runtime is not configured correctly");
+  }
+  if (findMount(configuration.services?.["core-api"], "/opt/keycloak/vault")) {
+    throw new Error("Core API must not mount the identity vault");
+  }
+  if (
+    coreEnvironment?.CORE_INSTALLATION_MASTER_KEY_FILE !== undefined
+  ) {
+    throw new Error("The obsolete installation master key must not be configured");
+  }
+}
+
+function findMount(service, target) {
+  const mounts = service?.volumes ?? [];
+  return mounts.find((mount) =>
+    typeof mount === "string"
+      ? mount.split(":")[1] === target
+      : mount.target === target,
+  );
+}
+
+function verifyRealmBootstrapContract() {
+  const realm = JSON.parse(
+    run(process.execPath, [
+      "-e",
+      `process.stdout.write(require('node:fs').readFileSync(${JSON.stringify(resolve(repositoryRoot, "deploy/keycloak/bubllio-realm.json"))}, 'utf8'))`,
+    ]),
+  );
+  if (realm.registrationAllowed !== false) {
+    throw new Error("Portable realm registration must stay closed until identity finalization");
+  }
+  const roleSet = (clientId) =>
+    new Set(
+      realm.users?.find(
+        (user) => user.serviceAccountClientId === clientId,
+      )?.clientRoles?.["realm-management"] ?? [],
+    );
+  const bootstrapRoles = roleSet("bubllio-identity-bootstrap");
+  if (
+    bootstrapRoles.size !== 2 ||
+    !bootstrapRoles.has("manage-realm") ||
+    !bootstrapRoles.has("manage-clients")
+  ) {
+    throw new Error("Identity bootstrap client roles differ from the reviewed authority");
+  }
+  if (!roleSet("bubllio-core-runtime").has("view-realm")) {
+    throw new Error("Core runtime must retain the reviewed view-realm capability");
+  }
+}
+
 function verifyRunningImages(composeArguments, images) {
   for (const [serviceName, expectedImage] of Object.entries(
     imageServiceMap(images),
@@ -174,7 +332,9 @@ function imageServiceMap(images) {
     "core-api": images.coreApi,
     "core-migrate": images.coreMigrate,
     "core-web": images.coreWeb,
+    "identity-setup-agent": images.identitySetupAgent,
     "identity-bootstrap": images.keycloak,
+    "identity-vault-init": images.keycloak,
     keycloak: images.keycloak,
   };
 }

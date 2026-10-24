@@ -56,6 +56,8 @@ describe('runtime configuration', () => {
       CORE_SETUP_SECRET_EXPIRES_AT: '2099-01-01T00:00:00.000Z',
       CORE_KEYCLOAK_ADMIN_URL: 'http://keycloak:8080',
       CORE_KEYCLOAK_CLIENT_SECRET: 'production-client-secret',
+      CORE_IDENTITY_SETUP_AGENT_URL: 'http://identity-setup-agent:3200',
+      CORE_IDENTITY_SETUP_AGENT_TOKEN: 'a'.repeat(32),
     })
 
     expect(config.setup).toMatchObject({ claimEnabled: true, localRehearsal: false })

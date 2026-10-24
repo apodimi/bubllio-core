@@ -36,7 +36,7 @@ const PREFLIGHT_MESSAGE_CODES: Readonly<Record<PreflightCheckKey, string>> = {
 
 // Bump this with every release migration so readiness proves the running image's
 // database contract, not merely the absence of an unfinished migration row.
-const REQUIRED_MIGRATION = '20261024010000_application_manifest'
+const REQUIRED_MIGRATION = '20261024020000_email_delivery_setup'
 
 @Injectable()
 export class HealthService {

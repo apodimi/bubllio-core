@@ -8,16 +8,30 @@ const PROBLEM_BY_STATUS: Record<number, { code: string; title: string }> = {
   409: { code: 'SETUP_CLAIM_CONFLICT', title: 'Setup conflict' },
   422: { code: 'SETUP_INVALID_REQUEST', title: 'Invalid setup request' },
 }
+const EMAIL_SAFE_CODES = new Set([
+  'EMAIL_DELIVERY_UNAVAILABLE',
+  'EMAIL_DELIVERY_AUTHENTICATION_FAILED',
+  'EMAIL_DELIVERY_TLS_FAILED',
+  'EMAIL_DELIVERY_REJECTED',
+  'EMAIL_CONFIRMATION_EXPIRED',
+  'EMAIL_CONFIRMATION_INVALID',
+  'IDENTITY_ACTIVATION_FAILED',
+])
 
 /** Returns stable, non-sensitive setup errors without echoing credentials or request data. */
 @Catch(HttpException)
 export class SetupProblemFilter implements ExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost): void {
     const status = exception.getStatus()
-    const problem = PROBLEM_BY_STATUS[status] ?? {
+    const defaultProblem = PROBLEM_BY_STATUS[status] ?? {
       code: 'SETUP_UNAVAILABLE',
       title: 'Setup unavailable',
     }
+    const safeEmailCode =
+      status === 409 && EMAIL_SAFE_CODES.has(exception.message) ? exception.message : undefined
+    const problem = safeEmailCode
+      ? { code: safeEmailCode, title: 'Email setup requires attention' }
+      : defaultProblem
     const response = host.switchToHttp().getResponse<{
       header: (name: string, value: string) => void
       status: (code: number) => { send: (body: unknown) => void }

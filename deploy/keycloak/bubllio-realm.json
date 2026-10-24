@@ -9,7 +9,7 @@
   "supportedLocales": ["en", "el"],
   "defaultLocale": "en",
   "organizationsEnabled": true,
-  "registrationAllowed": true,
+  "registrationAllowed": false,
   "registrationEmailAsUsername": true,
   "verifyEmail": true,
   "loginWithEmailAllowed": true,
@@ -97,6 +97,17 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect"
+    },
+    {
+      "clientId": "bubllio-identity-bootstrap",
+      "name": "Bubllio identity bootstrap",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${KEYCLOAK_BOOTSTRAP_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
     }
   ],
   "users": [
@@ -109,7 +120,19 @@
           "query-organizations",
           "view-organizations",
           "manage-organizations",
-          "view-users"
+          "view-users",
+          "view-realm"
+        ]
+      }
+    },
+    {
+      "username": "service-account-bubllio-identity-bootstrap",
+      "enabled": true,
+      "serviceAccountClientId": "bubllio-identity-bootstrap",
+      "clientRoles": {
+        "realm-management": [
+          "manage-realm",
+          "manage-clients"
         ]
       }
     }

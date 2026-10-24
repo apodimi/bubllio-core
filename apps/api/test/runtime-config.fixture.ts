@@ -13,6 +13,7 @@ export function runtimeConfig(overrides: Partial<RuntimeConfig> = {}): RuntimeCo
     },
     setup: { claimEnabled: false, localRehearsal: false },
     keycloak: {},
+    identitySetupAgent: {},
     localApplicationRegistrationEnabled: false,
     ...overrides,
   }

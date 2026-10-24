@@ -6,6 +6,7 @@
       "coreApi": "ghcr.io/bubllio/core-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "coreMigrate": "ghcr.io/bubllio/core-migrate@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "coreWeb": "ghcr.io/bubllio/core-web@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "identitySetupAgent": "ghcr.io/bubllio/core-identity-setup-agent@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
       "keycloak": "ghcr.io/bubllio/core-keycloak@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     }
   },
@@ -16,7 +17,8 @@
   },
   "storage": {
     "coreDatabaseVolume": "bubllio_core_database",
-    "identityDatabaseVolume": "bubllio_identity_database"
+    "identityDatabaseVolume": "bubllio_identity_database",
+    "identityVaultVolume": "bubllio_identity_vault"
   },
   "bootstrap": {
     "setupSecretOutput": "terminal-once",
@@ -26,7 +28,8 @@
     "coreDatabasePassword": "core_database_password",
     "identityDatabasePassword": "identity_database_password",
     "coreIdentityClientSecret": "core_identity_client_secret",
-    "installationMasterKey": "installation_master_key",
+    "keycloakBootstrapClientSecret": "keycloak_bootstrap_client_secret",
+    "identitySetupAgentToken": "identity_setup_agent_token",
     "setupSecretDigest": "setup_secret_digest"
   },
   "health": {

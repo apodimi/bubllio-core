@@ -28,11 +28,20 @@
         "images": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["coreApi", "coreMigrate", "coreWeb", "keycloak"],
+          "required": [
+            "coreApi",
+            "coreMigrate",
+            "coreWeb",
+            "identitySetupAgent",
+            "keycloak"
+          ],
           "properties": {
             "coreApi": { "$ref": "#/$defs/imageDigestReference" },
             "coreMigrate": { "$ref": "#/$defs/imageDigestReference" },
             "coreWeb": { "$ref": "#/$defs/imageDigestReference" },
+            "identitySetupAgent": {
+              "$ref": "#/$defs/imageDigestReference"
+            },
             "keycloak": { "$ref": "#/$defs/imageDigestReference" }
           }
         }
@@ -51,10 +60,15 @@
     "storage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["coreDatabaseVolume", "identityDatabaseVolume"],
+      "required": [
+        "coreDatabaseVolume",
+        "identityDatabaseVolume",
+        "identityVaultVolume"
+      ],
       "properties": {
         "coreDatabaseVolume": { "$ref": "#/$defs/resourceName" },
-        "identityDatabaseVolume": { "$ref": "#/$defs/resourceName" }
+        "identityDatabaseVolume": { "$ref": "#/$defs/resourceName" },
+        "identityVaultVolume": { "$ref": "#/$defs/resourceName" }
       }
     },
     "bootstrap": {
@@ -77,14 +91,18 @@
         "coreDatabasePassword",
         "identityDatabasePassword",
         "coreIdentityClientSecret",
-        "installationMasterKey",
+        "keycloakBootstrapClientSecret",
+        "identitySetupAgentToken",
         "setupSecretDigest"
       ],
       "properties": {
         "coreDatabasePassword": { "$ref": "#/$defs/secretFileName" },
         "identityDatabasePassword": { "$ref": "#/$defs/secretFileName" },
         "coreIdentityClientSecret": { "$ref": "#/$defs/secretFileName" },
-        "installationMasterKey": { "$ref": "#/$defs/secretFileName" },
+        "keycloakBootstrapClientSecret": {
+          "$ref": "#/$defs/secretFileName"
+        },
+        "identitySetupAgentToken": { "$ref": "#/$defs/secretFileName" },
         "setupSecretDigest": { "$ref": "#/$defs/secretFileName" }
       }
     },

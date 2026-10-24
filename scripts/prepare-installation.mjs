@@ -57,7 +57,8 @@ const secretPaths = Object.fromEntries(
 await ensureRandomSecret(secretPaths.coreDatabasePassword, false);
 await ensureRandomSecret(secretPaths.identityDatabasePassword, false);
 await ensureRandomSecret(secretPaths.coreIdentityClientSecret, false);
-await ensureRandomSecret(secretPaths.installationMasterKey, true);
+await ensureRandomSecret(secretPaths.keycloakBootstrapClientSecret, false);
+await ensureRandomSecret(secretPaths.identitySetupAgentToken, false);
 
 let setupSecret;
 const setupExpiryPath = join(secretsDirectory, "setup_secret_expires_at");
@@ -168,6 +169,7 @@ function validateContract(value) {
     "coreApi",
     "coreMigrate",
     "coreWeb",
+    "identitySetupAgent",
     "keycloak",
   ]);
   for (const [name, image] of Object.entries(value.release.images)) {
@@ -188,14 +190,13 @@ function validateContract(value) {
   exactObject(value.storage, "storage", [
     "coreDatabaseVolume",
     "identityDatabaseVolume",
+    "identityVaultVolume",
   ]);
   for (const [name, resource] of Object.entries(value.storage)) {
     matches(resource, RESOURCE_NAME, `storage.${name}`);
   }
-  if (
-    value.storage.coreDatabaseVolume === value.storage.identityDatabaseVolume
-  ) {
-    fail("Database volumes must be distinct");
+  if (new Set(Object.values(value.storage)).size !== 3) {
+    fail("Database and identity vault volumes must be distinct");
   }
 
   exactObject(value.bootstrap, "bootstrap", [
@@ -218,13 +219,14 @@ function validateContract(value) {
     "coreDatabasePassword",
     "identityDatabasePassword",
     "coreIdentityClientSecret",
-    "installationMasterKey",
+    "keycloakBootstrapClientSecret",
+    "identitySetupAgentToken",
     "setupSecretDigest",
   ]);
   for (const [name, reference] of Object.entries(value.secretReferences)) {
     matches(reference, RESOURCE_NAME, `secretReferences.${name}`);
   }
-  if (new Set(Object.values(value.secretReferences)).size !== 5) {
+  if (new Set(Object.values(value.secretReferences)).size !== 6) {
     fail("Secret references must be distinct");
   }
   if (
@@ -302,16 +304,20 @@ function createComposeEnvironment({
     CORE_API_IMAGE: contract.release.images.coreApi,
     CORE_MIGRATE_IMAGE: contract.release.images.coreMigrate,
     CORE_WEB_IMAGE: contract.release.images.coreWeb,
+    IDENTITY_SETUP_AGENT_IMAGE: contract.release.images.identitySetupAgent,
     KEYCLOAK_IMAGE: contract.release.images.keycloak,
     CORE_WEB_URL: contract.publicEndpoints.webUrl,
     CORE_API_URL: contract.publicEndpoints.apiUrl,
     KEYCLOAK_URL: contract.publicEndpoints.identityUrl,
     CORE_DATABASE_VOLUME: contract.storage.coreDatabaseVolume,
     KEYCLOAK_DATABASE_VOLUME: contract.storage.identityDatabaseVolume,
+    KEYCLOAK_VAULT_VOLUME: contract.storage.identityVaultVolume,
     CORE_DATABASE_PASSWORD_FILE: secretPaths.coreDatabasePassword,
     KEYCLOAK_DATABASE_PASSWORD_FILE: secretPaths.identityDatabasePassword,
     CORE_IDENTITY_CLIENT_SECRET_FILE: secretPaths.coreIdentityClientSecret,
-    INSTALLATION_MASTER_KEY_FILE: secretPaths.installationMasterKey,
+    KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE:
+      secretPaths.keycloakBootstrapClientSecret,
+    IDENTITY_SETUP_AGENT_TOKEN_FILE: secretPaths.identitySetupAgentToken,
     CORE_SETUP_SECRET_DIGEST_FILE: secretPaths.setupSecretDigest,
     CORE_APPLICATION_MANIFEST_FILE: manifestPath,
     CORE_SETUP_SECRET_EXPIRES_AT: setupExpiresAt,
