@@ -7,7 +7,17 @@ export default class CiReporter implements Reporter {
     if (result.status !== "failed" && result.status !== "timedOut") return;
 
     const file = path.relative(process.cwd(), test.location.file);
-    const title = escapeAnnotation(test.titlePath().join(" › "));
+    const failure =
+      result.error?.message?.split("\n", 1)[0] ?? "Unknown failure";
+    const source = result.error?.stack
+      ?.split("\n")
+      .find((line) => line.includes("identity-flow.spec.ts:"))
+      ?.trim();
+    const title = escapeAnnotation(
+      [test.titlePath().join(" › "), failure, source]
+        .filter(Boolean)
+        .join(" | "),
+    );
     process.stdout.write(
       `::error file=${file},line=${test.location.line},title=Browser test failed::${title}\n`,
     );
