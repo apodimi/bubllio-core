@@ -1,6 +1,9 @@
 .git
 .idea
 .playwright-cli
+.local
+.env
+.env.*
 **/dist
 **/dist_keycloak
 **/node_modules

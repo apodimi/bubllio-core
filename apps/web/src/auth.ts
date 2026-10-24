@@ -14,7 +14,8 @@ export async function initializeAuth(): Promise<Keycloak> {
   await keycloak.init({
     // Core is an authenticated workspace. Existing suite sessions return
     // immediately; anonymous visitors continue straight to the login page.
-    onLoad: "login-required",
+    onLoad:
+      window.location.pathname === "/setup" ? "check-sso" : "login-required",
     flow: "standard",
     pkceMethod: "S256",
     scope: "profile email organization",

@@ -4,7 +4,7 @@
 
 Reduce the largest platform risk before production scaffolding: prove that
 Keycloak can provide the identity, organization, browser-session, and service
-contracts required by Core, CRM, and Board.
+contracts required by Core and CRM, then reusable by Board when it exists.
 
 The initial experiment established the accepted Keycloak and NestJS foundation,
 which now lives in `apps/api` and `infrastructure/keycloak`. This document
@@ -19,19 +19,18 @@ Docker Compose
 ├── Keycloak
 ├── Keycloak PostgreSQL
 ├── minimal Core NestJS API/client
-├── minimal Board client/API
 └── CRM integration branch or isolated adapter
 ```
 
 Use one `bubllio` realm, one demo organization, two users in different
-organizations, three browser clients, and at least one machine client.
+organizations, Core and CRM browser clients, and at least one machine client.
 
 ## Questions to answer
 
 ### Browser identity
 
 - Does Authorization Code with PKCE work cleanly for the React clients?
-- Does one Keycloak session provide SSO across Core, CRM, and Board?
+- Does one Keycloak session provide SSO across Core and CRM?
 - What exactly happens during local logout and suite logout?
 - How are refresh rotation, revocation, expiry, and clock skew handled?
 
@@ -42,15 +41,15 @@ organizations, three browser clients, and at least one machine client.
 - Can one user belong to multiple organizations and select context safely?
 - Can each resource server reject missing, wrong, or ambiguous organization
   context?
-- Can two-organization tests prove isolation in CRM and the minimal Board API?
+- Can two-organization tests prove isolation in Core and CRM?
 
 ### Resource servers and services
 
 - Can NestJS and Django validate issuer, audience, signature, expiry, and claims
   using discovery/JWKS without shared secrets?
 - How does signing-key rotation behave while applications are running?
-- Which service credential flow supports Board-to-CRM calls, and how is the end
-  user's authorization preserved when required?
+- Which service credential flow supports future app-to-app calls, and how is the
+  end user's authorization preserved when required?
 
 ### Operations and UX
 
@@ -77,13 +76,14 @@ organizations, three browser clients, and at least one machine client.
 - Missing organization context.
 - User from organization A requesting organization B data.
 - Machine client attempting a user-only operation.
-- Linked CRM resource from another organization.
+- Core app-grant denial for a direct CRM API request from an ungranted member.
 
 ## Exit criteria
 
-The spike passes only when:
+The Core and CRM integration spike passes only when:
 
-- Core, CRM, and Board demonstrate SSO with one identity session;
+- Core and CRM demonstrate SSO with one identity session; Board adopts the same
+  contract when it exists;
 - every token-validation rule has positive and negative evidence;
 - organization context and tenant isolation are unambiguous;
 - service authentication has a least-privilege design;

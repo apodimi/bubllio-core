@@ -12,7 +12,11 @@ export class SetupSecretGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>()
     const presentedSecret = request.headers['x-bubllio-setup-secret']
 
-    if (!presentedSecret || !this.setupSecretService.matches(presentedSecret)) {
+    if (
+      typeof presentedSecret !== 'string' ||
+      presentedSecret.length > 512 ||
+      !this.setupSecretService.matches(presentedSecret)
+    ) {
       // Missing, invalid, expired, and disabled setup intentionally look identical.
       throw new NotFoundException('Setup is unavailable')
     }

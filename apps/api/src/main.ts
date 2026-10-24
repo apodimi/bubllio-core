@@ -8,7 +8,7 @@ import { AppModule } from './app.module.js'
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger: true }),
+    new FastifyAdapter({ logger: true, bodyLimit: 16_384 }),
   )
   const port = Number.parseInt(process.env.PORT ?? '3100', 10)
 
@@ -16,8 +16,8 @@ async function bootstrap(): Promise<void> {
   // Keeping this as one exact origin avoids accidentally allowing arbitrary sites.
   app.enableCors({
     origin: process.env.WEB_ORIGIN ?? 'http://127.0.0.1:5174',
-    methods: ['GET'],
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-Bubllio-Setup-Secret'],
   })
 
   await app.listen(port, '0.0.0.0')

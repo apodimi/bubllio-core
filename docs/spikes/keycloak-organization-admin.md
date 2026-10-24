@@ -66,13 +66,24 @@ Negative tests must prove the same service account cannot:
 6. assign realm/client roles; or
 7. delete arbitrary organizations or memberships outside its policy.
 
-## Current result
+## Local 26.8.1 evidence
 
-The immutable marker lookup is supported by the documented 26.8.1 API. The
-minimum write permission set is not yet proven locally. Production remains
-blocked until the pinned-image contract tests establish the positive and
-negative boundary. Broad `realm-admin` access is not an acceptable interim
-configuration.
+An isolated Compose realm was exercised on 2026-10-23. A service account with
+`query-organizations`, `view-organizations`, and `manage-organizations` created
+an organization, resolved its exact Core ID marker, and could send an invitation
+to an existing user. It could not list clients. Directly adding that user as a
+member returned 403: [the pinned Keycloak source](https://github.com/keycloak/keycloak/blob/26.8.1/services/src/main/java/org/keycloak/organization/admin/resource/OrganizationMemberResource.java)
+requires both organization management and user management for that operation.
+The first local rehearsal therefore sends an owner invitation and waits for the
+human to accept it. It does not grant runtime `manage-users` or `realm-admin`.
+
+The local rehearsal also grants `view-users` so the runtime can verify that the
+invitation was accepted. This exposes realm-wide user read access to that local
+service account. It is not an approved production permission boundary. Before
+UAT, replace it with tested fine-grained access to only the necessary user and
+prove that realm, client, password, impersonation, and unrelated-user mutations
+remain unavailable. The local smoke used a temporary organization and an
+isolated database; no production permission result is implied.
 
 ## References
 

@@ -2,10 +2,11 @@
 
 ## Product purpose
 
-Bubllio Core makes independently deployable Bubllio applications feel like one
-suite. A person signs in once, enters an organization, sees the applications
-available to it, and moves between those applications without losing identity
-or organization context.
+Bubllio Core is the required control plane for the Bubllio suite. A person signs
+in once, enters an organization, sees only the applications granted to them
+there, and moves between those applications without losing identity or
+organization context. Each application checks Core access even when opened by
+direct URL.
 
 ## Primary users
 
@@ -14,17 +15,45 @@ or organization context.
 - Installation administrators who operate a self-hosted Bubllio suite.
 - Bubllio application developers who integrate a module into the suite.
 
-## First validated journey
+## Target first journey
 
-An organization member signs in once, opens CRM and Board, creates a Board task,
-and links it to a CRM company belonging to the same organization. The link shows
-current display information from CRM without copying the CRM company into Board.
+An installation operator bootstraps identity and securely hands the one-time
+setup secret to the named IT administrator. An unconfigured Core opens its
+first-run setup before any ordinary sign-in route. The IT administrator creates
+and verifies the first account, then claims the installation,
+creates the first organization, becomes its owner, and manages its members and
+applications. A developer receives Board access, a salesperson CRM access, and
+a project manager both, without changing their shared organization membership.
+Board is a future application; CRM is the first real integration target.
+
+## Core workspace experience
+
+Core is the suite home after sign-in, similar to an application workspace. A
+member chooses an organization, sees only the apps granted there, and opens one
+with the same identity session. Owners and admins use Core to invite members,
+enable apps for the organization, and grant or revoke each member's app access.
+An ungranted app remains inaccessible through its direct URL and API.
+
+Browser registration creates a verified suite identity. It does not create an
+organization, establish membership, or grant applications. A new user waits for
+an organization invitation and explicit access decisions from an administrator.
+
+## New application experience
+
+A developer registers an app with Core, configures its launch URL and identity
+audience, and uses the published integration adapter and contract tests. They do
+not build another login, password reset, organization invitation flow, member
+directory, or app-access policy. Their backend still validates the standard
+token and enforces Core's grant before serving tenant data. The app owns only
+its domain data and action-level permissions.
 
 ## Core responsibilities
 
 - Integrate with the suite identity provider.
 - Represent the product state of an organization.
 - Maintain the application catalog and organization app availability.
+- Maintain explicit application grants for each organization member and expose
+  authoritative access decisions to application backends.
 - Maintain entitlements and installation/provisioning state.
 - Publish suite-level discovery and compatibility information.
 - Define contracts for cross-application resource references.
@@ -42,6 +71,9 @@ current display information from CRM without copying the CRM company into Board.
 ## Product principles
 
 - One identity and organization context across the suite.
+- Organization membership and application access are separate decisions.
+- Every application enforces Core access before its own domain permissions.
+- A new app uses the same small integration contract regardless of its stack.
 - One authoritative owner for every piece of data.
 - Standards-based contracts over shared database access.
 - Self-hosted operation first; hosted operation must remain possible.
@@ -52,12 +84,23 @@ current display information from CRM without copying the CRM company into Board.
 
 ## First milestone success criteria
 
-- One login works across Core, CRM, and a minimal Board client.
+- A clean self-hosted installation completes secure setup and enters Core.
 - Tokens have validated issuer, audience, expiry, and organization context.
-- CRM can accept the new identity path without breaking its current login path.
-- Board can resolve an allowed CRM company summary through a documented API.
+- The owner can manage Core organization state, membership, and application
+  availability and individual member grants without touching Keycloak
+  infrastructure credentials.
+- A member sees only granted applications, and a direct URL/API call to an
+  ungranted application is denied by its backend.
+- Tests cover two members and two app keys in one organization, proving
+  different grant sets even before Board exists.
+- A reference app can join through documented configuration and the shared
+  access adapter without building its own login or invitation workflow.
 - Cross-organization access is denied and covered by regression tests.
 - Local setup is repeatable from documented container commands.
-- Logout, token refresh, signing-key rotation, and service authentication have
-  explicit test evidence.
+- Logout, token refresh, signing-key rotation, provisioning reconciliation, and
+  service authentication have explicit test evidence.
+
+The suite is not complete until CRM accepts the shared identity and Core app
+grant while preserving a tested transition from its existing login. Board uses
+the same contract later, without changing Core's access model.
 

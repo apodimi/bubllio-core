@@ -3,10 +3,20 @@
 This guide explains how to obtain and run Bubllio Core locally and defines the
 deployment contract for UAT and Production.
 
-> **Current status:** only the local foundation stack is runnable. UAT and
-> Production manifests, CI image publication, secret-manager integration, and
-> automated realm provisioning are not implemented yet. Never deploy the spike
-> Compose file or its demo realm outside a developer machine.
+> **Current status:** the local foundation and isolated first-run rehearsal are
+> runnable. UAT and Production manifests, CI image publication, secret-manager
+> integration, and production realm provisioning are not implemented yet. Never
+> deploy the development Compose file or its demo realm outside a developer machine.
+
+The [Verify Core workflow](../../.github/workflows/verify.yml) runs production
+dependency audits, API tests and build, web format/build, the Keycloak theme
+build, and browser identity tests on pushes and pull requests. It does not
+publish an image, provision a realm, or approve a deployment. Those release
+artifacts remain part of the UAT and Production work below.
+
+For a first installation exercise from an empty checkout, follow the
+[isolated manual test](../operations/first-run.md#first-manual-test-from-a-fresh-checkout).
+It uses a separate Compose project and does not reset existing developer data.
 
 ## Environment model
 
@@ -23,12 +33,13 @@ deployment contract for UAT and Production.
 
 ## Obtain the repository
 
-This repository does not have a Git remote yet. After the remote is created:
-
 ```bash
-git clone <repository-url> bubllio-core
+git clone https://github.com/apodimi/bubllio-core.git
 cd bubllio-core
 ```
+
+GitHub access may be required. The release tag or commit SHA must still be
+chosen explicitly for UAT and Production.
 
 Use the supported release tag or commit SHA for UAT and Production. Never deploy
 directly from an unreviewed working tree or a mutable branch reference.
@@ -236,7 +247,12 @@ Keycloak realm, and review that exception explicitly.
 Before promotion, verify:
 
 - discovery, login, PKCE callback, refresh, and suite logout;
-- Core, CRM, and Board SSO using UAT clients and exact redirect URIs;
+- Core and CRM SSO using UAT clients and exact redirect URIs; Board joins when
+  its application exists;
+- Core app grants for two members in one organization, including an allowed CRM
+  member and a denied member using a direct CRM API URL;
+- a second conformance app key proving independent grants without requiring a
+  production Board deployment;
 - valid, expired, wrong-issuer, wrong-audience, and unknown-key tokens;
 - two-organization isolation and machine-identity restrictions;
 - password reset and email delivery without leaking account existence;

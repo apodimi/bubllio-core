@@ -3,9 +3,9 @@ info:
   title: Bubllio Core API
   version: 1.0.0-draft
   description: >-
-    Contract-first definition of the Core first-run setup seam. Paths in this
-    document are not considered implemented until the corresponding controller
-    and tests exist.
+    Core first-run setup contract. The status, claim, current-state,
+    organization, operation, and retry endpoints are implemented only for an
+    explicitly enabled localhost rehearsal. Production setup remains disabled.
 servers:
   - url: http://127.0.0.1:3100
     description: Local development
@@ -75,8 +75,31 @@ paths:
           $ref: "#/components/responses/SetupUnavailable"
         "409":
           $ref: "#/components/responses/SetupConflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/current:
+    get:
+      operationId: getMySetupState
+      tags: [Setup]
+      summary: Resume the current claimant's first-run state
+      security:
+        - oidcBearer: []
+      responses:
+        "200":
+          description: The caller's claim or operation, without other claimant details
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentSetup"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
   /api/v1/setup/organization:
     post:
       operationId: startFirstOrganization
@@ -236,10 +259,14 @@ components:
     SetupStatus:
       type: object
       additionalProperties: false
-      required: [setupRequired]
+      required: [setupRequired, phase]
       properties:
         setupRequired:
           type: boolean
+        phase:
+          type: string
+          enum: [new, in_progress, ready]
+          description: Coarse public installation phase; no owner identity or operation details
     SetupClaim:
       type: object
       additionalProperties: false
@@ -258,6 +285,16 @@ components:
           minLength: 2
           maxLength: 120
           description: Unicode product organization name; the server derives its slug
+    CurrentSetup:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [unclaimed, claimed, operation]
+        operation:
+          $ref: "#/components/schemas/SetupOperation"
     SetupOperation:
       type: object
       additionalProperties: false
@@ -273,7 +310,7 @@ components:
           format: uuid
         status:
           type: string
-          enum: [pending, processing, succeeded, needs_attention]
+          enum: [pending, processing, awaiting_owner, succeeded, needs_attention]
         stages:
           type: array
           minItems: 4
@@ -309,14 +346,17 @@ components:
     SetupErrorCode:
       type: string
       enum:
+        - UNAUTHENTICATED
         - SETUP_UNAVAILABLE
         - SETUP_CLAIM_CONFLICT
         - SETUP_IDEMPOTENCY_CONFLICT
+        - SETUP_INVALID_REQUEST
         - SETUP_REAUTHENTICATION_REQUIRED
         - KEYCLOAK_TEMPORARILY_UNAVAILABLE
         - KEYCLOAK_CREDENTIALS_INVALID
         - KEYCLOAK_PERMISSION_DENIED
         - KEYCLOAK_ORGANIZATION_CONFLICT
+        - OWNER_INVITATION_PENDING
         - SETUP_REPAIR_REQUIRED
     Problem:
       type: object

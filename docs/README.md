@@ -9,6 +9,8 @@ The Core documentation is organized by purpose:
 - [`deployment/`](deployment/) documents environment setup, release promotion,
   and operational safety gates.
 - [`contracts/`](contracts/) contains versioned machine-readable API contracts.
+- [`contracts/core-access-v1.openapi.yaml`](contracts/core-access-v1.openapi.yaml)
+  defines the implemented workspace and app-access API for future consumers.
 - [`operations/`](operations/) contains safe installation and recovery runbooks.
 - [`next-session.md`](next-session.md) records the current handoff and the first
   concrete step for the next working session.

@@ -20,31 +20,49 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
   } = props;
   const { currentLanguage, enabledLanguages, msg, msgStr } = i18n;
   const { auth, isAppInitiatedAction, message, realm, url } = kcContext;
+  const isRegistration = kcContext.pageId === "register.ftl";
+  const isSetupRegistration = registrationStartedFromSetup(kcContext.pageId);
 
   useEffect(() => {
     document.documentElement.lang = currentLanguage.languageTag;
     document.title =
-      documentTitle ?? msgStr("loginTitle", realm.displayName || realm.name);
+      documentTitle ??
+      (isRegistration
+        ? msgStr(
+            isSetupRegistration
+              ? "bubllioSetupRegistrationTitle"
+              : "bubllioRegistrationTitle",
+          )
+        : msgStr("loginTitle", realm.displayName || realm.name));
   }, [
     currentLanguage.languageTag,
     documentTitle,
+    isRegistration,
+    isSetupRegistration,
     msgStr,
     realm.displayName,
     realm.name,
   ]);
 
   return (
-    <main className="identity-shell">
+    <main className={`identity-shell${isSetupRegistration ? " identity-shell--registration" : ""}`}>
       <section className="brand-panel" aria-label="Bubllio Identity">
         <div className="brand-panel__topline">
-          <a
-            className="brand"
-            href={url.loginRestartFlowUrl}
-            aria-label="Bubllio Identity"
-          >
-            <img src={logoUrl} alt="" />
-            <span>bubllio / identity</span>
-          </a>
+          {isSetupRegistration ? (
+            <span className="brand" aria-label="Bubllio Identity">
+              <img src={logoUrl} alt="" />
+              <span>bubllio / identity</span>
+            </span>
+          ) : (
+            <a
+              className="brand"
+              href={url.loginRestartFlowUrl}
+              aria-label="Bubllio Identity"
+            >
+              <img src={logoUrl} alt="" />
+              <span>bubllio / identity</span>
+            </a>
+          )}
           {enabledLanguages.length > 1 && (
             <nav className="language-switcher" aria-label={msgStr("languages")}>
               {enabledLanguages.map((language) => (
@@ -70,7 +88,15 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
 
         <div className="brand-story">
           <h2>{msg("bubllioHeroTitle")}</h2>
-          <p>{msg("bubllioHeroDescription")}</p>
+          <p>
+            {isRegistration
+              ? msg(
+                  isSetupRegistration
+                    ? "bubllioSetupRegistrationDescription"
+                    : "bubllioRegistrationDescription",
+                )
+              : msg("bubllioHeroDescription")}
+          </p>
         </div>
         <small>{msg("bubllioTagline")}</small>
       </section>
@@ -87,7 +113,15 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
               </div>
             ) : (
               <>
-                <h1 id="kc-page-title">{headerNode}</h1>
+                <h1 id="kc-page-title">
+                  {isRegistration
+                    ? msg(
+                        isSetupRegistration
+                          ? "bubllioSetupRegistrationTitle"
+                          : "bubllioRegistrationTitle",
+                      )
+                    : headerNode}
+                </h1>
                 {kcContext.pageId === "login.ftl" && (
                   <p>{msg("bubllioSignInDescription")}</p>
                 )}
@@ -129,9 +163,44 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
             </form>
           )}
 
-          <p className="access-help">{msg("bubllioAccessHelp")}</p>
+          <p className="access-help">
+            {isRegistration
+              ? msg(
+                  isSetupRegistration
+                    ? "bubllioSetupRegistrationHelp"
+                    : "bubllioRegistrationHelp",
+                )
+              : msg("bubllioAccessHelp")}
+          </p>
         </div>
       </section>
     </main>
   );
+}
+
+const setupRegistrationKey = "bubllio:setup-registration";
+
+function registrationStartedFromSetup(pageId: KcContext["pageId"]): boolean {
+  try {
+    if (pageId === "login.ftl") {
+      sessionStorage.removeItem(setupRegistrationKey);
+      return false;
+    }
+    if (pageId !== "register.ftl") return false;
+
+    const query = new URLSearchParams(window.location.search);
+    const redirectUri = query.get("redirect_uri");
+    if (redirectUri) {
+      // This tab-scoped UI hint survives Keycloak's registration and locale URLs.
+      // It is never used for authentication or setup authorization.
+      const isSetup =
+        query.get("client_id") === "bubllio-core-web" &&
+        new URL(redirectUri).pathname === "/setup";
+      sessionStorage.setItem(setupRegistrationKey, isSetup ? "yes" : "no");
+      return isSetup;
+    }
+    return sessionStorage.getItem(setupRegistrationKey) === "yes";
+  } catch {
+    return false;
+  }
 }

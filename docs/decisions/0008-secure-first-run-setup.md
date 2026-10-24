@@ -71,6 +71,10 @@ completed installation.
 
 ## Consequences
 
+[ADR 0010](0010-general-browser-registration.md) later proposes permanent
+verified identity registration. It does not change this ADR's two-proof setup
+claim or its rejection of a temporary registration switch.
+
 - OIDC parsing must represent a valid subject independently from organization
   context, followed by a separate tenant authorization guard.
 - Setup requires a persistent singleton, idempotency, operation leases,

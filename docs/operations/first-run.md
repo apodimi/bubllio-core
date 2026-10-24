@@ -1,9 +1,169 @@
 # First-run installation
 
-This runbook defines the target first-run ceremony for a self-hosted Bubllio
-Core installation. The automation and HTTP endpoints remain unavailable until
-their implementation tasks are complete. Do not substitute manual database
-edits or broad Keycloak credentials.
+This runbook defines the first-run ceremony for a self-hosted Bubllio Core
+installation. The isolated localhost rehearsal below is executable. Production
+bootstrap, shared rate limits, offline recovery, and UAT deployment remain
+unavailable. Do not substitute manual database edits or broad runtime Keycloak
+credentials.
+
+## First manual test from a fresh checkout
+
+This exercise uses its own Compose project, ports, and empty volumes. It never
+resets the ordinary development stack. Use Docker Compose v2, npm, and free loopback ports
+`8280`, `3200`, `5274`, and `8125`.
+
+### Prepare a fresh checkout
+
+Install and start Docker Desktop (or Docker Engine with Compose v2), then check
+the prerequisites in a terminal:
+
+```bash
+docker compose version
+docker info
+node --version
+```
+
+Clone the repository and enter its root (GitHub access may be required):
+
+```bash
+git clone https://github.com/apodimi/bubllio-core.git
+cd bubllio-core
+```
+
+If you received the checkout another way, open its `bubllio-core` directory.
+The isolated exercise needs no `.env` file, SMTP account, npm install, or manual
+database migration. It uses disposable credentials and an on-machine mail inbox.
+
+The repository declares Node 24.22.1 in `.node-version` and `.nvmrc`. If `nvm`
+is installed, run `nvm use`. On a Mac without `nvm`, check `node --version`
+and continue with the system Node if it is v26.8.1; the local rehearsal and
+browser tests have passed with that version. Do not block this disposable test
+to install a Node version manager.
+
+### Run the first setup
+
+1. From the repository root, run `node scripts/bootstrap-local-setup.mjs`.
+   The command builds and starts the isolated stack, including the Core web UI,
+   configures the local runtime client and browser registration, and prints a
+   30-minute one-time setup secret
+   **once**. Keep it in the terminal. Do not paste it into chat or a file.
+2. Open <http://127.0.0.1:5274/>. While Core is unconfigured, every Core
+   entry route redirects to `/setup` before identity login. Choose
+   **Create administrator account**. This is the first IT administrator's verified
+   identity; the installation secret is still required to claim ownership.
+   Enter your email in the branded Bubllio Identity registration form. Open
+   <http://127.0.0.1:8125>, follow the verification email, create a password,
+   and return to `/setup` signed in. The first-run screen has no existing-account
+   or sign-in action. If setup has already been claimed and the browser is closed,
+   reopen Core and choose **Continue setup** with the same administrator account.
+3. Enter the setup secret from the terminal, name the first organization, and
+   create it. Core records the operation before contacting Keycloak. Its status
+   becomes **Awaiting owner** while Keycloak sends a membership invitation.
+4. Accept the second email invitation. Return to `/setup`, enter the same
+   secret again, and choose **Retry setup**. The same operation must finish;
+   it must not create a second organization.
+5. Choose **Sign in to workspace** to obtain a fresh organization-bearing
+   token. The workspace should list the named organization. Its app list is
+   empty until a catalog app is registered, enabled, and granted.
+
+Keep the terminal open while using the one-time secret. If the command fails
+after it creates `.local/setup-rehearsal.env`, correct the Docker or port
+problem and run `node scripts/bootstrap-local-setup.mjs --resume`. This resumes
+the same installation and secret expiry; the initial command must not be run a
+second time.
+
+This rehearsal ends with one owner and one organization. The Core UI for
+inviting members and managing additional organizations is not implemented yet;
+do not treat this manual test as evidence that team onboarding is complete.
+
+Verify `GET http://127.0.0.1:3200/api/v1/setup/status` now returns
+`{"setupRequired":false,"phase":"ready"}`. Reload and sign in again: the owner still sees the
+organization, and `/setup` no longer offers a new claim. A second account must
+not take over the installation. Check that the setup secret is absent from the
+browser URL and local/session storage. Restart the isolated API with the same
+Compose project and confirm the `READY` state persists.
+
+### Verify the result
+
+From another terminal in the repository root:
+
+```bash
+curl --fail http://127.0.0.1:3200/health
+curl --fail http://127.0.0.1:3200/api/v1/setup/status
+```
+
+The second response must contain `"setupRequired":false` and
+`"phase":"ready"`. The first workspace app list is empty by design; catalog
+registration, availability, and member grants are separate operations.
+
+To run the source checks, install dependencies and run each package's gate:
+
+```bash
+cd apps/api
+npm ci
+npm run format:check
+npm test
+npm run build
+cd ../web
+npm ci
+npm run format:check
+npm run build
+cd ../keycloak-theme
+npm ci
+npm run build:keycloak
+```
+
+The theme's host build requires Java 21 and Maven. The Docker image builds it
+without host Java or Maven, so the browser exercise can be completed first.
+The browser test suite requires Google Chrome and the ordinary Compose stack
+on ports `8180`, `3100`, and `5174`:
+
+```bash
+cd ../..
+docker compose --env-file .env.example up -d --build
+cd apps/web
+npm run test:e2e
+```
+
+The isolated first-run stack uses different ports and does not replace that
+browser-test fixture. GitHub Actions runs these code and browser checks on
+every push and pull request. The local exercise is not evidence that a public
+deployment passes the [UAT and Production gate](#uat-and-production-gate).
+
+### Troubleshooting
+
+| Symptom | Check and recovery |
+| --- | --- |
+| `docker info` fails | Start Docker Desktop or the Docker daemon. If local setup configuration already exists, rerun with `--resume`. |
+| The bootstrap reports a bound port | Free port `8280`, `3200`, `5274`, or `8125`, then rerun with `--resume`. |
+| An email is missing | Check the isolated Mailpit at `127.0.0.1:8125` and the `keycloak` service health. |
+| Setup is unavailable | Check service health and the one-time secret. An expired secret can currently be reset only by destroying this disposable rehearsal. |
+| No applications appear after `READY` | This is expected until an app is registered, enabled, and granted. |
+
+To inspect service health, run:
+
+```bash
+docker compose --project-name bubllio-core-setup-rehearsal \
+  --env-file .env.example --env-file .local/setup-rehearsal.env ps
+```
+
+`node scripts/bootstrap-local-setup.mjs --resume` retries local Keycloak
+configuration without generating or printing a second secret. It also enables
+browser registration in a rehearsal started before this UI flow was added.
+If the 30-minute secret expires before setup finishes, reset
+**only this disposable rehearsal project** and start a new exercise; do not
+remove the ordinary development volumes:
+
+```bash
+docker compose --project-name bubllio-core-setup-rehearsal \
+  --env-file .env.example --env-file .local/setup-rehearsal.env down --volumes
+rm -rf .local
+```
+
+That reset permanently removes the rehearsal's Keycloak users, Core data, and
+generated local configuration. The regular `bubllio-core` Compose project is
+unaffected. No production setup or CRM/Board integration is implied by this
+local success.
 
 ## Roles
 
@@ -63,8 +223,10 @@ the deployment specification. Confirm the old credentials fail.
 
 1. Open the Core web application. It reads only the coarse setup-required state.
 2. Choose **Set up Bubllio** and authenticate through branded Keycloak pages.
-3. Complete email verification and required actions. Public self-registration is
-   disabled in version 1.
+3. Complete email verification and required actions. The local realm supports
+   browser registration for suite users as well as the first owner. Production
+   registration remains disabled until the release gates in
+   [ADR 0010](../decisions/0010-general-browser-registration.md) are met.
 4. Return to `/setup`, enter the one-time setup secret, and review the immutable
    subject and verified email shown by the application.
 5. Enter the first organization display name. Core derives and reserves the

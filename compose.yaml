@@ -81,7 +81,7 @@ services:
       - "127.0.0.1:${KEYCLOAK_PORT:-8180}:8080"
     restart: unless-stopped
     volumes:
-      - ./infrastructure/keycloak/realm-bubllio.local.json:/opt/keycloak/data/import/realm-bubllio.json:ro
+      - ${KEYCLOAK_REALM_FILE:-./infrastructure/keycloak/realm-bubllio.local.json}:/opt/keycloak/data/import/realm-bubllio.json:ro
 
   core-migrate:
     build:
@@ -104,6 +104,12 @@ services:
       OIDC_JWKS_URL: http://keycloak:8080/realms/bubllio/protocol/openid-connect/certs
       OIDC_AUDIENCE: bubllio-core-api
       WEB_ORIGIN: http://127.0.0.1:${CORE_WEB_PORT:-5174}
+      CORE_SETUP_LOCAL_REHEARSAL: ${CORE_SETUP_LOCAL_REHEARSAL:-false}
+      CORE_SETUP_CLAIM_ENABLED: ${CORE_SETUP_CLAIM_ENABLED:-false}
+      CORE_SETUP_SECRET_SHA256: ${CORE_SETUP_SECRET_SHA256:-}
+      CORE_SETUP_SECRET_EXPIRES_AT: ${CORE_SETUP_SECRET_EXPIRES_AT:-}
+      CORE_KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      CORE_KEYCLOAK_CLIENT_SECRET: ${CORE_KEYCLOAK_CLIENT_SECRET:-}
       DATABASE_URL: postgresql://${CORE_DB_USER:-bubllio_core}:${CORE_DB_PASSWORD:?Set CORE_DB_PASSWORD}@core-db:5432/${CORE_DB_NAME:-bubllio_core}
     depends_on:
       core-db:
@@ -125,6 +131,25 @@ services:
       retries: 12
     ports:
       - "127.0.0.1:${CORE_API_PORT:-3100}:3100"
+
+  core-web:
+    profiles: ["setup-rehearsal"]
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.local
+    environment:
+      VITE_KEYCLOAK_URL: http://127.0.0.1:${KEYCLOAK_PORT:-8180}
+      VITE_CORE_API_URL: http://127.0.0.1:${CORE_API_PORT:-3100}
+    depends_on:
+      core-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5174/setup').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "127.0.0.1:${CORE_WEB_PORT:-5174}:5174"
 
 volumes:
   core_postgres_data:

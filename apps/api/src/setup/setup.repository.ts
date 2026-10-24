@@ -13,10 +13,30 @@ export interface ClaimSetupInput {
 export type ClaimSetupResult =
   { outcome: 'claimed' | 'replayed'; version: number } | { outcome: 'conflict' }
 
+export interface PublicSetupStatus {
+  setupRequired: boolean
+  phase: 'new' | 'in_progress' | 'ready'
+}
+
 /** Owns the compare-and-set boundary for the single installation setup row. */
 @Injectable()
 export class SetupRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  async readPublicStatus(): Promise<PublicSetupStatus> {
+    const setup = await this.prisma.installationSetup.findUniqueOrThrow({
+      select: { status: true },
+      where: { id: 1 },
+    })
+
+    if (setup.status === InstallationSetupStatus.READY) {
+      return { setupRequired: false, phase: 'ready' }
+    }
+    return {
+      setupRequired: true,
+      phase: setup.status === InstallationSetupStatus.NOT_STARTED ? 'new' : 'in_progress',
+    }
+  }
 
   async claim(input: ClaimSetupInput): Promise<ClaimSetupResult> {
     return this.prisma.$transaction(async (transaction) => {
