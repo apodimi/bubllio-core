@@ -338,7 +338,17 @@ async function openLogin(page: Page): Promise<void> {
     route.fulfill({ json: { setupRequired: false, phase: "ready" } }),
   );
   await page.goto("/");
-  await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
+  try {
+    await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
+  } catch {
+    const { origin, pathname } = new URL(page.url());
+    const startupFailed = await page
+      .getByText("Bubllio could not start.", { exact: false })
+      .isVisible();
+    throw new Error(
+      `Login did not open at ${origin}${pathname}; startupFailed=${startupFailed}`,
+    );
+  }
   await expect(
     page.getByRole("region", { name: "Bubllio Identity" }),
   ).toBeVisible();
