@@ -1,8 +1,20 @@
 import path from "node:path";
-import type { Reporter, TestCase, TestResult } from "@playwright/test/reporter";
+import type {
+  Reporter,
+  TestCase,
+  TestError,
+  TestResult,
+} from "@playwright/test/reporter";
 
 /** Shows failed test names in public CI annotations without exposing page data. */
 export default class CiReporter implements Reporter {
+  onError(error: TestError): void {
+    const summary = escapeAnnotation(
+      error.message?.split("\n", 1)[0] ?? "Browser setup failed",
+    );
+    process.stdout.write(`::error title=Browser setup failed::${summary}\n`);
+  }
+
   onTestEnd(test: TestCase, result: TestResult): void {
     if (result.status !== "failed" && result.status !== "timedOut") return;
 

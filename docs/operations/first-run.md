@@ -129,7 +129,7 @@ The isolated first-run stack uses different ports and does not replace that
 browser-test fixture. GitHub Actions runs these code and browser checks on
 every push and pull request. The local exercise is not evidence that a public
 deployment passes the [UAT and Production gate](#uat-and-production-gate).
-The imported local realm assigns the optional `organization` client scope to
+The imported local realm assigns the `organization` client scope to
 Core web. Core requests `organization:*` so a member of multiple organizations
 can see every authorized workspace in the switcher.
 
