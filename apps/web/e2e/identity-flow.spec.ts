@@ -334,6 +334,27 @@ test("password reset fits a narrow mobile viewport without horizontal overflow",
 });
 
 async function openLogin(page: Page): Promise<void> {
+  const startupErrors: string[] = [];
+  page.on("console", async (message) => {
+    if (
+      message.type() !== "error" ||
+      !message.text().startsWith("Failed to initialize Bubllio")
+    ) {
+      return;
+    }
+    const error = message.args()[1];
+    const detail = error
+      ? await error.evaluate((value: Error) => ({
+          name: value.name,
+          message: value.message,
+        }))
+      : null;
+    if (detail) {
+      startupErrors.push(
+        `${detail.name}: ${detail.message.replace(/https?:\/\/\S+/g, "<url>")}`,
+      );
+    }
+  });
   await page.route("**/api/v1/setup/status", (route) =>
     route.fulfill({ json: { setupRequired: false, phase: "ready" } }),
   );
@@ -346,7 +367,7 @@ async function openLogin(page: Page): Promise<void> {
       .getByText("Bubllio could not start.", { exact: false })
       .isVisible();
     throw new Error(
-      `Login did not open at ${origin}${pathname}; startupFailed=${startupFailed}`,
+      `Login did not open at ${origin}${pathname}; startupFailed=${startupFailed}; errors=${startupErrors.join(", ")}`,
     );
   }
   await expect(
