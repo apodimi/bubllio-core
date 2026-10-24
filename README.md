@@ -18,16 +18,21 @@ The Core API now has an application catalog, organization enablement, explicit
 member grants, and a read-only access decision for app backends. The browser
 client shows the granted-app workspace. Its interface uses the same Bubllio
 Material UI brand tokens as the CRM and TanStack Query for Core server state.
-New-app adapters, member administration
-UI, production first-run bootstrap, and CRM integration remain incomplete.
+The standard new-app adapter, member administration UI, and CRM integration
+remain incomplete. A portable first-run bootstrap, restricted identity setup
+agent, Keycloak-backed SMTP secret vault, and guided email-delivery setup are
+implemented for technical-alpha rehearsal; they are not yet approved for an
+external Production installation.
 
 The API exposes a coarse public `/api/v1/setup/status` response. An explicitly
-enabled, isolated localhost rehearsal can now register the first owner in the
-browser, claim the installation, create the first organization, invite its
-owner, and enter the workspace after a fresh sign-in. Setup remains disabled
-by default and unavailable for production or a
-shared installation. Follow the [first-run manual test](docs/operations/first-run.md)
-instead of enabling setup in the ordinary development stack.
+enabled, isolated localhost rehearsal can now configure and prove email
+delivery, register the first owner in the browser, claim the installation,
+create the first organization, invite its owner, and enter the workspace after
+a fresh sign-in. Setup remains disabled in the ordinary development stack. The
+portable adapter can exercise the same flow but remains restricted to internal
+technical alpha until the documented Production gates pass. Follow the
+[first-run manual test](docs/operations/first-run.md) instead of enabling setup
+in the ordinary development stack.
 
 The normal local Keycloak realm also allows browser account registration with
 email verification. A new account has no organization or app access until an
@@ -53,17 +58,18 @@ for existing users. Board is not a prerequisite for the Core access model.
 
 ## Start here
 
-| Question                              | Document                                                                                             |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| What product are we building?         | [`PRODUCT.md`](PRODUCT.md)                                                                           |
-| How is the suite divided?             | [`docs/architecture/system-context.md`](docs/architecture/system-context.md)                         |
-| Who owns identity and organizations?  | [`docs/architecture/identity-and-organizations.md`](docs/architecture/identity-and-organizations.md) |
-| How will applications communicate?    | [`docs/architecture/cross-app-contracts.md`](docs/architecture/cross-app-contracts.md)               |
-| What must the first experiment prove? | [`docs/spikes/keycloak-sso.md`](docs/spikes/keycloak-sso.md)                                         |
-| Which decisions are proposed?         | [`docs/decisions/README.md`](docs/decisions/README.md)                                               |
-| How do environments run safely?       | [`docs/deployment/README.md`](docs/deployment/README.md)                                             |
-| How do I test a fresh clone?            | [`docs/operations/first-run.md`](docs/operations/first-run.md#first-manual-test-from-a-fresh-checkout) |
-| How may the software be used?         | [`LICENSE`](LICENSE) and [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)                            |
+| Question                              | Document                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| What product are we building?         | [`PRODUCT.md`](PRODUCT.md)                                                                             |
+| How is the suite divided?             | [`docs/architecture/system-context.md`](docs/architecture/system-context.md)                           |
+| Who owns identity and organizations?  | [`docs/architecture/identity-and-organizations.md`](docs/architecture/identity-and-organizations.md)   |
+| How will applications communicate?    | [`docs/architecture/cross-app-contracts.md`](docs/architecture/cross-app-contracts.md)                 |
+| What must the first experiment prove? | [`docs/spikes/keycloak-sso.md`](docs/spikes/keycloak-sso.md)                                           |
+| Which decisions are proposed?         | [`docs/decisions/README.md`](docs/decisions/README.md)                                                 |
+| How do environments run safely?       | [`docs/deployment/README.md`](docs/deployment/README.md)                                               |
+| How do I start developing?            | [`docs/development/getting-started.md`](docs/development/getting-started.md)                           |
+| How do I test a fresh installation?   | [`docs/operations/first-run.md`](docs/operations/first-run.md#first-manual-test-from-a-fresh-checkout) |
+| How may the software be used?         | [`LICENSE`](LICENSE) and [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md)                              |
 
 Workspace-wide guidance lives in [`../AGENTS.md`](../AGENTS.md). This
 repository's [`AGENTS.md`](AGENTS.md) owns Core-specific rules.
@@ -75,11 +81,15 @@ The environment is isolated to localhost and uses disposable credentials from
 
 Use Node.js 24.22.1 LTS for every JavaScript workspace. With nvm, run
 `nvm use` from the repository root; compatible IDEs can read `.node-version`.
+`nvm` is optional—use any Node installation method that provides the declared
+version. See the [developer getting-started guide](docs/development/getting-started.md)
+for the complete workflow and troubleshooting steps.
 
 ```bash
 docker compose --env-file .env.example up -d --build
 docker compose --env-file .env.example ps
-curl --fail http://127.0.0.1:3100/health
+curl --fail http://127.0.0.1:3100/health/live
+curl --fail http://127.0.0.1:3100/health/ready
 curl --fail http://127.0.0.1:8180/realms/bubllio/.well-known/openid-configuration
 ```
 
@@ -90,7 +100,8 @@ curl --fail http://127.0.0.1:8180/realms/bubllio/.well-known/openid-configuratio
 - Local email inbox: <http://127.0.0.1:8025>
 - Core PostgreSQL stays private inside Compose; `core-migrate` applies committed
   migrations before the API starts.
-- Core API health: <http://127.0.0.1:3100/health>
+- Core API liveness: <http://127.0.0.1:3100/health/live>
+- Core API readiness: <http://127.0.0.1:3100/health/ready>
 - Core web client: <http://127.0.0.1:5174>
 
 Run the browser client in a second terminal:

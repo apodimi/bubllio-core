@@ -27,6 +27,10 @@ The first portable delivery slice of ADR 0011 is implemented:
   read-only application containers, one-shot migrations, and realm bootstrap.
 - `.github/workflows/release-images.yml` verifies and publishes multi-architecture
   GHCR images with provenance, SBOMs, and an immutable digest manifest.
+- The setup UI configures and proves SMTP delivery before account creation. A
+  separate internal setup agent owns temporary Keycloak authority and writes
+  only the SMTP password to Keycloak's private file vault; the Core API cannot
+  access either.
 
 The root development Compose stack remains the authoritative local environment.
 The portable adapter is an internal technical-alpha reference, not an approved
@@ -34,10 +38,10 @@ external or Production release.
 
 ## Release blockers still open
 
-1. Configure and test SMTP before account creation. The production realm requires
-   verified email, so first-owner registration and invitations cannot complete
-   without it. SMTP secret storage and provider/privacy boundaries need a reviewed
-   design rather than an unencrypted field added to the browser.
+1. Select and approve a real SMTP provider, sender-domain authentication,
+   bounce/complaint handling, processor terms, retention, and operational
+   ownership. The product configuration and proof flow is implemented, but the
+   external provider and privacy decision remain environment responsibilities.
 2. Close the external-registration privacy and abuse gate: privacy notice,
    controller/processor decisions, DPIA screening, rate limits, recovery, and
    named human approval. Do not describe the current build as GDPR-ready.

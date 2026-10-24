@@ -8,6 +8,8 @@ The Core documentation is organized by purpose:
 - [`spikes/`](spikes/) defines time-boxed experiments and their evidence.
 - [`deployment/`](deployment/) documents environment setup, release promotion,
   and operational safety gates.
+- [`development/`](development/) contains the fresh-clone developer workflow,
+  component feedback loops, verification gates, and troubleshooting.
 - [`contracts/`](contracts/) contains versioned machine-readable API contracts.
 - [`contracts/core-access-v1.openapi.yaml`](contracts/core-access-v1.openapi.yaml)
   defines the implemented workspace and app-access API for future consumers.
@@ -18,3 +20,5 @@ The Core documentation is organized by purpose:
 Implemented behavior must not be inferred from a proposed ADR or spike plan.
 The root `README.md` states the current project phase.
 
+New contributors should begin with the
+[developer getting-started guide](development/getting-started.md).

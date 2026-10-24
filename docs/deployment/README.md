@@ -91,16 +91,16 @@ behind the privacy, abuse, recovery, and human approval gates in ADR 0010.
 
 ## Environment model
 
-| Concern | Local | UAT | Production |
-| --- | --- | --- | --- |
-| Purpose | Development and disposable experiments | Production-like validation | Customer traffic |
-| Keycloak mode | `start-dev` | `start --optimized` | `start --optimized` |
-| Database | Local PostgreSQL container | Dedicated PostgreSQL | Managed/operated HA PostgreSQL |
-| TLS | Not required on loopback | Required | Required |
-| Secrets | Disposable `.env.example` values | Secret manager | Secret manager with rotation |
-| Realm data | Demo import allowed | Automated environment configuration | Reviewed automated configuration |
-| Images | Local build | Immutable registry digest | Same tested digest promoted from UAT |
-| Availability | Best effort | Production-like | Defined from agreed SLO/RTO/RPO |
+| Concern       | Local                                  | UAT                                 | Production                           |
+| ------------- | -------------------------------------- | ----------------------------------- | ------------------------------------ |
+| Purpose       | Development and disposable experiments | Production-like validation          | Customer traffic                     |
+| Keycloak mode | `start-dev`                            | `start --optimized`                 | `start --optimized`                  |
+| Database      | Local PostgreSQL container             | Dedicated PostgreSQL                | Managed/operated HA PostgreSQL       |
+| TLS           | Not required on loopback               | Required                            | Required                             |
+| Secrets       | Disposable `.env.example` values       | Secret manager                      | Secret manager with rotation         |
+| Realm data    | Demo import allowed                    | Automated environment configuration | Reviewed automated configuration     |
+| Images        | Local build                            | Immutable registry digest           | Same tested digest promoted from UAT |
+| Availability  | Best effort                            | Production-like                     | Defined from agreed SLO/RTO/RPO      |
 
 ## Obtain the repository
 
@@ -139,17 +139,19 @@ Wait until `keycloak-db`, `keycloak`, and `core-api` report `healthy`, then run:
 
 ```bash
 curl --fail http://127.0.0.1:8180/realms/bubllio/.well-known/openid-configuration
-curl --fail http://127.0.0.1:3100/health
+curl --fail http://127.0.0.1:3100/health/live
+curl --fail http://127.0.0.1:3100/health/ready
 ```
 
 Local endpoints:
 
-| Service | URL |
-| --- | --- |
-| Keycloak | <http://127.0.0.1:8180> |
-| Keycloak administration | <http://127.0.0.1:8180/admin/> |
-| Core API health | <http://127.0.0.1:3100/health> |
-| Core web client | <http://127.0.0.1:5174> |
+| Service                 | URL                                  |
+| ----------------------- | ------------------------------------ |
+| Keycloak                | <http://127.0.0.1:8180>              |
+| Keycloak administration | <http://127.0.0.1:8180/admin/>       |
+| Core API liveness       | <http://127.0.0.1:3100/health/live>  |
+| Core API readiness      | <http://127.0.0.1:3100/health/ready> |
+| Core web client         | <http://127.0.0.1:5174>              |
 
 Local-only credentials:
 
@@ -399,15 +401,15 @@ as an ordinary application rollback.
 
 ## Configuration ownership
 
-| Value | Source of truth |
-| --- | --- |
-| Non-secret defaults | Version-controlled deployment configuration |
-| Database, runtime, bootstrap, and agent credentials | Environment secret manager |
-| UI-supplied authenticated SMTP password | Keycloak file-vault volume written only by the temporary setup authority |
-| Public issuer and redirect URIs | Environment configuration plus reviewed realm automation |
-| Keycloak realm/client structure | Versioned idempotent provisioning |
-| User, session, and credential data | Keycloak PostgreSQL database |
-| Release image and schema versions | Release manifest |
+| Value                                               | Source of truth                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------------ |
+| Non-secret defaults                                 | Version-controlled deployment configuration                              |
+| Database, runtime, bootstrap, and agent credentials | Environment secret manager                                               |
+| UI-supplied authenticated SMTP password             | Keycloak file-vault volume written only by the temporary setup authority |
+| Public issuer and redirect URIs                     | Environment configuration plus reviewed realm automation                 |
+| Keycloak realm/client structure                     | Versioned idempotent provisioning                                        |
+| User, session, and credential data                  | Keycloak PostgreSQL database                                             |
+| Release image and schema versions                   | Release manifest                                                         |
 
 ## Production-readiness blockers
 
