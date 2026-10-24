@@ -14,41 +14,7 @@ const configPath = resolve(local, 'setup-rehearsal.env')
 const realmPath = resolve(local, 'realm-bubllio.setup.json')
 const project = 'bubllio-core-setup-rehearsal'
 const ports = { keycloak: '8280', api: '3200', web: '5274', mail: '8125' }
-const identityScopes = [
-  {
-    name: 'profile',
-    protocol: 'openid-connect',
-    attributes: { 'include.in.token.scope': 'true', 'display.on.consent.screen': 'false' },
-    protocolMappers: [
-      userAttribute('given name', 'firstName', 'given_name'),
-      userAttribute('family name', 'lastName', 'family_name'),
-      userAttribute('username', 'username', 'preferred_username'),
-    ],
-  },
-  {
-    name: 'email',
-    protocol: 'openid-connect',
-    attributes: { 'include.in.token.scope': 'true', 'display.on.consent.screen': 'false' },
-    protocolMappers: [
-      userAttribute('email', 'email', 'email'),
-      {
-        name: 'email verified',
-        protocol: 'openid-connect',
-        protocolMapper: 'oidc-usermodel-property-mapper',
-        consentRequired: false,
-        config: {
-          'user.attribute': 'emailVerified',
-          'claim.name': 'email_verified',
-          'jsonType.label': 'boolean',
-          'id.token.claim': 'true',
-          'access.token.claim': 'true',
-          'userinfo.token.claim': 'true',
-          'introspection.token.claim': 'true',
-        },
-      },
-    ],
-  },
-]
+const identityScopes = JSON.parse(await readFile(resolve(root, 'infrastructure/keycloak/realm-bubllio.local.json'), 'utf8')).clientScopes.filter((scope) => ['profile', 'email'].includes(scope.name))
 const resume = process.argv.includes('--resume')
 const prepareOnly = process.argv.includes('--prepare-only')
 if (process.argv.slice(2).some((value) => !['--resume', '--prepare-only'].includes(value))) {
@@ -213,24 +179,6 @@ function readEnvValue(contents, name) {
   const line = contents.split('\n').find((item) => item.startsWith(`${name}=`))
   if (!line) throw new Error(`Missing ${name} in local example configuration`)
   return line.slice(name.length + 1)
-}
-
-function userAttribute(name, attribute, claim) {
-  return {
-    name,
-    protocol: 'openid-connect',
-    protocolMapper: 'oidc-usermodel-attribute-mapper',
-    consentRequired: false,
-    config: {
-      'user.attribute': attribute,
-      'claim.name': claim,
-      'jsonType.label': 'String',
-      'id.token.claim': 'true',
-      'access.token.claim': 'true',
-      'userinfo.token.claim': 'true',
-      'introspection.token.claim': 'true',
-    },
-  }
 }
 
 async function command(binary, args, cwd) {
