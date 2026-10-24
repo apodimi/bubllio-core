@@ -14,7 +14,7 @@ async function globalSetup(): Promise<void> {
   const authorization = { Authorization: `Bearer ${accessToken}` };
 
   await ensureOrganizationMapperIncludesIds(authorization);
-  await assertCoreWebClientScopes(authorization);
+  await ensureCoreWebClientScopes(authorization);
 
   const organization = await ensureDemoOrganization(authorization);
   const user = await findOne<KeycloakResource>(
@@ -40,7 +40,7 @@ async function globalSetup(): Promise<void> {
   }
 }
 
-async function assertCoreWebClientScopes(
+async function ensureCoreWebClientScopes(
   authorization: Record<string, string>,
 ): Promise<void> {
   const client = await findOne<KeycloakResource>(
@@ -54,8 +54,22 @@ async function assertCoreWebClientScopes(
   );
   const assigned = new Set(scopes.map((scope) => scope.name));
   for (const required of ["profile", "email", "organization"]) {
-    if (!assigned.has(required)) {
-      throw new Error(`Core web client is missing the ${required} scope`);
+    if (assigned.has(required)) continue;
+
+    const scope = await findOne<KeycloakResource>(
+      `/admin/realms/${realm}/client-scopes`,
+      authorization,
+      required,
+      (item) => item.name === required,
+    );
+    const response = await fetch(
+      `${keycloakUrl}/admin/realms/${realm}/clients/${client.id}/default-client-scopes/${scope.id}`,
+      { method: "PUT", headers: authorization },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Could not assign the ${required} scope to Core web (${response.status})`,
+      );
     }
   }
 }

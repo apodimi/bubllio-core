@@ -1,5 +1,7 @@
 import type Keycloak from "keycloak-js";
 
+import { browserRuntimeConfig } from "./runtime-config";
+
 export interface WorkspaceOrganization {
   id: string;
   displayName: string;
@@ -11,7 +13,7 @@ export interface WorkspaceApplication {
   launchUrl: string;
 }
 
-const coreApiUrl = import.meta.env.VITE_CORE_API_URL ?? "http://127.0.0.1:3100";
+const { coreApiUrl } = browserRuntimeConfig();
 
 /** Reads Core using a fresh in-memory OIDC token; no credential is persisted. */
 async function getFromCore<T>(

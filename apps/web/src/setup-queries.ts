@@ -8,16 +8,27 @@ import {
   readSetupOperation,
   retrySetupOperation,
   setupStatus,
+  systemPreflight,
   type SetupOperation,
 } from "./setup-api";
 
 export const setupKeys = {
+  preflight: ["system", "preflight"] as const,
   status: ["setup", "status"] as const,
   current: (subject: string | undefined) =>
     ["setup", subject, "current"] as const,
   operation: (subject: string | undefined, id: string) =>
     ["setup", subject, "operation", id] as const,
 };
+
+export function useSystemPreflight() {
+  return useQuery({
+    queryKey: setupKeys.preflight,
+    queryFn: ({ signal }) => systemPreflight(signal),
+    retry: false,
+    staleTime: 0,
+  });
+}
 
 export function useSetupStatus() {
   return useQuery({

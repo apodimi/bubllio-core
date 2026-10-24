@@ -4,6 +4,7 @@ export const setupCopy = {
   en: {
     progressLabel: "Setup progress",
     railSteps: [
+      "System check",
       "Your account",
       "Installation access",
       "Organization",
@@ -17,10 +18,27 @@ export const setupCopy = {
     title: "Set up your Bubllio workspace",
     intro: "Create the first organization for this installation.",
     loading: "Checking setup status…",
+    preflightTitle: "Check that Bubllio is ready",
+    preflightBody:
+      "We will verify the essentials before you create the administrator account. Nothing is changed during this check.",
+    preflightLoading: "Checking the installation…",
+    preflightReady: "Everything is ready for setup.",
+    preflightAttention:
+      "One or more checks need attention. Ask the installation operator to review them, then run the check again.",
+    preflightUnavailable:
+      "The system check could not finish. Confirm that Bubllio is available, then try again.",
+    preflightContinue: "Continue setup",
+    preflightRetry: "Run check again",
+    checkStatus: { ready: "Ready", attention: "Needs attention" },
+    systemChecks: {
+      database: "Workspace data",
+      identity: "Account service",
+      migrations: "System version",
+      applications: "Application catalog",
+    },
     signOut: "Sign out",
     unavailableTitle: "Setup could not load",
-    unavailableHelp:
-      "Check that the local Core API and Keycloak are running, then try again.",
+    unavailableHelp: "Confirm that Bubllio is available, then try again.",
     tryAgain: "Try again",
     beginTitle: "Create the administrator account",
     beginBody:
@@ -48,7 +66,7 @@ export const setupCopy = {
       "This may take a moment. You can return to this page with the same account.",
     attentionTitle: "Setup needs attention",
     attentionBody:
-      "Check that the local services are healthy, then retry this same operation. Do not start another organization.",
+      "Check that Bubllio services are healthy, then retry this same operation. Do not start another organization.",
     reference: "Reference",
     errorCode: "Code",
     unknown: "Unknown",
@@ -87,6 +105,7 @@ export const setupCopy = {
   el: {
     progressLabel: "Πρόοδος εγκατάστασης",
     railSteps: [
+      "Έλεγχος συστήματος",
       "Ο λογαριασμός σου",
       "Πρόσβαση εγκατάστασης",
       "Οργανισμός",
@@ -100,10 +119,28 @@ export const setupCopy = {
     title: "Ρύθμισε το Bubllio workspace",
     intro: "Δημιούργησε τον πρώτο οργανισμό αυτής της εγκατάστασης.",
     loading: "Έλεγχος εγκατάστασης…",
+    preflightTitle: "Έλεγξε ότι το Bubllio είναι έτοιμο",
+    preflightBody:
+      "Θα ελέγξουμε τα απαραίτητα πριν δημιουργήσεις τον λογαριασμό διαχειριστή. Δεν αλλάζει καμία ρύθμιση σε αυτό το βήμα.",
+    preflightLoading: "Γίνεται έλεγχος της εγκατάστασης…",
+    preflightReady: "Όλα είναι έτοιμα για τη ρύθμιση.",
+    preflightAttention:
+      "Ένας ή περισσότεροι έλεγχοι χρειάζονται προσοχή. Ζήτησε από τον χειριστή της εγκατάστασης να τους ελέγξει και δοκίμασε ξανά.",
+    preflightUnavailable:
+      "Ο έλεγχος συστήματος δεν ολοκληρώθηκε. Επιβεβαίωσε ότι το Bubllio είναι διαθέσιμο και δοκίμασε ξανά.",
+    preflightContinue: "Συνέχεια ρύθμισης",
+    preflightRetry: "Νέος έλεγχος",
+    checkStatus: { ready: "Έτοιμο", attention: "Χρειάζεται προσοχή" },
+    systemChecks: {
+      database: "Δεδομένα workspace",
+      identity: "Υπηρεσία λογαριασμών",
+      migrations: "Έκδοση συστήματος",
+      applications: "Κατάλογος εφαρμογών",
+    },
     signOut: "Αποσύνδεση",
     unavailableTitle: "Δεν φορτώθηκε η εγκατάσταση",
     unavailableHelp:
-      "Έλεγξε ότι λειτουργούν το τοπικό Core API και το Keycloak και δοκίμασε ξανά.",
+      "Επιβεβαίωσε ότι το Bubllio είναι διαθέσιμο και δοκίμασε ξανά.",
     tryAgain: "Δοκίμασε ξανά",
     beginTitle: "Δημιούργησε τον λογαριασμό διαχειριστή",
     beginBody:
@@ -131,7 +168,7 @@ export const setupCopy = {
       "Ίσως χρειαστεί λίγο χρόνο. Μπορείς να επιστρέψεις με τον ίδιο λογαριασμό.",
     attentionTitle: "Η εγκατάσταση χρειάζεται έλεγχο",
     attentionBody:
-      "Έλεγξε τις τοπικές υπηρεσίες και ξαναδοκίμασε την ίδια εργασία. Μην ξεκινήσεις άλλον οργανισμό.",
+      "Έλεγξε ότι οι υπηρεσίες Bubllio λειτουργούν και ξαναδοκίμασε την ίδια εργασία. Μην ξεκινήσεις άλλον οργανισμό.",
     reference: "Αναφορά",
     errorCode: "Κωδικός",
     unknown: "Άγνωστο",

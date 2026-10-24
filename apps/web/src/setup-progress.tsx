@@ -26,7 +26,7 @@ export function SetupProgress({
           display: "grid",
           gridTemplateColumns: {
             xs: "repeat(2, minmax(0, 1fr))",
-            sm: "repeat(4, minmax(0, 1fr))",
+            sm: `repeat(${labels.length}, minmax(0, 1fr))`,
           },
           gap: { xs: 0, sm: 1 },
           listStyle: "none",

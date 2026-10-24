@@ -1,6 +1,8 @@
 import type Keycloak from "keycloak-js";
 
-const api = import.meta.env.VITE_CORE_API_URL ?? "http://127.0.0.1:3100";
+import { browserRuntimeConfig } from "./runtime-config";
+
+const api = browserRuntimeConfig().coreApiUrl;
 
 export interface SetupOperation {
   id: string;
@@ -24,6 +26,79 @@ export type CurrentSetup =
 export interface SetupStatus {
   setupRequired: boolean;
   phase: "new" | "in_progress" | "ready";
+}
+
+export type SystemCheckKey =
+  "database" | "identity" | "migrations" | "applications";
+
+export interface SystemPreflight {
+  status: "ready" | "attention";
+  checks: {
+    key: SystemCheckKey;
+    status: "ready" | "attention";
+    messageCode?: string;
+  }[];
+}
+
+const systemCheckKeys = new Set<SystemCheckKey>([
+  "database",
+  "identity",
+  "migrations",
+  "applications",
+]);
+
+export async function systemPreflight(
+  signal?: AbortSignal,
+): Promise<SystemPreflight> {
+  const value = await request<unknown>("/api/v1/system/preflight", undefined, {
+    signal,
+  });
+  if (!value || typeof value !== "object") {
+    throw new Error("SYSTEM_PREFLIGHT_INVALID");
+  }
+
+  const status = Reflect.get(value, "status");
+  const checks = Reflect.get(value, "checks");
+  if (
+    (status !== "ready" && status !== "attention") ||
+    !Array.isArray(checks)
+  ) {
+    throw new Error("SYSTEM_PREFLIGHT_INVALID");
+  }
+
+  const parsedChecks = checks.map((check: unknown) => {
+    if (!check || typeof check !== "object") {
+      throw new Error("SYSTEM_PREFLIGHT_INVALID");
+    }
+    const key = Reflect.get(check, "key");
+    const checkStatus = Reflect.get(check, "status");
+    const messageCode = Reflect.get(check, "messageCode");
+    if (
+      typeof key !== "string" ||
+      !systemCheckKeys.has(key as SystemCheckKey) ||
+      (checkStatus !== "ready" && checkStatus !== "attention") ||
+      (messageCode !== undefined && typeof messageCode !== "string")
+    ) {
+      throw new Error("SYSTEM_PREFLIGHT_INVALID");
+    }
+    return {
+      key: key as SystemCheckKey,
+      status: checkStatus,
+      ...(messageCode === undefined ? {} : { messageCode }),
+    };
+  });
+
+  if (
+    parsedChecks.length !== systemCheckKeys.size ||
+    new Set(parsedChecks.map((check) => check.key)).size !==
+      systemCheckKeys.size ||
+    (status === "ready" &&
+      parsedChecks.some((check) => check.status !== "ready"))
+  ) {
+    throw new Error("SYSTEM_PREFLIGHT_INVALID");
+  }
+
+  return { status, checks: parsedChecks };
 }
 
 export async function setupStatus(signal?: AbortSignal): Promise<SetupStatus> {

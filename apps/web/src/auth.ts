@@ -1,7 +1,11 @@
 import Keycloak from "keycloak-js";
 
+import { browserRuntimeConfig } from "./runtime-config";
+
+const { keycloakUrl } = browserRuntimeConfig();
+
 const keycloak = new Keycloak({
-  url: import.meta.env.VITE_KEYCLOAK_URL ?? "http://127.0.0.1:8180",
+  url: keycloakUrl,
   realm: "bubllio",
   clientId: "bubllio-core-web",
 });

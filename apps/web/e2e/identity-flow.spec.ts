@@ -10,6 +10,22 @@ const username = process.env.E2E_USERNAME ?? "spike-user";
 const password = process.env.E2E_PASSWORD ?? "local-spike-password";
 const email = process.env.E2E_EMAIL ?? "spike-user@example.test";
 
+const readySystemChecks = [
+  { key: "database", status: "ready" },
+  { key: "identity", status: "ready" },
+  { key: "migrations", status: "ready" },
+  { key: "applications", status: "ready" },
+];
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/system/preflight", (route) =>
+    route.fulfill({
+      status: 200,
+      json: { status: "ready", checks: readySystemChecks },
+    }),
+  );
+});
+
 test("user signs in, sees the Core workspace, and signs out", async ({
   page,
 }) => {
@@ -147,6 +163,8 @@ test("first-run screen claims setup and resumes the owner operation", async ({
   );
   await page.goto("/setup");
 
+  await continuePastSystemCheck(page);
+
   await expect(page.getByLabel("One-time setup secret")).toBeVisible();
   await page
     .getByLabel("One-time setup secret")
@@ -180,6 +198,7 @@ test("first-run screen opens browser registration for a new owner", async ({
 
   await page.goto("/");
   await expect(page).toHaveURL("http://127.0.0.1:5174/setup");
+  await continuePastSystemCheck(page);
   await expect(
     page.getByRole("button", { name: "I already have an account" }),
   ).toHaveCount(0);
@@ -204,6 +223,7 @@ test("a claimed installation offers continuation instead of another account", as
   );
   await page.goto("/");
   await expect(page).toHaveURL("http://127.0.0.1:5174/setup");
+  await continuePastSystemCheck(page);
   await expect(
     page.getByRole("heading", { name: "Continue installation setup" }),
   ).toBeVisible();
@@ -222,6 +242,69 @@ test("a claimed installation offers continuation instead of another account", as
     }),
   ).toBeVisible();
   await expect(page.getByLabel("One-time setup secret")).toHaveCount(0);
+});
+
+test("system check blocks setup until every product service is ready", async ({
+  page,
+}) => {
+  let ready = false;
+  await page.unroute("**/api/v1/system/preflight");
+  await page.route("**/api/v1/system/preflight", (route) =>
+    route.fulfill({
+      status: 200,
+      json: ready
+        ? { status: "ready", checks: readySystemChecks }
+        : {
+            status: "attention",
+            checks: readySystemChecks.map((check) =>
+              check.key === "identity"
+                ? { ...check, status: "attention", messageCode: "UNAVAILABLE" }
+                : check,
+            ),
+          },
+    }),
+  );
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+
+  await page.goto("/setup");
+  await expect(
+    page.getByRole("heading", { name: "Check that Bubllio is ready" }),
+  ).toBeVisible();
+  await expect(page.getByText("Account service")).toBeVisible();
+  await expect(page.getByText("Needs attention")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue setup" }),
+  ).toHaveCount(0);
+
+  ready = true;
+  await page.getByRole("button", { name: "Run check again" }).click();
+  await expect(page.getByText("Everything is ready for setup.")).toBeVisible();
+  await page.getByRole("button", { name: "Continue setup" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Create the administrator account" }),
+  ).toBeVisible();
+});
+
+test("system check fits a narrow mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+  await page.goto("/setup");
+  await expect(page.getByText("Application catalog")).toBeVisible();
+  await page.getByRole("button", { name: "Ελληνικά" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Έλεγξε ότι το Bubllio είναι έτοιμο" }),
+  ).toBeVisible();
+  await expect(page.getByText("Κατάλογος εφαρμογών")).toBeVisible();
+  const hasHorizontalOverflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
 });
 
 test("startup does not open login when the setup status is unavailable or invalid", async ({
@@ -369,6 +452,20 @@ async function openLogin(page: Page): Promise<void> {
   ).toBeVisible();
   await expect(page.locator("#username")).toBeVisible();
   await switchToEnglish(page);
+}
+
+async function continuePastSystemCheck(page: Page): Promise<void> {
+  const continueButton = page.getByRole("button", { name: "Continue setup" });
+  const visible = await continueButton
+    .waitFor({ state: "visible", timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!visible) return;
+
+  await expect(
+    page.getByRole("heading", { name: "Check that Bubllio is ready" }),
+  ).toBeVisible();
+  await continueButton.click();
 }
 
 async function enterUsername(page: Page): Promise<void> {
