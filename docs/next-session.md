@@ -1,98 +1,81 @@
 # Next session
 
-Last updated: 2026-10-23
+Last updated: 2026-10-24
 
 ## Where we stopped
 
-The secure first-run foundation is ready:
+The first portable delivery slice of ADR 0011 is implemented:
 
-- Prisma 7.10.1 connects the Core API to its own PostgreSQL database through
-  `apps/api/prisma.config.ts`.
-- Five migrations create the organization foundation, installation setup,
-  application access, and owner invitation wait state.
-- OIDC verification accepts an authenticated user without an organization for
-  the narrow setup flow, while malformed organization claims are rejected.
-- Tenant endpoints can require an exact immutable organization ID through
-  `OrganizationContextGuard` and `@RequireOrganizationContext()`.
-- Setup access requires a recently authenticated, verified-email identity and
-  a time-limited setup secret whose SHA-256 digest is stored in configuration.
-- `InstallationSetup` models the first-run state machine. The database prevents
-  changes or deletion after the installation reaches `READY`.
-- `SetupRepository.claim()` atomically handles the initial claim, safe replay
-  with the same idempotency key, and conflicts from another claimant.
-- `SetupModule` is imported by `AppModule`. Public setup status, claim,
-  organization creation, and durable retry are implemented. Mutations are
-  disabled by default and only enabled in the isolated localhost rehearsal.
-- Claim validates a verified recent subject, the out-of-band secret, exact web
-  origin, JSON empty body, and UUID idempotency key. It returns `201` for the
-  winner, `200` for replay, and a generic `409` for conflicts.
-- The application-access foundation has a registered app catalog, per-organization
-  availability and entitlement flags, and explicit member grants. Core resolves
-  the route Core organization to its immutable Keycloak organization ID before
-  listing apps or deciding access. The browser now shows the granted-app workspace.
-  Core web uses the CRM's brand palette, typography and Material UI component
-  language, with TanStack Query for server state. The CRM repository is unchanged.
-- An isolated localhost first-run rehearsal now creates the Core organization,
-  resolves the Keycloak organization by immutable marker, sends the first owner
-  an invitation, and reaches terminal READY after acceptance and retry. The
-  browser has an EN/EL `/setup` route with browser-based owner registration and
-  forces a fresh sign-in at completion.
-  Its runbook is `docs/operations/first-run.md`. Production setup remains closed.
-- No product app consumes the decision API yet. CRM still uses its existing
-  authentication path; Board does not exist.
-- ADR 0011 now fixes the production delivery direction: one canonical,
-  infrastructure-neutral deployment contract, thin platform adapters, and a
-  resumable UI-first setup after the HTTPS endpoint is reachable. Deployment
-  manifests determine installed apps; Core does not act as an app installer.
+- The API reads one immutable validated runtime configuration. Production
+  rejects insecure public URLs, loopback dependencies, local-only flags,
+  incomplete setup proof, and missing application manifests before startup.
+- `/health/live`, `/health/ready`, and `/api/v1/system/preflight` separate process
+  liveness, operational dependency readiness, and product-safe setup guidance.
+- A strict data-only deployment manifest owns the installed application catalog.
+  Startup reconciliation is transactional, removed apps become unavailable, and
+  production HTTP registration is closed.
+- Core web receives public API and identity origins at container startup through
+  `/runtime-config.js`; no environment-specific frontend rebuild is required.
+- The setup UI begins with responsive EN/EL system checks and blocks progression
+  until database, identity, migrations, and the app manifest are ready. The
+  existing claim, owner, organization, retry, and workspace flow is preserved.
+- `deploy/contract/` defines the canonical digest-only installation input.
+  `scripts/prepare-installation.mjs` validates it, creates private file secrets,
+  writes exact runtime inputs, and prints the setup secret once.
+- `deploy/compose/` is the first thin adapter. Separate non-root API, migration,
+  web, and optimized Keycloak images are defined, with private database networks,
+  read-only application containers, one-shot migrations, and realm bootstrap.
+- `.github/workflows/release-images.yml` verifies and publishes multi-architecture
+  GHCR images with provenance, SBOMs, and an immutable digest manifest.
 
-The detailed implementation plan remains local at
-`plan/feature-first-run-setup-1.md` and is intentionally ignored by Git.
+The root development Compose stack remains the authoritative local environment.
+The portable adapter is an internal technical-alpha reference, not an approved
+external or Production release.
 
-## Verification completed
+## Release blockers still open
 
-- API tests: 75 passing across 12 test files, including setup and app access.
-- API production build passes.
-- Formatting and `git diff --check` pass.
-- Web build and all seven browser identity/workspace/setup tests pass against the local stack.
-- The Keycloak theme built as part of the Docker image. The host-side
-  `build:keycloak` command could not package the JAR because Maven is absent.
-- The previous session passed both installation setup SQL integration scripts
-  against PostgreSQL. The isolated rehearsal applied all five migrations.
-- Live HTTP smoke checks passed for `/health`, public setup status, and the
-  unauthenticated claim rejection.
-- The application-access and owner-invitation migrations applied successfully through the local
-  `core-migrate` container, which exited with code 0.
-- A real isolated PostgreSQL + Keycloak service run reached CLAIMED, awaited an
-  owner invitation, replayed the same intent, and reached READY after membership
-  was supplied. The browser tests currently mock setup API and registration
-  responses; full
-  email-click-to-READY browser automation is still needed.
+1. Configure and test SMTP before account creation. The production realm requires
+   verified email, so first-owner registration and invitations cannot complete
+   without it. SMTP secret storage and provider/privacy boundaries need a reviewed
+   design rather than an unencrypted field added to the browser.
+2. Close the external-registration privacy and abuse gate: privacy notice,
+   controller/processor decisions, DPIA screening, rate limits, recovery, and
+   named human approval. Do not describe the current build as GDPR-ready.
+3. Add a tested data lifecycle: member offboarding, access/export/rectification,
+   retention and pseudonymisation, Core-Keycloak reconciliation, privacy-safe
+   logging, and incident/breach operations.
+4. Build and start the exact production images behind real HTTPS on a clean host.
+   Prove least-privilege Keycloak permissions, setup convergence, health routing,
+   secret removal, and app-manifest reconciliation.
+5. Implement and rehearse encrypted backup/restore, upgrade, rollback, shared
+   rate limiting, monitoring, and alerting.
+6. Complete member directory and grant-management UI, then prove CRM denial and
+   allow paths against Core. Board is not required to validate the Core model.
 
-## Start here tomorrow
+## Verification baseline
 
-1. Implement the first slice of ADR 0011: validated runtime configuration,
-   separate liveness/readiness, and the canonical installation contract. The
-   executable local plan is `plan/infrastructure-portable-delivery-1.md`.
-2. Complete real browser automation from browser owner registration through
-   invitation acceptance, fresh token, and owner workspace; run the same steps
-   manually from a clean checkout.
-3. Add shared rate limiting, offline recovery, service-account fine-grained
-   user read permission, and production bootstrap before enabling setup outside
-   an isolated localhost rehearsal.
-4. Complete ADR 0009 by adding a safe member directory and grant-management UI,
-   and prove direct API denial in CRM before calling suite integration complete.
-   The catalog, grants, and decision API are implemented; Board is not required
-   for the Core model.
+- API focused and full tests, formatting, and production build must pass.
+- Web formatting and production build must pass; Playwright setup tests cover
+  ready, blocked, retry, Greek, and mobile behavior.
+- Installation schema positive/negative tests, secret-preparation idempotence,
+  Compose configuration, and adapter validation must pass.
+- Production image builds and a clean-host HTTPS rehearsal remain mandatory
+  before any UAT or external alpha claim.
 
-Useful verification command:
+Useful commands:
 
 ```bash
 cd apps/api
 npm test && npm run build && npm run format:check
+
+cd ../web
+npm run build && npm run format:check
+
+cd ../..
+node scripts/prepare-installation.mjs \
+  --contract deploy/contract/bubllio-installation.example.json \
+  --validate-only
 ```
 
-To inspect the local services:
-
-```bash
-docker compose --env-file .env.example ps
-```
+The detailed executable plan remains local at
+`plan/infrastructure-portable-delivery-1.md` and is intentionally ignored by Git.

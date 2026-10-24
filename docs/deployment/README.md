@@ -4,21 +4,30 @@ This guide explains how to obtain and run Bubllio Core locally and defines the
 deployment contract for UAT and Production.
 
 > **Current status:** the local foundation and isolated first-run rehearsal are
-> runnable. UAT and Production manifests, CI image publication, secret-manager
-> integration, and production realm provisioning are not implemented yet. Never
-> deploy the development Compose file or its demo realm outside a developer machine.
+> runnable. A canonical installation contract, digest-only reference Compose
+> adapter, production images, runtime secret adapters, system readiness, and a
+> GHCR release workflow are implemented. This is an internal technical-alpha
+> delivery slice, not an approved external or Production release: SMTP/email,
+> privacy/registration gates, shared rate limits, backup/restore proof, and a
+> clean public-host rehearsal remain blocking. Never deploy the development
+> Compose file or its demo realm outside a developer machine.
 
 The [Verify Core workflow](../../.github/workflows/verify.yml) runs production
 dependency audits, API tests and build, web format/build, the Keycloak theme
 build checks on pushes and pull requests. Browser identity tests run on pull
 requests and manual workflow runs before a release. It does not
 publish an image, provision a realm, or approve a deployment. Those release
-artifacts remain part of the UAT and Production work below.
+artifacts remain part of the UAT and Production gate below. The
+[`release-images.yml`](../../.github/workflows/release-images.yml) workflow
+builds multi-architecture images, records immutable digests, generates SBOMs,
+and publishes a release manifest after the same verification succeeds.
 
 ## Portable delivery contract
 
 [ADR 0011](../decisions/0011-portable-delivery-and-ui-first-setup.md) defines
-the accepted target; it is not implemented by the current local Compose file.
+the accepted direction. Its first portable delivery slice is implemented under
+`deploy/`, while the existing root Compose file remains the local-development
+environment.
 Bubllio will publish one canonical versioned contract for images, configuration,
 storage, endpoints, health, migrations, and bootstrap outputs. Platform packages
 such as Compose, Helm, Dokploy, Coolify, and cloud marketplace templates adapt
@@ -33,6 +42,40 @@ present; Core does not install their containers.
 For a first installation exercise from an empty checkout, follow the
 [isolated manual test](../operations/first-run.md#first-manual-test-from-a-fresh-checkout).
 It uses a separate Compose project and does not reset existing developer data.
+
+### Reference adapter rehearsal
+
+The canonical operator input is
+[`deploy/contract/bubllio-installation.schema.json`](../../deploy/contract/bubllio-installation.schema.json).
+The example contains intentionally fake image digests and domains; replace them
+with the digest values from a verified release manifest and real HTTPS origins.
+Keep the resulting contract and generated output outside version control.
+
+```bash
+cp deploy/contract/bubllio-installation.example.json /secure/path/installation.json
+# Edit the private copy with release digests, origins, volumes, and app manifest.
+node scripts/prepare-installation.mjs \
+  --contract /secure/path/installation.json \
+  --output-dir /secure/path/prepared
+node deploy/adapter-conformance/verify.mjs \
+  --contract /secure/path/installation.json \
+  --env-file /secure/path/prepared/compose.env \
+  --validate-only
+docker compose --env-file /secure/path/prepared/compose.env \
+  -f deploy/compose/compose.yaml config
+```
+
+Preparation creates private secret files, an exact application manifest, and a
+Compose environment file, then prints the raw setup secret once. It never puts
+the raw secret in the contract, generated environment, or image. The operator
+must create the named external edge network and translate the adapter labels for
+their reverse proxy before starting the stack.
+
+Do not use this reference adapter for real users yet. The current production
+realm requires verified email but the installation contract does not configure
+or test SMTP, so first-administrator verification and owner invitations cannot
+complete. Open browser registration also remains behind the privacy, abuse, and
+recovery gates in ADR 0010.
 
 ## Environment model
 
@@ -187,17 +230,22 @@ or Production storage.
 CI must build each artifact once and identify it by Git SHA and container digest.
 Production promotes the exact artifact that passed UAT; it does not rebuild it.
 
-Required artifacts:
+Implemented release artifacts:
 
-1. A production Core API image built from `apps/api` after its production gates
-   are implemented and verified.
-2. An optimized Keycloak image pinned to an approved digest, including the
-   versioned Bubllio Keycloakify provider JAR.
-3. Versioned, secret-free realm/client configuration and an idempotent apply
-   mechanism.
-4. Database migration artifacts with documented forward and rollback behavior.
-5. A release manifest recording Git SHA, image digests, schema version, and
-   configuration version.
+1. Separate non-root Core API and migration images from
+   `apps/api/Dockerfile.production`.
+2. A non-root static Core web image whose public endpoints are injected through
+   `/runtime-config.js` when the container starts.
+3. An optimized Keycloak image pinned by digest and containing the versioned
+   Bubllio Keycloakify provider JAR.
+4. Versioned secret-free realm/client and application-manifest inputs.
+5. A release manifest recording the Git SHA and immutable image digests, plus
+   per-image provenance and SBOM output.
+
+Still required before promotion: reviewed SMTP provisioning, least-privilege
+identity bootstrap evidence, migration rollback and backup/restore rehearsal,
+privacy/registration approval, rate limiting, monitoring, and a clean-host UAT
+run using the exact published digests.
 
 The Keycloak image should run `kc.sh build --db=postgres` while building and
 `kc.sh start --optimized` at runtime. `start-dev` has insecure defaults and is

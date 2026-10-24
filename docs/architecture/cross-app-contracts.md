@@ -21,8 +21,8 @@ Applications never read or write another application's database.
 
 The target integration has four steps:
 
-1. Register a reviewed app key, name, launch URL, and OIDC client/audience in
-   Core's catalog.
+1. Add a reviewed app key, name, launch URL, OIDC audience, and contract version
+   to the deployment application manifest.
 2. Configure the app to use the suite sign-in through the published adapter.
    Keycloak provides login and recovery; Core provides the shared integration,
    organization invitations, and app grants. The app does not create a parallel
@@ -37,8 +37,9 @@ app from Core reuses the identity session and supplies the selected Core
 organization ID as the `organization_id` query parameter. This value is only a
 navigation hint: the app must verify the token's exact identity-organization
 membership and Core access decision before serving tenant data. Opening an app
-directly performs the same backend access check. This developer path is a target
-contract; the adapter and conformance suite are not implemented yet.
+directly performs the same backend access check. The portable deployment adapter
+and its installation conformance checks are implemented. The reusable
+application integration adapter and CRM adoption are still pending.
 
 ## Required application-access contract
 
@@ -47,9 +48,10 @@ ADR 0009 defines the authority. Core now publishes the
 workspace and access-decision contract. The Core endpoints are implemented;
 application adapters and CRM adoption are still pending.
 
-1. The application registers a stable app key and reviewed integration metadata
-   in Core. A deployment operator configures its exact Keycloak client,
-   audience, launch URL, and compatible contract version.
+1. The application ships a stable app key and reviewed integration metadata.
+   A deployment operator supplies its exact audience, launch URL, and compatible
+   contract version through the installation manifest; Core reconciles that
+   catalog at startup.
 2. Core records whether the app is installed, entitled, and enabled for each
    organization, then records explicit grants to individual members. All grant
    changes are authorized and audited in Core.

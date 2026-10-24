@@ -69,12 +69,12 @@ paths:
   /api/v1/organizations/{organizationId}/application-catalog:
     get:
       operationId: listApplicationCatalog
-      summary: List registered apps for a Core organization owner or admin
+      summary: List manifest-provided apps for a Core organization owner or admin
       parameters:
         - { $ref: "#/components/parameters/OrganizationId" }
       responses:
         "200":
-          description: Installed application catalog
+          description: Available deployment application catalog
           content:
             application/json:
               schema:
@@ -83,25 +83,6 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/OrganizationHidden" }
-  /api/v1/applications:
-    post:
-      operationId: registerApplication
-      summary: Register an installed app as the installation owner
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/ApplicationRegistration" }
-      responses:
-        "201":
-          description: Application registered
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ApplicationRegistration" }
-        "400": { $ref: "#/components/responses/InvalidInput" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/organizations/{organizationId}/applications/{applicationKey}:
     parameters:
       - { $ref: "#/components/parameters/OrganizationId" }
@@ -203,15 +184,6 @@ components:
         key: { type: string }
         displayName: { type: string }
         launchUrl: { type: string, format: uri }
-    ApplicationRegistration:
-      type: object
-      additionalProperties: false
-      required: [key, displayName, launchUrl, audience]
-      properties:
-        key: { type: string, pattern: "^[a-z][a-z0-9-]{1,62}$" }
-        displayName: { type: string, minLength: 2, maxLength: 80 }
-        launchUrl: { type: string, format: uri }
-        audience: { type: string }
     AccessDecision:
       type: object
       additionalProperties: false
@@ -225,7 +197,3 @@ components:
       description: Caller lacks Core administration role
     OrganizationHidden:
       description: Organization, member, or app is unavailable to this caller
-    InvalidInput:
-      description: Registration input is invalid
-    Conflict:
-      description: Application key is already registered

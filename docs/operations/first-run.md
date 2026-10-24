@@ -1,8 +1,9 @@
 # First-run installation
 
 This runbook defines the first-run ceremony for a self-hosted Bubllio Core
-installation. The isolated localhost rehearsal below is executable. Production
-bootstrap, shared rate limits, offline recovery, and UAT deployment remain
+installation. The isolated localhost rehearsal below is executable. A portable
+technical-alpha adapter now exists, but production SMTP, shared rate limits,
+offline recovery, privacy approval, and a clean-host UAT rehearsal remain
 unavailable. Do not substitute manual database edits or broad runtime Keycloak
 credentials.
 
@@ -48,7 +49,9 @@ to install a Node version manager.
    30-minute one-time setup secret
    **once**. Keep it in the terminal. Do not paste it into chat or a file.
 2. Open <http://127.0.0.1:5274/>. While Core is unconfigured, every Core
-   entry route redirects to `/setup` before identity login. Choose
+   entry route redirects to `/setup` before identity login. The first screen
+   checks the database, identity service, migrations, and deployment application
+   manifest; setup cannot continue until all four are ready. Choose
    **Create administrator account**. This is the first IT administrator's verified
    identity; the installation secret is still required to claim ownership.
    Enter your email in the branded Bubllio Identity registration form. Open
@@ -64,7 +67,7 @@ to install a Node version manager.
    it must not create a second organization.
 5. Choose **Sign in to workspace** to obtain a fresh organization-bearing
    token. The workspace should list the named organization. Its app list is
-   empty until a catalog app is registered, enabled, and granted.
+   empty until a deployment-manifest app is enabled and granted.
 
 Keep the terminal open while using the one-time secret. If the command fails
 after it creates `.local/setup-rehearsal.env`, correct the Docker or port
@@ -88,7 +91,9 @@ Compose project and confirm the `READY` state persists.
 From another terminal in the repository root:
 
 ```bash
-curl --fail http://127.0.0.1:3200/health
+curl --fail http://127.0.0.1:3200/health/live
+curl --fail http://127.0.0.1:3200/health/ready
+curl --fail http://127.0.0.1:3200/api/v1/system/preflight
 curl --fail http://127.0.0.1:3200/api/v1/setup/status
 ```
 
@@ -143,7 +148,7 @@ can see every authorized workspace in the switcher.
 | The bootstrap reports a bound port | Free port `8280`, `3200`, `5274`, or `8125`, then rerun with `--resume`. |
 | An email is missing | Check the isolated Mailpit at `127.0.0.1:8125` and the `keycloak` service health. |
 | Setup is unavailable | Check service health and the one-time secret. An expired secret can currently be reset only by destroying this disposable rehearsal. |
-| No applications appear after `READY` | This is expected until an app is registered, enabled, and granted. |
+| No applications appear after `READY` | Check the deployment application manifest, then enable the app and grant the member access in Core. |
 
 To inspect service health, run:
 
@@ -205,7 +210,9 @@ Verify all of the following:
 
 ## Platform bootstrap
 
-The planned `scripts/bootstrap-identity.sh` command must be idempotent. It will:
+The reference adapter now prepares secrets and imports a versioned realm
+idempotently on an empty identity database. A production-approved bootstrap
+must additionally:
 
 1. use temporary bootstrap authority to create or verify the Bubllio realm;
 2. create exact-origin public PKCE web and Core API audience clients;
@@ -229,8 +236,10 @@ the deployment specification. Confirm the old credentials fail.
 1. Open the Core web application. It reads only the coarse setup-required state.
 2. Choose **Set up Bubllio** and authenticate through branded Keycloak pages.
 3. Complete email verification and required actions. The local realm supports
-   browser registration for suite users as well as the first owner. Production
-   registration remains disabled until the release gates in
+   browser registration for suite users as well as the first owner. The
+   reference production realm contains the same capability only for closed
+   technical rehearsal; external registration remains blocked until SMTP,
+   privacy/terms, recovery, and abuse gates in
    [ADR 0010](../decisions/0010-general-browser-registration.md) are met.
 4. Return to `/setup`, enter the one-time setup secret, and review the immutable
    subject and verified email shown by the application.
