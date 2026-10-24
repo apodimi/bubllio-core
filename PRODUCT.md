@@ -17,14 +17,19 @@ direct URL.
 
 ## Target first journey
 
-An installation operator bootstraps identity and securely hands the one-time
-setup secret to the named IT administrator. An unconfigured Core opens its
-first-run setup before any ordinary sign-in route. The IT administrator creates
-and verifies the first account, then claims the installation,
-creates the first organization, becomes its owner, and manages its members and
-applications. A developer receives Board access, a salesperson CRM access, and
-a project manager both, without changing their shared organization membership.
-Board is a future application; CRM is the first real integration target.
+An installation operator starts the versioned Bubllio distribution through the
+adapter for their infrastructure and securely hands the one-time setup secret
+to the named IT administrator. Once the HTTPS endpoint is reachable, ordinary
+product setup happens in the browser: system preflight, email delivery, first
+verified administrator, first organization, and final readiness. An
+unconfigured Core opens this setup before any ordinary sign-in route.
+
+The applications present in an installation come from its reviewed deployment
+manifest. Core does not install containers or execute deployment commands. It
+shows the available applications and manages member access after setup. A
+developer receives Board access, a salesperson CRM access, and a project
+manager both, without changing their shared organization membership. Board is
+a future application; CRM is the first real integration target.
 
 ## Core workspace experience
 
@@ -77,6 +82,12 @@ its domain data and action-level permissions.
 - One authoritative owner for every piece of data.
 - Standards-based contracts over shared database access.
 - Self-hosted operation first; hosted operation must remain possible.
+- One canonical deployment contract must work across infrastructures through
+  thin adapters; product behavior must not depend on a hosting vendor.
+- Infrastructure bootstrap must stay minimal. Once Bubllio is reachable, the
+  normal administrator configuration experience belongs in the product UI.
+- Deployment manifests install applications; Core presents them and manages
+  access but is not an application installer or marketplace.
 - Safe staggered upgrades between independently released applications.
 - Installation should become approachable without hiding security or backup
   requirements.
@@ -85,6 +96,10 @@ its domain data and action-level permissions.
 ## First milestone success criteria
 
 - A clean self-hosted installation completes secure setup and enters Core.
+- The happy-path administrator setup after the HTTPS endpoint is reachable
+  requires no Keycloak console, source edits, or manual database migration.
+- A failed setup dependency can be corrected and retried without reinstalling
+  or losing the durable setup operation.
 - Tokens have validated issuer, audience, expiry, and organization context.
 - The owner can manage Core organization state, membership, and application
   availability and individual member grants without touching Keycloak

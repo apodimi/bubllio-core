@@ -54,12 +54,31 @@ deployable application containers and isolated PostgreSQL databases. A shared
 reverse proxy exposes application URLs; private databases and brokers are never
 published directly.
 
+Bubllio publishes one canonical, versioned deployment contract based on
+immutable container images, persistent storage, explicit public endpoints, and
+secret inputs. Docker Compose, Kubernetes, Dokploy, Coolify, and future cloud
+marketplace integrations are thin adapters to that contract. Core runtime code
+does not branch on the hosting platform.
+
+The platform adapter performs only infrastructure bootstrap: start the selected
+release, provide durable storage and HTTPS routing, inject bootstrap authority,
+and expose the one-time setup secret. Once the endpoint is reachable, the
+browser setup owns preflight, email configuration, first administrator, first
+organization, and readiness confirmation. The flow is durable and resumable.
+
+The deployment manifest determines which Bubllio applications are present.
+Core discovers or reconciles their reviewed metadata and manages visibility and
+member access. Core does not install containers, execute platform commands, or
+act as a marketplace in the first release.
+
 Cloud control-plane behavior, third-party modules, and one Core serving multiple
 independent installations are later design problems.
 
 ## Runtime principles
 
 - One Keycloak realm represents the Bubllio suite installation.
+- Hosting platforms adapt to Bubllio's deployment contract; Bubllio product
+  behavior never depends on a platform-specific API.
 - Keycloak clients represent Core, CRM, Board, and approved machine clients.
 - Applications may release independently within an explicit compatibility
   window.

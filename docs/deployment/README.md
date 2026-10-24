@@ -15,6 +15,21 @@ requests and manual workflow runs before a release. It does not
 publish an image, provision a realm, or approve a deployment. Those release
 artifacts remain part of the UAT and Production work below.
 
+## Portable delivery contract
+
+[ADR 0011](../decisions/0011-portable-delivery-and-ui-first-setup.md) defines
+the accepted target; it is not implemented by the current local Compose file.
+Bubllio will publish one canonical versioned contract for images, configuration,
+storage, endpoints, health, migrations, and bootstrap outputs. Platform packages
+such as Compose, Helm, Dokploy, Coolify, and cloud marketplace templates adapt
+that contract without changing Core product behavior.
+
+An adapter starts the release, supplies durable storage and HTTPS routing, and
+hands the operator the one-time setup secret. Once the endpoint is reachable,
+the product UI owns system preflight, email delivery, first administrator, first
+organization, and readiness. The deployment manifest determines which apps are
+present; Core does not install their containers.
+
 For a first installation exercise from an empty checkout, follow the
 [isolated manual test](../operations/first-run.md#first-manual-test-from-a-fresh-checkout).
 It uses a separate Compose project and does not reset existing developer data.

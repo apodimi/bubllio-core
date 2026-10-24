@@ -40,6 +40,10 @@ The secure first-run foundation is ready:
   Its runbook is `docs/operations/first-run.md`. Production setup remains closed.
 - No product app consumes the decision API yet. CRM still uses its existing
   authentication path; Board does not exist.
+- ADR 0011 now fixes the production delivery direction: one canonical,
+  infrastructure-neutral deployment contract, thin platform adapters, and a
+  resumable UI-first setup after the HTTPS endpoint is reachable. Deployment
+  manifests determine installed apps; Core does not act as an app installer.
 
 The detailed implementation plan remains local at
 `plan/feature-first-run-setup-1.md` and is intentionally ignored by Git.
@@ -66,13 +70,16 @@ The detailed implementation plan remains local at
 
 ## Start here tomorrow
 
-1. Complete real browser automation from browser owner registration through
+1. Implement the first slice of ADR 0011: validated runtime configuration,
+   separate liveness/readiness, and the canonical installation contract. The
+   executable local plan is `plan/infrastructure-portable-delivery-1.md`.
+2. Complete real browser automation from browser owner registration through
    invitation acceptance, fresh token, and owner workspace; run the same steps
    manually from a clean checkout.
-2. Add shared rate limiting, offline recovery, service-account fine-grained
+3. Add shared rate limiting, offline recovery, service-account fine-grained
    user read permission, and production bootstrap before enabling setup outside
    an isolated localhost rehearsal.
-3. Complete ADR 0009 by adding a safe member directory and grant-management UI,
+4. Complete ADR 0009 by adding a safe member directory and grant-management UI,
    and prove direct API denial in CRM before calling suite integration complete.
    The catalog, grants, and decision API are implemented; Board is not required
    for the Core model.
