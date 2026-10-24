@@ -18,7 +18,7 @@ export async function initializeAuth(): Promise<Keycloak> {
       window.location.pathname === "/setup" ? "check-sso" : "login-required",
     flow: "standard",
     pkceMethod: "S256",
-    scope: "profile email organization",
+    scope: "profile email organization:*",
     checkLoginIframe: false,
   });
 
