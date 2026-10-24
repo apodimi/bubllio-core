@@ -6,6 +6,7 @@ import {
   Header,
   Headers,
   HttpCode,
+  Inject,
   NotFoundException,
   Param,
   Post,
@@ -18,6 +19,7 @@ import {
 import { CurrentIdentity } from '../auth/decorators/current-identity.decorator.js'
 import { Public } from '../auth/decorators/public.decorator.js'
 import type { VerifiedSubject } from '../auth/identity.types.js'
+import { RUNTIME_CONFIG, type RuntimeConfig } from '../config/runtime-config.js'
 import { SetupAvailabilityGuard } from './guards/setup-availability.guard.js'
 import { SetupSecretGuard } from './guards/setup-secret.guard.js'
 import { SetupSubjectGuard } from './guards/setup-subject.guard.js'
@@ -39,6 +41,7 @@ export class SetupController {
   constructor(
     private readonly setupRepository: SetupRepository,
     private readonly provisioning: SetupProvisioningService,
+    @Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig,
   ) {}
 
   @Get('status')
@@ -78,7 +81,7 @@ export class SetupController {
     @Body() body: unknown,
     @Res({ passthrough: true }) response: { status: (code: number) => void },
   ): Promise<ClaimResponse> {
-    if (origin !== (process.env.WEB_ORIGIN ?? 'http://127.0.0.1:5174')) {
+    if (origin !== this.config.webOrigin) {
       throw new NotFoundException('Setup is unavailable')
     }
 
@@ -131,7 +134,7 @@ export class SetupController {
     @Body() body: unknown,
     @Res({ passthrough: true }) response: { status: (code: number) => void },
   ): Promise<SetupOperationView> {
-    requireSetupMutation(origin, contentType, idempotencyKey)
+    requireSetupMutation(this.config.webOrigin, origin, contentType, idempotencyKey)
     if (
       !body ||
       typeof body !== 'object' ||
@@ -174,7 +177,7 @@ export class SetupController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: unknown,
   ): Promise<SetupOperationView> {
-    requireSetupMutation(origin, contentType, idempotencyKey)
+    requireSetupMutation(this.config.webOrigin, origin, contentType, idempotencyKey)
     if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length) {
       throw new UnprocessableEntityException('Invalid retry request')
     }
@@ -183,11 +186,12 @@ export class SetupController {
 }
 
 function requireSetupMutation(
+  expectedOrigin: string,
   origin: string | undefined,
   contentType: string | undefined,
   idempotencyKey: string | undefined,
 ): void {
-  if (origin !== (process.env.WEB_ORIGIN ?? 'http://127.0.0.1:5174')) {
+  if (origin !== expectedOrigin) {
     throw new NotFoundException('Setup is unavailable')
   }
   if (

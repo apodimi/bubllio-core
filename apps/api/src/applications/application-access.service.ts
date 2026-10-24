@@ -90,6 +90,7 @@ export class ApplicationAccessService {
     return this.prisma.application.findMany({
       orderBy: { displayName: 'asc' },
       select: { key: true, displayName: true, launchUrl: true },
+      where: { available: true },
     })
   }
 
@@ -112,7 +113,7 @@ export class ApplicationAccessService {
       },
       where: {
         active: true,
-        organizationApp: { enabled: true, entitled: true },
+        organizationApp: { application: { available: true }, enabled: true, entitled: true },
         organizationId,
         subject: identity.subject,
       },
@@ -131,7 +132,13 @@ export class ApplicationAccessService {
     const grant = await this.prisma.memberApplicationGrant.findUnique({
       select: {
         active: true,
-        organizationApp: { select: { enabled: true, entitled: true } },
+        organizationApp: {
+          select: {
+            application: { select: { available: true } },
+            enabled: true,
+            entitled: true,
+          },
+        },
       },
       where: {
         organizationId_applicationKey_subject: {
@@ -142,6 +149,11 @@ export class ApplicationAccessService {
       },
     })
 
-    return Boolean(grant?.active && grant.organizationApp.enabled && grant.organizationApp.entitled)
+    return Boolean(
+      grant?.active &&
+      grant.organizationApp.application.available &&
+      grant.organizationApp.enabled &&
+      grant.organizationApp.entitled,
+    )
   }
 }

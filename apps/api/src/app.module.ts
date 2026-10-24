@@ -2,11 +2,19 @@ import { Module } from '@nestjs/common'
 
 import { ApplicationsModule } from './applications/applications.module.js'
 import { AuthModule } from './auth/auth.module.js'
-import { HealthController } from './health.controller.js'
+import { RuntimeConfigModule } from './config/runtime-config.module.js'
+import { HealthModule } from './health/health.module.js'
+import { InstallationManifestModule } from './installation-manifest/installation-manifest.module.js'
 import { SetupModule } from './setup/setup.module.js'
 
 @Module({
-  controllers: [HealthController],
-  imports: [AuthModule, SetupModule, ApplicationsModule],
+  imports: [
+    RuntimeConfigModule,
+    AuthModule,
+    SetupModule,
+    InstallationManifestModule,
+    ApplicationsModule,
+    HealthModule,
+  ],
 })
 export class AppModule {}

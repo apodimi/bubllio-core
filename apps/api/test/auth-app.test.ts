@@ -11,6 +11,7 @@ describe('authentication boundary', () => {
   beforeAll(async () => {
     process.env.OIDC_ISSUER = 'https://identity.example.test/realms/bubllio'
     process.env.OIDC_AUDIENCE = 'bubllio-core-api'
+    process.env.DATABASE_URL = 'postgresql://core:test@database:5432/core'
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
@@ -26,13 +27,11 @@ describe('authentication boundary', () => {
   })
 
   it('allows endpoints explicitly marked as public', async () => {
-    const response = await app.getHttpAdapter().getInstance().inject({
-      method: 'GET',
-      url: '/health',
-    })
-
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ status: 'ok' })
+    for (const url of ['/health', '/health/live']) {
+      const response = await app.getHttpAdapter().getInstance().inject({ method: 'GET', url })
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toEqual({ status: 'ok' })
+    }
   })
 
   it('protects endpoints by default', async () => {

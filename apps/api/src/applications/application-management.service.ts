@@ -4,11 +4,13 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
 
 import type { VerifiedSubject } from '../auth/identity.types.js'
+import { RUNTIME_CONFIG, type RuntimeConfig } from '../config/runtime-config.js'
 import { InstallationSetupStatus } from '../generated/prisma/enums.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { ApplicationAccessService } from './application-access.service.js'
@@ -29,12 +31,21 @@ export class ApplicationManagementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: ApplicationAccessService,
+    @Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig,
   ) {}
 
   async register(
     identity: VerifiedSubject,
     input: RegisterApplicationInput,
   ): Promise<RegisterApplicationInput> {
+    // Deployment manifests are authoritative. This endpoint exists only for an
+    // explicitly enabled local integration rehearsal.
+    if (
+      this.config.environment === 'production' ||
+      !this.config.localApplicationRegistrationEnabled
+    ) {
+      throw new NotFoundException('Application registration is unavailable')
+    }
     const setup = await this.prisma.installationSetup.findUnique({
       select: { claimedBySubject: true, organizationId: true, status: true },
       where: { id: 1 },
@@ -47,13 +58,18 @@ export class ApplicationManagementService {
       throw new ForbiddenException('Installation ownership is required')
     }
 
-    validateRegistration(input)
+    validateRegistration(input, this.config.environment)
     const normalized = { ...input, displayName: input.displayName.trim() }
 
     try {
       return await this.prisma.$transaction(async (transaction) => {
         const app = await transaction.application.create({
-          data: normalized,
+          data: {
+            ...normalized,
+            available: true,
+            contractVersion: '1',
+            managedByManifest: false,
+          },
           select: { key: true, displayName: true, launchUrl: true, audience: true },
         })
         await transaction.auditEvent.create({
@@ -129,10 +145,20 @@ export class ApplicationManagementService {
         where: { organizationId_subject: { organizationId, subject } },
       }),
       this.prisma.organizationApplication.findUnique({
+        select: {
+          application: { select: { available: true } },
+          enabled: true,
+          entitled: true,
+        },
         where: { organizationId_applicationKey: { applicationKey, organizationId } },
       }),
     ])
-    if (!member || !organizationApp?.enabled || !organizationApp.entitled) {
+    if (
+      !member ||
+      !organizationApp?.application.available ||
+      !organizationApp.enabled ||
+      !organizationApp.entitled
+    ) {
       throw new NotFoundException('Member or application not available')
     }
 
@@ -179,9 +205,9 @@ export class ApplicationManagementService {
   }
 
   private async requireApplication(applicationKey: string): Promise<void> {
-    const app = await this.prisma.application.findUnique({
+    const app = await this.prisma.application.findFirst({
       select: { key: true },
-      where: { key: applicationKey },
+      where: { available: true, key: applicationKey },
     })
     if (!app) {
       throw new NotFoundException('Application not found')
@@ -201,7 +227,7 @@ function audit(actorSubject: string, organizationId: string, targetId: string, a
   }
 }
 
-function validateRegistration(input: RegisterApplicationInput): void {
+function validateRegistration(input: RegisterApplicationInput, environment: string): void {
   if (
     !APP_KEY_PATTERN.test(input.key) ||
     typeof input.displayName !== 'string' ||
@@ -222,7 +248,7 @@ function validateRegistration(input: RegisterApplicationInput): void {
   const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost'
   if (
     (url.protocol !== 'https:' &&
-      !(process.env.NODE_ENV !== 'production' && loopback && url.protocol === 'http:')) ||
+      !(environment !== 'production' && loopback && url.protocol === 'http:')) ||
     url.username ||
     url.password ||
     url.hash ||

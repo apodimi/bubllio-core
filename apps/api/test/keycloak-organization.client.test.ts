@@ -4,6 +4,7 @@ import {
   KeycloakOrganizationClient,
   ProvisioningError,
 } from '../src/setup/keycloak-organization.client.js'
+import { runtimeConfig } from './runtime-config.fixture.js'
 
 const coreId = '00000000-0000-0000-0000-000000000001'
 const identityId = '00000000-0000-0000-0000-000000000011'
@@ -15,20 +16,23 @@ function response(status: number, body?: unknown): Response {
 }
 
 describe('Keycloak first-organization adapter', () => {
-  const client = new KeycloakOrganizationClient()
+  const client = new KeycloakOrganizationClient(
+    runtimeConfig({
+      keycloak: {
+        adminUrl: 'http://keycloak:8080',
+        clientSecret: 'test-machine-secret',
+      },
+    }),
+  )
   const fetchMock = vi.fn()
 
   beforeEach(() => {
-    process.env.CORE_KEYCLOAK_ADMIN_URL = 'http://keycloak:8080'
-    process.env.CORE_KEYCLOAK_CLIENT_SECRET = 'test-machine-secret'
     fetchMock.mockReset()
     vi.stubGlobal('fetch', fetchMock)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
-    delete process.env.CORE_KEYCLOAK_ADMIN_URL
-    delete process.env.CORE_KEYCLOAK_CLIENT_SECRET
   })
 
   it('adopts only an exact immutable marker and does not create a duplicate', async () => {

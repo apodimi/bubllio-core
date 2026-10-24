@@ -1,18 +1,35 @@
-import { CanActivate, ExecutionContext, Injectable, NotFoundException } from '@nestjs/common'
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
 
-/** Keeps every setup mutation and private read inside the isolated rehearsal. */
+import { RUNTIME_CONFIG, type RuntimeConfig } from '../../config/runtime-config.js'
+
+/** Exposes setup only for an explicitly enabled installation claim. */
 @Injectable()
 export class SetupAvailabilityGuard implements CanActivate {
+  constructor(@Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig) {}
+
   canActivate(_context: ExecutionContext): boolean {
-    const webOrigin = process.env.WEB_ORIGIN ?? 'http://127.0.0.1:5174'
-    const issuer = process.env.OIDC_ISSUER ?? ''
-    if (
-      process.env.CORE_SETUP_LOCAL_REHEARSAL !== 'true' ||
-      process.env.CORE_SETUP_CLAIM_ENABLED !== 'true' ||
-      !/^http:\/\/127\.0\.0\.1:\d+$/u.test(webOrigin) ||
-      !/^http:\/\/127\.0\.0\.1:\d+\/realms\/bubllio$/u.test(issuer)
-    ) {
+    if (!this.config.setup.claimEnabled) {
       throw new NotFoundException('Setup is unavailable')
+    }
+
+    // Development setup stays restricted to the explicit loopback rehearsal.
+    // Production endpoints are validated centrally before the application starts.
+    if (this.config.environment !== 'production') {
+      const webOrigin = this.config.webOrigin
+      const issuer = this.config.oidc.issuer
+      if (
+        !this.config.setup.localRehearsal ||
+        !/^http:\/\/127\.0\.0\.1:\d+$/u.test(webOrigin) ||
+        !/^http:\/\/127\.0\.0\.1:\d+\/realms\/bubllio$/u.test(issuer)
+      ) {
+        throw new NotFoundException('Setup is unavailable')
+      }
     }
     return true
   }

@@ -97,6 +97,9 @@ model Application {
   displayName              String                    @map("display_name") @db.VarChar(80)
   launchUrl                String                    @map("launch_url") @db.VarChar(2048)
   audience                 String                    @db.VarChar(255)
+  contractVersion          String                    @default("1") @map("contract_version") @db.VarChar(32)
+  available                Boolean                   @default(true)
+  managedByManifest        Boolean                   @default(false) @map("managed_by_manifest")
   installedAt              DateTime                  @default(now()) @map("installed_at") @db.Timestamptz(3)
   organizationApplications OrganizationApplication[]
 

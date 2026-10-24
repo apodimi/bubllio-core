@@ -5,6 +5,7 @@ import { ApplicationAccessService } from '../src/applications/application-access
 import { ApplicationManagementService } from '../src/applications/application-management.service.js'
 import type { VerifiedSubject } from '../src/auth/identity.types.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
+import { runtimeConfig } from './runtime-config.fixture.js'
 
 const organizationId = '00000000-0000-0000-0000-000000000001'
 const identityOrganizationId = '00000000-0000-0000-0000-000000000011'
@@ -19,7 +20,7 @@ const transaction = {
 }
 const prisma = {
   $transaction: vi.fn((run: (client: typeof transaction) => unknown) => run(transaction)),
-  application: { findUnique: vi.fn() },
+  application: { findFirst: vi.fn() },
   installationSetup: { findUnique: vi.fn() },
   organization: { findUnique: vi.fn() },
   organizationApplication: { findUnique: vi.fn() },
@@ -43,7 +44,11 @@ const registration = {
 
 describe('application administration', () => {
   const client = prisma as unknown as PrismaService
-  const management = new ApplicationManagementService(client, new ApplicationAccessService(client))
+  const management = new ApplicationManagementService(
+    client,
+    new ApplicationAccessService(client),
+    runtimeConfig({ localApplicationRegistrationEnabled: true }),
+  )
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -57,8 +62,12 @@ describe('application administration', () => {
       roleAssignments: [{ role: 'OWNER' }],
       status: 'ACTIVE',
     })
-    prisma.application.findUnique.mockResolvedValue({ key: 'bubllio-crm' })
-    prisma.organizationApplication.findUnique.mockResolvedValue({ enabled: true, entitled: true })
+    prisma.application.findFirst.mockResolvedValue({ key: 'bubllio-crm' })
+    prisma.organizationApplication.findUnique.mockResolvedValue({
+      application: { available: true },
+      enabled: true,
+      entitled: true,
+    })
     prisma.organizationRoleAssignment.findUnique.mockResolvedValue({ subject: targetSubject })
     transaction.application.create.mockResolvedValue(registration)
     transaction.organizationApplication.upsert.mockResolvedValue({})
@@ -78,6 +87,18 @@ describe('application administration', () => {
         data: expect.objectContaining({ action: 'REGISTER_APPLICATION' }),
       }),
     )
+  })
+
+  it('keeps the legacy registration mutation disabled unless local rehearsal opts in', async () => {
+    const disabled = new ApplicationManagementService(
+      client,
+      new ApplicationAccessService(client),
+      runtimeConfig(),
+    )
+
+    await expect(disabled.register(identity, registration)).rejects.toThrow(NotFoundException)
+    expect(prisma.installationSetup.findUnique).not.toHaveBeenCalled()
+    expect(transaction.application.create).not.toHaveBeenCalled()
   })
 
   it('rejects unsafe app launch URLs before writing', async () => {

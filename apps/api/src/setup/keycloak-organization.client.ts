@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+
+import { RUNTIME_CONFIG, type RuntimeConfig } from '../config/runtime-config.js'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
 const MARKER = 'bubllio.core.organization_id'
@@ -26,6 +28,8 @@ interface OrganizationRepresentation {
 /** Only the organization and membership Admin REST operations needed by first-run. */
 @Injectable()
 export class KeycloakOrganizationClient {
+  constructor(@Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig) {}
+
   async ensureOrganization(coreId: string, slug: string, displayName: string): Promise<string> {
     const existing = await this.findByMarker(coreId)
     if (existing) return existing
@@ -90,8 +94,8 @@ export class KeycloakOrganizationClient {
   }
 
   private async request(method: string, path: string, body?: unknown): Promise<Response> {
-    const baseUrl = process.env.CORE_KEYCLOAK_ADMIN_URL
-    const clientSecret = process.env.CORE_KEYCLOAK_CLIENT_SECRET
+    const baseUrl = this.config.keycloak.adminUrl
+    const clientSecret = this.config.keycloak.clientSecret
     if (!baseUrl || !clientSecret) throw new ProvisioningError('KEYCLOAK_CREDENTIALS_INVALID')
     let base: URL
     try {

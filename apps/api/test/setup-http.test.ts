@@ -68,8 +68,12 @@ describe('first-run setup HTTP boundary', () => {
     process.env.CORE_SETUP_CLAIM_ENABLED = 'true'
     process.env.CORE_SETUP_LOCAL_REHEARSAL = 'true'
     process.env.OIDC_ISSUER = 'http://127.0.0.1:8180/realms/bubllio'
+    process.env.OIDC_AUDIENCE = 'bubllio-core-api'
+    process.env.DATABASE_URL = 'postgresql://core:test@database:5432/core'
     process.env.CORE_SETUP_SECRET_SHA256 = createHash('sha256').update(secret).digest('hex')
     process.env.CORE_SETUP_SECRET_EXPIRES_AT = '2099-01-01T00:00:00.000Z'
+    process.env.CORE_KEYCLOAK_ADMIN_URL = 'http://127.0.0.1:8180'
+    process.env.CORE_KEYCLOAK_CLIENT_SECRET = 'test-client-secret-value'
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
@@ -104,6 +108,8 @@ describe('first-run setup HTTP boundary', () => {
     delete process.env.WEB_ORIGIN
     delete process.env.CORE_SETUP_CLAIM_ENABLED
     delete process.env.CORE_SETUP_LOCAL_REHEARSAL
+    delete process.env.CORE_KEYCLOAK_ADMIN_URL
+    delete process.env.CORE_KEYCLOAK_CLIENT_SECRET
     delete process.env.OIDC_ISSUER
   })
 
@@ -161,7 +167,7 @@ describe('first-run setup HTTP boundary', () => {
     expect(repository.claim).not.toHaveBeenCalled()
   })
 
-  it('keeps claim closed unless the incomplete first-run flow is explicitly enabled', async () => {
+  it('uses the startup configuration snapshot instead of re-reading environment values', async () => {
     delete process.env.CORE_SETUP_CLAIM_ENABLED
     const response = await app.getHttpAdapter().getInstance().inject({
       method: 'POST',
@@ -169,30 +175,9 @@ describe('first-run setup HTTP boundary', () => {
       headers: claimHeaders(),
       payload: {},
     })
-    expect(response.statusCode).toBe(404)
-    expect(repository.claim).not.toHaveBeenCalled()
+    expect(response.statusCode).toBe(201)
+    expect(repository.claim).toHaveBeenCalledTimes(1)
     process.env.CORE_SETUP_CLAIM_ENABLED = 'true'
-  })
-
-  it('keeps claim closed for a non-local issuer even if the local flag is set', async () => {
-    const previousIssuer = process.env.OIDC_ISSUER
-    process.env.OIDC_ISSUER = 'https://identity.example.test/realms/bubllio'
-    try {
-      const response = await app.getHttpAdapter().getInstance().inject({
-        method: 'POST',
-        url: '/api/v1/setup/claim',
-        headers: claimHeaders(),
-        payload: {},
-      })
-      expect(response.statusCode).toBe(404)
-      expect(repository.claim).not.toHaveBeenCalled()
-    } finally {
-      if (previousIssuer === undefined) {
-        delete process.env.OIDC_ISSUER
-      } else {
-        process.env.OIDC_ISSUER = previousIssuer
-      }
-    }
   })
 
   it.each([

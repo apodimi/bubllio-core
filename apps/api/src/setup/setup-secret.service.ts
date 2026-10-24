@@ -1,22 +1,23 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 
-const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/u
+import { RUNTIME_CONFIG, type RuntimeConfig } from '../config/runtime-config.js'
 
 /** Verifies the presented secret without retaining or exposing its raw value. */
 @Injectable()
 export class SetupSecretService {
-  matches(presentedSecret: string, now = new Date()): boolean {
-    const expectedDigestHex = process.env.CORE_SETUP_SECRET_SHA256
-    const expiresAtValue = process.env.CORE_SETUP_SECRET_EXPIRES_AT
+  constructor(@Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig) {}
 
-    if (!expectedDigestHex || !SHA256_HEX_PATTERN.test(expectedDigestHex) || !expiresAtValue) {
+  matches(presentedSecret: string, now = new Date()): boolean {
+    const expectedDigestHex = this.config.setup.secretSha256
+    const expiresAt = this.config.setup.secretExpiresAt
+
+    if (!expectedDigestHex || !expiresAt) {
       return false
     }
 
-    const expiresAt = new Date(expiresAtValue)
-    if (!Number.isFinite(expiresAt.getTime()) || now >= expiresAt) {
+    if (now >= expiresAt) {
       return false
     }
 

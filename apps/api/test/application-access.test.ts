@@ -44,7 +44,7 @@ describe('Core application access', () => {
     })
     prisma.memberApplicationGrant.findUnique.mockResolvedValue({
       active: true,
-      organizationApp: { enabled: true, entitled: true },
+      organizationApp: { application: { available: true }, enabled: true, entitled: true },
     })
   })
 
@@ -92,9 +92,34 @@ describe('Core application access', () => {
 
   it.each([
     ['missing grant', null],
-    ['revoked grant', { active: false, organizationApp: { enabled: true, entitled: true } }],
-    ['disabled app', { active: true, organizationApp: { enabled: false, entitled: true } }],
-    ['missing entitlement', { active: true, organizationApp: { enabled: true, entitled: false } }],
+    [
+      'revoked grant',
+      {
+        active: false,
+        organizationApp: { application: { available: true }, enabled: true, entitled: true },
+      },
+    ],
+    [
+      'disabled app',
+      {
+        active: true,
+        organizationApp: { application: { available: true }, enabled: false, entitled: true },
+      },
+    ],
+    [
+      'missing entitlement',
+      {
+        active: true,
+        organizationApp: { application: { available: true }, enabled: true, entitled: false },
+      },
+    ],
+    [
+      'application removed from manifest',
+      {
+        active: true,
+        organizationApp: { application: { available: false }, enabled: true, entitled: true },
+      },
+    ],
   ])('denies %s', async (_name, grant) => {
     prisma.memberApplicationGrant.findUnique.mockResolvedValueOnce(grant)
     expect(await access.canAccess(identity(), coreOrganizationId, 'bubllio-crm')).toBe(false)
@@ -120,7 +145,11 @@ describe('Core application access', () => {
       expect.objectContaining({
         where: {
           active: true,
-          organizationApp: { enabled: true, entitled: true },
+          organizationApp: {
+            application: { available: true },
+            enabled: true,
+            entitled: true,
+          },
           organizationId: coreOrganizationId,
           subject,
         },
