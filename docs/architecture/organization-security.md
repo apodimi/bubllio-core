@@ -34,6 +34,22 @@ through operator automation before the product wizard is available. Bootstrap
 administrator, named Keycloak operator, Core product owner, deployment
 provisioner, and Core runtime service account are distinct principals.
 
+The realm begins with browser registration disabled. Before a human identity
+can be created, the operator must configure and prove email delivery through
+the product UI. Core authenticates that pre-account mutation with the one-time
+setup secret and delegates the privileged Keycloak work to the isolated,
+temporary identity setup agent defined in
+[ADR 0012](../decisions/0012-isolate-email-bootstrap-authority.md). A real test
+message carries a short-lived confirmation code. Registration opens only after
+the code is confirmed and the agent has retired its own bootstrap client.
+
+The permanent Core runtime cannot mutate realm settings or clients. Core never
+persists SMTP connection fields, credentials, the test recipient, or provider
+responses. Its durable email state contains only a non-secret fingerprint,
+keyed code digest, expiry and attempt counters, timestamps, and a bounded error
+code. Keycloak references the authenticated SMTP password from its file vault;
+the password is not duplicated in Core.
+
 Claiming an uninitialized installation requires two independent proofs:
 
 1. a valid Core-audience OIDC token with immutable subject, verified email, and
@@ -75,12 +91,12 @@ Completion requires all of the following:
 - a successful durable provisioning operation and audit outcome; and
 - a newly issued access token containing the exact organization ID.
 
-Setup mutations require a trusted exact `Origin`, exact CORS, JSON and request
-size validation, an idempotency key, shared rate limiting, and generic failure
-responses. Setup pages and responses are `no-store`, send no referrer, deny
-framing, use a strict CSP without third-party scripts, and redact authorization,
-setup secret, body, and provider data throughout proxy and application
-observability.
+Setup mutations, including pre-account email setup, require a trusted exact
+`Origin`, exact CORS, JSON and request size validation, an idempotency key,
+shared rate limiting, and generic failure responses. Setup pages and responses
+are `no-store`, send no referrer, deny framing, use a strict CSP without
+third-party scripts, and redact authorization, setup secret, body, and provider
+data throughout proxy and application observability.
 
 Initial rate-limit defaults are five failed claims per 15 minutes per IP, ten
 per hour installation-wide, one active claim globally, and 30 status reads per
@@ -103,6 +119,12 @@ provider work, and must use shared state before horizontal scaling.
   organization through the immutable Core marker and continues idempotently.
 - **Runtime machine credential is compromised**: it cannot administer realms,
   clients, passwords, identity providers, impersonation, or Core roles.
+- **Email bootstrap authority is compromised after setup**: the bootstrap
+  client is already disabled and cannot obtain another token. The runtime can
+  only read the non-secret readiness marker for crash reconciliation.
+- **SMTP test is replayed or guessed**: the mutation requires the independent
+  setup secret and idempotency key; the confirmation code is keyed, short-lived,
+  and attempt-bounded, and delivery inputs are not retained by Core.
 - **Completed setup is replayed**: terminal database state rejects the request
   regardless of secret validity or deployment configuration.
 - **Operator loses access during provisioning**: host-side break-glass recovery

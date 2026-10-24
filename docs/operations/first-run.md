@@ -2,10 +2,10 @@
 
 This runbook defines the first-run ceremony for a self-hosted Bubllio Core
 installation. The isolated localhost rehearsal below is executable. A portable
-technical-alpha adapter now exists, but production SMTP, shared rate limits,
-offline recovery, privacy approval, and a clean-host UAT rehearsal remain
-unavailable. Do not substitute manual database edits or broad runtime Keycloak
-credentials.
+technical-alpha adapter and UI-managed email-delivery setup now exist, but an
+approved real SMTP provider, shared rate limits, offline recovery, privacy
+approval, and a clean-host UAT rehearsal remain unavailable. Do not substitute
+manual database edits or broad runtime Keycloak credentials.
 
 ## First manual test from a fresh checkout
 
@@ -45,27 +45,37 @@ to install a Node version manager.
 
 1. From the repository root, run `node scripts/bootstrap-local-setup.mjs`.
    The command builds and starts the isolated stack, including the Core web UI,
-   configures the local runtime client and browser registration, and prints a
-   30-minute one-time setup secret
+   configures the local runtime and temporary identity-bootstrap clients, keeps
+   browser registration closed, and prints a 30-minute one-time setup secret
    **once**. Keep it in the terminal. Do not paste it into chat or a file.
 2. Open <http://127.0.0.1:5274/>. While Core is unconfigured, every Core
    entry route redirects to `/setup` before identity login. The first screen
    checks the database, identity service, migrations, and deployment application
-   manifest; setup cannot continue until all four are ready. Choose
-   **Create administrator account**. This is the first IT administrator's verified
-   identity; the installation secret is still required to claim ownership.
-   Enter your email in the branded Bubllio Identity registration form. Open
-   <http://127.0.0.1:8125>, follow the verification email, create a password,
-   and return to `/setup` signed in. The first-run screen has no existing-account
-   or sign-in action. If setup has already been claimed and the browser is closed,
+   manifest; setup cannot continue until all four are ready.
+3. Continue to **Email delivery** and use these disposable rehearsal values:
+   sender name `Bubllio`, sender email `hello@example.test`, SMTP host
+   `mailpit`, port `1025`, security **No encryption**, authentication off, and
+   test recipient `owner@example.test`. Enter the terminal's one-time setup
+   secret and send the test. Open <http://127.0.0.1:8125>, copy the six-digit
+   code from the newest message, return to Core, enter the code and the setup
+   secret again, then confirm. Core stores neither the SMTP input nor the test
+   recipient. Authenticated transports place only their SMTP password in
+   Keycloak's private vault; this unauthenticated Mailpit rehearsal has no
+   password to retain.
+4. Choose **Create administrator account**. Registration is available only
+   after the email confirmation and bootstrap-client retirement. Enter the
+   first IT administrator's email in the branded Bubllio Identity form. Open
+   Mailpit again, follow the verification email, create a password, and return
+   to `/setup` signed in. The installation secret is still required to claim
+   Core ownership. If setup has already been claimed and the browser is closed,
    reopen Core and choose **Continue setup** with the same administrator account.
-3. Enter the setup secret from the terminal, name the first organization, and
+5. Enter the setup secret from the terminal, name the first organization, and
    create it. Core records the operation before contacting Keycloak. Its status
    becomes **Awaiting owner** while Keycloak sends a membership invitation.
-4. Accept the second email invitation. Return to `/setup`, enter the same
+6. Accept the second email invitation. Return to `/setup`, enter the same
    secret again, and choose **Retry setup**. The same operation must finish;
    it must not create a second organization.
-5. Choose **Sign in to workspace** to obtain a fresh organization-bearing
+7. Choose **Sign in to workspace** to obtain a fresh organization-bearing
    token. The workspace should list the named organization. Its app list is
    empty until a deployment-manifest app is enabled and granted.
 
@@ -140,13 +150,20 @@ The imported local realm assigns the `organization` client scope to
 Core web. Core requests `organization:*` so a member of multiple organizations
 can see every authorized workspace in the switcher.
 
+This migration may be applied only to a fresh installation or an already
+terminal pre-alpha installation. It fails closed when an older setup is
+`CLAIMED`, provisioning, or needs attention, because that realm does not yet
+have a safely reconcilable email-bootstrap ceremony. Finish or reset the
+restricted rehearsal before upgrading; never edit the setup rows manually.
+
 ### Troubleshooting
 
 | Symptom | Check and recovery |
 | --- | --- |
 | `docker info` fails | Start Docker Desktop or the Docker daemon. If local setup configuration already exists, rerun with `--resume`. |
 | The bootstrap reports a bound port | Free port `8280`, `3200`, `5274`, or `8125`, then rerun with `--resume`. |
-| An email is missing | Check the isolated Mailpit at `127.0.0.1:8125` and the `keycloak` service health. |
+| The setup test email is missing | Check isolated Mailpit at `127.0.0.1:8125`, the `identity-setup-agent` health, and that the form uses host `mailpit`, port `1025`, no encryption, and no authentication. |
+| An identity verification email is missing | Confirm Email delivery is ready, then check Mailpit and the `keycloak` service health. |
 | Setup is unavailable | Check service health and the one-time secret. An expired secret can currently be reset only by destroying this disposable rehearsal. |
 | No applications appear after `READY` | Check the deployment application manifest, then enable the app and grant the member access in Core. |
 
@@ -158,8 +175,8 @@ docker compose --project-name bubllio-core-setup-rehearsal \
 ```
 
 `node scripts/bootstrap-local-setup.mjs --resume` retries local Keycloak
-configuration without generating or printing a second secret. It also enables
-browser registration in a rehearsal started before this UI flow was added.
+configuration without generating or printing a second secret. It preserves the
+closed-registration email ceremony rather than opening registration itself.
 If the 30-minute secret expires before setup finishes, reset
 **only this disposable rehearsal project** and start a new exercise; do not
 remove the ordinary development volumes:
@@ -179,6 +196,9 @@ local success.
 
 - **Temporary Keycloak bootstrap administrator** exists only long enough to
   establish named administrators and automation identities.
+- **Identity setup agent** receives a separate internal token and temporary
+  least-privilege Keycloak client. It writes the Keycloak SMTP vault slot and
+  retires its own client before account registration begins.
 - **Named Keycloak operator** manages the identity platform, uses an individual
   account and MFA, and is not automatically a Core product owner.
 - **Installation operator** controls the deployment and receives the one-time
@@ -210,7 +230,8 @@ Verify all of the following:
 
 ## Platform bootstrap
 
-The reference adapter now prepares secrets and imports a versioned realm
+The reference adapter now prepares distinct database, runtime,
+identity-bootstrap, setup-agent, and setup secrets and imports a versioned realm
 idempotently on an empty identity database. A production-approved bootstrap
 must additionally:
 
@@ -219,7 +240,8 @@ must additionally:
 3. install the organization mapper and Bubllio Keycloakify theme;
 4. enroll a named human operator through Keycloak verify-email and
    update-password required actions;
-5. create separate deployment-time and runtime machine clients;
+5. create separate temporary identity-bootstrap and permanent runtime machine
+   clients, with no realm mutation role on the runtime client;
 6. generate at least 256 random bits for a setup secret;
 7. persist only the secret digest and 30-minute expiry for Core; and
 8. display the raw secret once to the installation operator.
@@ -227,24 +249,28 @@ must additionally:
 The raw secret must be transferred out of band. Do not email it, paste it into a
 ticket/chat, place it in a URL, or add it to an environment example.
 
-After the named Keycloak operator signs in, enable MFA, verify recovery access,
-disable/delete the temporary bootstrap administrator, and remove its secret from
-the deployment specification. Confirm the old credentials fail.
+After the named Keycloak operator signs in, enable MFA and verify recovery
+access. The email ceremony must already have disabled the temporary
+identity-bootstrap client and proved that its credentials fail. Remove its
+secret from the active deployment specification only through the documented
+post-setup secret lifecycle; do not silently recreate the client on restart.
 
 ## Product setup
 
-1. Open the Core web application. It reads only the coarse setup-required state.
-2. Choose **Set up Bubllio** and authenticate through branded Keycloak pages.
-3. Complete email verification and required actions. The local realm supports
-   browser registration for suite users as well as the first owner. The
-   reference production realm contains the same capability only for closed
-   technical rehearsal; external registration remains blocked until SMTP,
-   privacy/terms, recovery, and abuse gates in
+1. Open the Core web application. It reads only the coarse setup-required and
+   email-delivery states and routes to `/setup` before identity login.
+2. Complete System check, then enter the SMTP transport, sender, test recipient,
+   and one-time setup secret in Email delivery. Confirm the six-digit code from
+   the real test message. Core retains no delivery input or recipient.
+3. Only after email reaches `READY`, choose **Create administrator account** and
+   complete verification and required actions on the branded Keycloak pages.
+   External registration remains blocked until provider, privacy/terms,
+   recovery, and abuse gates in
    [ADR 0010](../decisions/0010-general-browser-registration.md) are met.
 4. Return to `/setup`, enter the one-time setup secret, and review the immutable
    subject and verified email shown by the application.
 5. Enter the first organization display name. Core derives and reserves the
-   initial slug; the wizard does not request infrastructure or SMTP settings.
+   initial slug; SMTP is already a completed, separate setup stage.
 6. Review the consequence and choose **Create organization** once.
 7. Keep the status page open or return to it later. The durable operation shows
    Core organization, identity organization, owner membership, and token refresh

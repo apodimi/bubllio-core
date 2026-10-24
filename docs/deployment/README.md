@@ -6,11 +6,13 @@ deployment contract for UAT and Production.
 > **Current status:** the local foundation and isolated first-run rehearsal are
 > runnable. A canonical installation contract, digest-only reference Compose
 > adapter, production images, runtime secret adapters, system readiness, and a
-> GHCR release workflow are implemented. This is an internal technical-alpha
-> delivery slice, not an approved external or Production release: SMTP/email,
-> privacy/registration gates, shared rate limits, backup/restore proof, and a
-> clean public-host rehearsal remain blocking. Never deploy the development
-> Compose file or its demo realm outside a developer machine.
+> GHCR release workflow are implemented. The first-run UI now configures and
+> proves SMTP delivery through a temporary identity setup agent before opening
+> registration. This is still an internal technical-alpha delivery slice, not
+> an approved external or Production release: a reviewed real SMTP provider,
+> privacy/registration and abuse gates, shared rate limits, backup/restore
+> proof, and a clean public-host rehearsal remain blocking. Never deploy the
+> development Compose file or its demo realm outside a developer machine.
 
 The [Verify Core workflow](../../.github/workflows/verify.yml) runs production
 dependency audits, API tests and build, web format/build, the Keycloak theme
@@ -71,11 +73,21 @@ the raw secret in the contract, generated environment, or image. The operator
 must create the named external edge network and translate the adapter labels for
 their reverse proxy before starting the stack.
 
-Do not use this reference adapter for real users yet. The current production
-realm requires verified email but the installation contract does not configure
-or test SMTP, so first-administrator verification and owner invitations cannot
-complete. Open browser registration also remains behind the privacy, abuse, and
-recovery gates in ADR 0010.
+The installation contract includes an internal-only identity setup agent image,
+a Keycloak vault volume, an agent token, and a distinct temporary Keycloak
+bootstrap-client secret. Core can call the agent but cannot mount the vault or
+use the bootstrap client. Keycloak mounts the vault read-only; the agent is the
+only long-running service with write access. The agent and Keycloak share a
+restricted SMTP egress network so the setup test and later identity messages use
+the same network policy. Browser registration starts closed and opens only after
+the real test email's confirmation code is accepted and the agent proves that
+its bootstrap client can no longer obtain a token. See [ADR 0012](../decisions/0012-isolate-email-bootstrap-authority.md).
+
+Do not use this reference adapter for real users yet. The UI-managed technical
+path does not select or approve an SMTP processor, configure sender-domain
+deliverability, supply shared abuse controls, establish controller/processor
+roles, or approve a privacy notice. Open browser registration therefore remains
+behind the privacy, abuse, recovery, and human approval gates in ADR 0010.
 
 ## Environment model
 
@@ -236,16 +248,26 @@ Implemented release artifacts:
    `apps/api/Dockerfile.production`.
 2. A non-root static Core web image whose public endpoints are injected through
    `/runtime-config.js` when the container starts.
-3. An optimized Keycloak image pinned by digest and containing the versioned
+3. A non-root, internal-only identity setup agent image built from the API
+   package but started through its own Nest entrypoint.
+4. An optimized Keycloak image pinned by digest, containing the versioned
    Bubllio Keycloakify provider JAR.
-4. Versioned secret-free realm/client and application-manifest inputs.
-5. A release manifest recording the Git SHA and immutable image digests, plus
+5. Versioned secret-free realm/client and application-manifest inputs, plus a
+   Keycloak file-vault volume that only the setup agent can write.
+6. A release manifest recording the Git SHA and immutable image digests, plus
    per-image provenance and SBOM output.
 
-Still required before promotion: reviewed SMTP provisioning, least-privilege
-identity bootstrap evidence, migration rollback and backup/restore rehearsal,
-privacy/registration approval, rate limiting, monitoring, and a clean-host UAT
-run using the exact published digests.
+Still required before promotion: a reviewed real SMTP provider and
+sender-domain/deliverability evidence, live least-privilege identity-bootstrap
+retirement evidence, migration rollback and backup/restore rehearsal,
+privacy/registration approval, shared rate limiting, monitoring, and a
+clean-host UAT run using the exact published digests.
+
+The email migration supports either a fresh `NOT_STARTED` installation or a
+previously terminal `READY` pre-alpha installation. It deliberately aborts when
+an older installation is mid-claim or mid-provisioning; finish or reset that
+restricted rehearsal before upgrading. A grandfathered `READY` marker preserves
+upgrade continuity but is not evidence that SMTP was retested under this flow.
 
 The Keycloak image should run `kc.sh build --db=postgres` while building and
 `kc.sh start --optimized` at runtime. `start-dev` has insecure defaults and is
@@ -380,7 +402,8 @@ as an ordinary application rollback.
 | Value | Source of truth |
 | --- | --- |
 | Non-secret defaults | Version-controlled deployment configuration |
-| Passwords, client secrets, SMTP credentials | Environment secret manager |
+| Database, runtime, bootstrap, and agent credentials | Environment secret manager |
+| UI-supplied authenticated SMTP password | Keycloak file-vault volume written only by the temporary setup authority |
 | Public issuer and redirect URIs | Environment configuration plus reviewed realm automation |
 | Keycloak realm/client structure | Versioned idempotent provisioning |
 | User, session, and credential data | Keycloak PostgreSQL database |
@@ -388,16 +411,20 @@ as an ordinary application rollback.
 
 ## Production-readiness blockers
 
-The following must exist before the first UAT deployment:
+The following still blocks promotion beyond restricted technical UAT:
 
-- production `apps/api` scaffold;
-- optimized Keycloak Containerfile with the Bubllio theme;
-- UAT/Production orchestration manifests;
-- secret-manager integration;
-- idempotent realm provisioning without demo identities;
-- CI build, scan, signing, registry publication, and promotion workflow;
-- database backup/restore automation and operational runbooks;
-- environment-specific DNS, TLS, monitoring, and alerting.
+- a reviewed SMTP provider, DPA/subprocessor and transfer decision, approved
+  sender domain, and bounce/complaint recovery;
+- shared setup and registration abuse controls suitable for horizontal scale;
+- an approved privacy notice, controller/processor allocation, retention,
+  DSAR, deletion, offboarding, and incident procedures;
+- CI vulnerability scanning/signing policy and registry promotion approval;
+- database and Keycloak-vault backup/restore automation with recorded restore
+  evidence;
+- a clean-host rehearsal using exact published digests that proves bootstrap
+  retirement, password reset, invitation delivery, restart, and rollback; and
+- environment-specific DNS, TLS, resource limits, monitoring, alerting, SLO,
+  RTO, and RPO decisions.
 
 ## References
 

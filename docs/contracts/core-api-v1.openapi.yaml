@@ -15,6 +15,8 @@ tags:
     description: Sanitized liveness, readiness, and first-run preflight state
   - name: Setup
     description: One-time installation claim and first organization provisioning
+  - name: Email setup
+    description: Pre-account email-delivery proof through temporary bootstrap authority
 paths:
   /health/live:
     get:
@@ -89,6 +91,104 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SetupStatus"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/email/status:
+    get:
+      operationId: getEmailDeliverySetupStatus
+      tags: [Email setup]
+      summary: Read the non-sensitive email-delivery setup state
+      security: []
+      responses:
+        "200":
+          description: Durable state without SMTP fields, recipient, or credentials
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailDeliveryStatus"
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/email/test:
+    post:
+      operationId: testEmailDelivery
+      tags: [Email setup]
+      summary: Send a confirmation code through the proposed email transport
+      security:
+        - setupSecret: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailDeliveryTest"
+      responses:
+        "200":
+          description: The test message was accepted and awaits its confirmation code
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailDeliveryTestSent"
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
+        "409":
+          $ref: "#/components/responses/SetupConflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/email/confirm:
+    post:
+      operationId: confirmEmailDelivery
+      tags: [Email setup]
+      summary: Confirm delivery and retire the temporary identity authority
+      security:
+        - setupSecret: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          description: Email delivery is ready and account registration may begin
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
+        "409":
+          $ref: "#/components/responses/SetupConflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
   /api/v1/setup/claim:
@@ -391,6 +491,108 @@ components:
           type: string
           enum: [new, in_progress, ready]
           description: Coarse public installation phase; no owner identity or operation details
+    EmailDeliveryStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [required, awaiting_confirmation, ready, attention]
+        safeErrorCode:
+          $ref: "#/components/schemas/EmailDeliveryErrorCode"
+        confirmationRetryable:
+          type: boolean
+          description: Present for attention state; retry the existing code when true
+      allOf:
+        - if:
+            properties:
+              status: { const: attention }
+          then:
+            required: [safeErrorCode, confirmationRetryable]
+    EmailDeliveryTest:
+      type: object
+      additionalProperties: false
+      required:
+        - senderName
+        - senderEmail
+        - host
+        - port
+        - security
+        - authentication
+        - testRecipient
+      properties:
+        senderName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        senderEmail:
+          type: string
+          format: email
+          maxLength: 254
+        replyToEmail:
+          type: string
+          format: email
+          maxLength: 254
+        host:
+          type: string
+          maxLength: 253
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        security:
+          type: string
+          enum: [starttls, tls, none]
+          description: Production rejects none; private local relays require explicit policy
+        authentication:
+          type: boolean
+        username:
+          type: string
+          minLength: 1
+          maxLength: 320
+        password:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+        testRecipient:
+          type: string
+          format: email
+          maxLength: 254
+          writeOnly: true
+      allOf:
+        - if:
+            properties:
+              authentication: { const: true }
+          then:
+            required: [username, password]
+          else:
+            not:
+              anyOf:
+                - required: [username]
+                - required: [password]
+    EmailDeliveryTestSent:
+      type: object
+      additionalProperties: false
+      required: [status, maskedRecipient]
+      properties:
+        status:
+          type: string
+          const: awaiting_confirmation
+        maskedRecipient:
+          type: string
+          description: Transient display hint returned only by this response
+    EmailDeliveryErrorCode:
+      type: string
+      enum:
+        - EMAIL_DELIVERY_UNAVAILABLE
+        - EMAIL_DELIVERY_AUTHENTICATION_FAILED
+        - EMAIL_DELIVERY_TLS_FAILED
+        - EMAIL_DELIVERY_REJECTED
+        - EMAIL_CONFIRMATION_EXPIRED
+        - EMAIL_CONFIRMATION_INVALID
+        - IDENTITY_ACTIVATION_FAILED
     SetupClaim:
       type: object
       additionalProperties: false

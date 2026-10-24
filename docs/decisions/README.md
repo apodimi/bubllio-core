@@ -20,3 +20,4 @@ Decision status meanings:
 | [0009](0009-central-application-access.md)             | Accepted | Centralize per-member application access in Core  |
 | [0010](0010-general-browser-registration.md)           | Proposed | Allow permanent verified browser identity signup  |
 | [0011](0011-portable-delivery-and-ui-first-setup.md)   | Accepted | Keep delivery portable and setup UI-first         |
+| [0012](0012-isolate-email-bootstrap-authority.md)      | Accepted | Isolate temporary email bootstrap authority       |
