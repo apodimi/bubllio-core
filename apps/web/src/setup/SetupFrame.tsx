@@ -26,6 +26,7 @@ interface SetupFrameProps {
     label: string;
     steps: readonly string[];
     statuses: { complete: string; current: string; upcoming: string };
+    stepOf: (current: number, total: number) => string;
   };
   signOutLabel: string;
   children: ReactNode;
@@ -125,6 +126,7 @@ export function SetupFrame({
               labels={progress.steps}
               progressLabel={progress.label}
               statusLabels={progress.statuses}
+              stepOf={progress.stepOf}
             />
             {children}
           </Stack>

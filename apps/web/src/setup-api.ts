@@ -28,6 +28,49 @@ export interface SetupStatus {
   phase: "new" | "in_progress" | "ready";
 }
 
+export type EmailDeliverySecurity = "starttls" | "tls" | "none";
+
+export type EmailDeliverySafeErrorCode =
+  | "EMAIL_DELIVERY_UNAVAILABLE"
+  | "EMAIL_DELIVERY_AUTHENTICATION_FAILED"
+  | "EMAIL_DELIVERY_TLS_FAILED"
+  | "EMAIL_DELIVERY_REJECTED"
+  | "EMAIL_CONFIRMATION_EXPIRED"
+  | "EMAIL_CONFIRMATION_INVALID"
+  | "IDENTITY_ACTIVATION_FAILED";
+
+export interface EmailDeliverySettings {
+  senderName: string;
+  senderEmail: string;
+  replyToEmail?: string;
+  host: string;
+  port: number;
+  security: EmailDeliverySecurity;
+  authentication: boolean;
+  username?: string;
+  password?: string;
+  testRecipient: string;
+}
+
+export type EmailDeliveryStatus =
+  | { status: "required" }
+  | { status: "awaiting_confirmation" }
+  | {
+      status: "ready";
+      testedAt?: string;
+      configuredAt?: string;
+    }
+  | {
+      status: "attention";
+      safeErrorCode: EmailDeliverySafeErrorCode;
+      confirmationRetryable: boolean;
+    };
+
+export interface EmailDeliveryTestResult {
+  status: "awaiting_confirmation";
+  maskedRecipient: string;
+}
+
 export type SystemCheckKey =
   "database" | "identity" | "migrations" | "applications";
 
@@ -45,6 +88,16 @@ const systemCheckKeys = new Set<SystemCheckKey>([
   "identity",
   "migrations",
   "applications",
+]);
+
+const emailDeliverySafeErrorCodes = new Set<EmailDeliverySafeErrorCode>([
+  "EMAIL_DELIVERY_UNAVAILABLE",
+  "EMAIL_DELIVERY_AUTHENTICATION_FAILED",
+  "EMAIL_DELIVERY_TLS_FAILED",
+  "EMAIL_DELIVERY_REJECTED",
+  "EMAIL_CONFIRMATION_EXPIRED",
+  "EMAIL_CONFIRMATION_INVALID",
+  "IDENTITY_ACTIVATION_FAILED",
 ]);
 
 export async function systemPreflight(
@@ -124,11 +177,134 @@ export async function setupStatus(signal?: AbortSignal): Promise<SetupStatus> {
   return { setupRequired, phase };
 }
 
+export async function emailDeliveryStatus(
+  signal?: AbortSignal,
+): Promise<EmailDeliveryStatus> {
+  return parseEmailDeliveryStatus(
+    await request<unknown>("/api/v1/setup/email/status", undefined, { signal }),
+  );
+}
+
+export async function testEmailDelivery(
+  settings: EmailDeliverySettings,
+  setupSecret: string,
+  idempotencyKey: string,
+): Promise<EmailDeliveryTestResult> {
+  const value = await request<unknown>("/api/v1/setup/email/test", undefined, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": idempotencyKey,
+      "X-Bubllio-Setup-Secret": setupSecret,
+    },
+    body: JSON.stringify(settings),
+  });
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+  }
+  const status = Reflect.get(value, "status");
+  const maskedRecipient = Reflect.get(value, "maskedRecipient");
+  if (
+    !hasOnlyKeys(value, ["status", "maskedRecipient"]) ||
+    status !== "awaiting_confirmation" ||
+    typeof maskedRecipient !== "string" ||
+    !maskedRecipient
+  ) {
+    throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+  }
+  return { status, maskedRecipient };
+}
+
+export async function confirmEmailDelivery(
+  confirmationCode: string,
+  setupSecret: string,
+  idempotencyKey: string,
+): Promise<Extract<EmailDeliveryStatus, { status: "ready" }>> {
+  const status = parseEmailDeliveryStatus(
+    await request<unknown>("/api/v1/setup/email/confirm", undefined, {
+      method: "POST",
+      headers: {
+        "Idempotency-Key": idempotencyKey,
+        "X-Bubllio-Setup-Secret": setupSecret,
+      },
+      body: JSON.stringify({ code: confirmationCode }),
+    }),
+  );
+  if (status.status !== "ready") {
+    throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+  }
+  return status;
+}
+
 export async function currentSetup(
   keycloak: Keycloak,
   signal?: AbortSignal,
 ): Promise<CurrentSetup> {
   return request("/api/v1/setup/current", keycloak, { signal });
+}
+
+function parseEmailDeliveryStatus(value: unknown): EmailDeliveryStatus {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+  }
+  const status = Reflect.get(value, "status");
+  if (status === "required") {
+    if (!hasOnlyKeys(value, ["status"]))
+      throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+    return { status };
+  }
+  if (status === "awaiting_confirmation") {
+    if (!hasOnlyKeys(value, ["status"]))
+      throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+    return { status };
+  }
+  if (status === "ready") {
+    if (!hasOnlyKeys(value, ["status", "testedAt", "configuredAt"]))
+      throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+    const testedAt = Reflect.get(value, "testedAt");
+    const configuredAt = Reflect.get(value, "configuredAt");
+    if (
+      (testedAt !== undefined &&
+        (typeof testedAt !== "string" ||
+          !Number.isFinite(Date.parse(testedAt)))) ||
+      (configuredAt !== undefined &&
+        (typeof configuredAt !== "string" ||
+          !Number.isFinite(Date.parse(configuredAt))))
+    ) {
+      throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+    }
+    return {
+      status,
+      ...(testedAt === undefined ? {} : { testedAt }),
+      ...(configuredAt === undefined ? {} : { configuredAt }),
+    };
+  }
+  if (status === "attention") {
+    if (
+      !hasOnlyKeys(value, ["status", "safeErrorCode", "confirmationRetryable"])
+    )
+      throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+    const safeErrorCode = Reflect.get(value, "safeErrorCode");
+    const confirmationRetryable = Reflect.get(value, "confirmationRetryable");
+    if (
+      typeof safeErrorCode !== "string" ||
+      typeof confirmationRetryable !== "boolean" ||
+      !emailDeliverySafeErrorCodes.has(
+        safeErrorCode as EmailDeliverySafeErrorCode,
+      )
+    ) {
+      throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+    }
+    return {
+      status,
+      safeErrorCode: safeErrorCode as EmailDeliverySafeErrorCode,
+      confirmationRetryable,
+    };
+  }
+  throw new Error("EMAIL_DELIVERY_STATUS_INVALID");
+}
+
+function hasOnlyKeys(value: object, allowed: readonly string[]): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key));
 }
 
 export async function claimSetup(

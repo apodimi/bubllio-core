@@ -4,6 +4,7 @@ import { Alert, Button } from "@mui/material";
 import type { setupCopy, SetupLocale } from "../setup-copy";
 import type { SetupStep } from "./setup-flow.reducer";
 import { SetupFrame } from "./SetupFrame";
+import { EmailDeliveryStep } from "./EmailDeliveryStep";
 import { PreflightStep } from "./PreflightStep";
 import { AccountStep, OrganizationStep } from "./SetupFormSteps";
 import { LoadingStep, OperationStep, WorkspaceStep } from "./SetupOutcomeSteps";
@@ -28,6 +29,7 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
         label: copy.progressLabel,
         steps: copy.railSteps,
         statuses: copy.stepStatus,
+        stepOf: copy.stepOf,
       }}
       signOutLabel={copy.signOut}
     >
@@ -45,6 +47,9 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
           onRetry={() => void preflightQuery.refetch()}
           onContinue={flow.continueFromPreflight}
         />
+      )}
+      {state.step === "email" && (
+        <EmailDeliveryStep copy={copy} onReady={flow.continueAfterEmail} />
       )}
       {state.step === "loading" && <LoadingStep label={copy.loading} />}
       {state.step === "unavailable" && (
@@ -103,10 +108,11 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
 function activeStage(step: SetupStep, totalStages: number): number {
   if (step === "preflight" || step === "loading" || step === "unavailable")
     return 0;
-  if (step === "intro" || step === "resume" || step === "taken") return 1;
-  if (step === "secret") return 2;
-  if (step === "organization") return 3;
-  if (step === "progress") return 4;
+  if (step === "email") return 1;
+  if (step === "intro" || step === "resume" || step === "taken") return 2;
+  if (step === "secret") return 3;
+  if (step === "organization") return 4;
+  if (step === "progress") return 5;
   return totalStages;
 }
 
@@ -117,6 +123,7 @@ function pageContent(
 ): { title: string; body: string } {
   if (step === "preflight")
     return { title: copy.preflightTitle, body: copy.preflightBody };
+  if (step === "email") return { title: copy.emailTitle, body: copy.emailBody };
   if (step === "intro") return { title: copy.beginTitle, body: copy.beginBody };
   if (step === "resume")
     return { title: copy.resumeTitle, body: copy.resumeBody };

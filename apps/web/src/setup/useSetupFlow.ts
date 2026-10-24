@@ -1,4 +1,10 @@
-import { useEffect, useReducer, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useReducer,
+  useState,
+  type FormEvent,
+} from "react";
 import type Keycloak from "keycloak-js";
 
 import { setupCopy, type SetupLocale } from "../setup-copy";
@@ -6,6 +12,7 @@ import {
   useClaimSetup,
   useCreateFirstOrganization,
   useCurrentSetup,
+  useEmailDeliveryStatus,
   useRetrySetupOperation,
   useSetupOperation,
   useSetupStatus,
@@ -26,6 +33,7 @@ export function useSetupFlow(keycloak: Keycloak) {
   const [organizationKey] = useState(() => crypto.randomUUID());
   const copy = setupCopy[locale];
   const preflightQuery = useSystemPreflight();
+  const emailDeliveryQuery = useEmailDeliveryStatus();
   const statusQuery = useSetupStatus();
   const currentQuery = useCurrentSetup(keycloak);
   const operationQuery = useSetupOperation(keycloak, state.operation?.id);
@@ -41,11 +49,21 @@ export function useSetupFlow(keycloak: Keycloak) {
     if (
       state.step === "preflight" &&
       keycloak.authenticated &&
-      preflightQuery.data?.status === "ready"
+      preflightQuery.data?.status === "ready" &&
+      (emailDeliveryQuery.data || emailDeliveryQuery.isError)
     ) {
-      dispatch({ type: "set-step", step: "loading" });
+      dispatch({
+        type: "set-step",
+        step: emailDeliveryQuery.data?.status === "ready" ? "loading" : "email",
+      });
     }
-  }, [keycloak.authenticated, preflightQuery.data?.status, state.step]);
+  }, [
+    emailDeliveryQuery.data,
+    emailDeliveryQuery.isError,
+    keycloak.authenticated,
+    preflightQuery.data?.status,
+    state.step,
+  ]);
 
   useEffect(() => {
     if (state.step !== "loading") return;
@@ -178,14 +196,24 @@ export function useSetupFlow(keycloak: Keycloak) {
     }
   }
 
+  const continueAfterEmail = useCallback(
+    () => dispatch({ type: "set-step", step: "loading" }),
+    [],
+  );
+
   return {
     state,
     locale,
     setLocale,
     copy,
     preflightQuery,
+    emailDeliveryQuery,
     continueFromPreflight: () =>
-      dispatch({ type: "set-step", step: "loading" }),
+      dispatch({
+        type: "set-step",
+        step: emailDeliveryQuery.data?.status === "ready" ? "loading" : "email",
+      }),
+    continueAfterEmail,
     setStep: (step: SetupStep) => dispatch({ type: "set-step", step }),
     setSecret: (value: string) => dispatch({ type: "set-secret", value }),
     setOrganizationName: (value: string) =>

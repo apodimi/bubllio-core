@@ -3,23 +3,76 @@ import type Keycloak from "keycloak-js";
 
 import {
   claimSetup,
+  confirmEmailDelivery,
   createFirstOrganization,
   currentSetup,
+  emailDeliveryStatus,
   readSetupOperation,
   retrySetupOperation,
   setupStatus,
   systemPreflight,
+  testEmailDelivery,
+  type EmailDeliverySettings,
+  type EmailDeliveryStatus,
   type SetupOperation,
 } from "./setup-api";
 
 export const setupKeys = {
   preflight: ["system", "preflight"] as const,
+  email: ["setup", "email"] as const,
   status: ["setup", "status"] as const,
   current: (subject: string | undefined) =>
     ["setup", subject, "current"] as const,
   operation: (subject: string | undefined, id: string) =>
     ["setup", subject, "operation", id] as const,
 };
+
+export function useEmailDeliveryStatus() {
+  return useQuery({
+    queryKey: setupKeys.email,
+    queryFn: ({ signal }) => emailDeliveryStatus(signal),
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+export function useTestEmailDelivery() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      settings,
+      setupSecret,
+      idempotencyKey,
+    }: {
+      settings: EmailDeliverySettings;
+      setupSecret: string;
+      idempotencyKey: string;
+    }) => testEmailDelivery(settings, setupSecret, idempotencyKey),
+    onSuccess: (result) => {
+      queryClient.setQueryData(setupKeys.email, {
+        status: result.status,
+      } as EmailDeliveryStatus);
+    },
+  });
+}
+
+export function useConfirmEmailDelivery() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      confirmationCode,
+      setupSecret,
+      idempotencyKey,
+    }: {
+      confirmationCode: string;
+      setupSecret: string;
+      idempotencyKey: string;
+    }) => confirmEmailDelivery(confirmationCode, setupSecret, idempotencyKey),
+    onSuccess: (status: EmailDeliveryStatus) => {
+      queryClient.setQueryData(setupKeys.email, status);
+    },
+  });
+}
 
 export function useSystemPreflight() {
   return useQuery({

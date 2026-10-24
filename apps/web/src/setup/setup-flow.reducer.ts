@@ -2,6 +2,7 @@ import type { SetupOperation } from "../setup-api";
 
 export type SetupStep =
   | "preflight"
+  | "email"
   | "loading"
   | "unavailable"
   | "intro"

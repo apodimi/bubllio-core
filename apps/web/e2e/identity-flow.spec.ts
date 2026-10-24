@@ -24,6 +24,219 @@ test.beforeEach(async ({ page }) => {
       json: { status: "ready", checks: readySystemChecks },
     }),
   );
+  await page.route("**/api/v1/setup/email/status", (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        status: "ready",
+        testedAt: "2026-10-24T18:00:00.000Z",
+        configuredAt: "2026-10-24T18:01:00.000Z",
+      },
+    }),
+  );
+});
+
+test("email delivery is tested and confirmed before account creation", async ({
+  page,
+}) => {
+  await page.unroute("**/api/v1/setup/email/status");
+  let emailStatus: "required" | "awaiting_confirmation" | "ready" = "required";
+  await page.route("**/api/v1/setup/email/status", (route) =>
+    route.fulfill({ json: { status: emailStatus } }),
+  );
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+  let testRequest: { body?: string; secret?: string } = {};
+  await page.route("**/api/v1/setup/email/test", async (route) => {
+    testRequest = {
+      body: route.request().postData() ?? undefined,
+      secret: route.request().headers()["x-bubllio-setup-secret"],
+    };
+    emailStatus = "awaiting_confirmation";
+    await route.fulfill({
+      status: 200,
+      json: {
+        status: "awaiting_confirmation",
+        maskedRecipient: "o•••@example.test",
+      },
+    });
+  });
+  let confirmationBody = "";
+  const confirmationKeys: string[] = [];
+  await page.route("**/api/v1/setup/email/confirm", async (route) => {
+    confirmationBody = route.request().postData() ?? "";
+    confirmationKeys.push(route.request().headers()["idempotency-key"] ?? "");
+    if (confirmationKeys.length === 1) {
+      await route.fulfill({
+        status: 422,
+        json: { code: "EMAIL_CONFIRMATION_INVALID" },
+      });
+      return;
+    }
+    emailStatus = "ready";
+    await route.fulfill({
+      status: 200,
+      json: {
+        status: "ready",
+        testedAt: "2026-10-24T18:00:00.000Z",
+        configuredAt: "2026-10-24T18:01:00.000Z",
+      },
+    });
+  });
+
+  await page.goto("/setup");
+  await continuePastSystemCheck(page);
+  await expect(
+    page.getByRole("heading", { name: "Set up email delivery" }),
+  ).toBeVisible();
+  await page.getByLabel("Sender email").fill("hello@example.test");
+  await page.getByLabel("SMTP host").fill("smtp.example.test");
+  await page.getByLabel("Username").fill("mailer");
+  await page.getByLabel("Password").fill("smtp-password-not-persisted");
+  await page.getByLabel("Send the test to").fill("owner@example.test");
+  await page
+    .getByLabel("One-time setup secret")
+    .fill("test-only-setup-secret-with-sufficient-length");
+  await page.getByRole("button", { name: "Send test email" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Enter the confirmation code" }),
+  ).toBeVisible();
+  await expect(page.getByText("o•••@example.test")).toBeVisible();
+  expect(JSON.parse(testRequest.body ?? "{}")).toMatchObject({
+    senderName: "Bubllio",
+    senderEmail: "hello@example.test",
+    host: "smtp.example.test",
+    port: 587,
+    security: "starttls",
+    username: "mailer",
+    password: "smtp-password-not-persisted",
+    testRecipient: "owner@example.test",
+  });
+  expect(testRequest.secret).toBe(
+    "test-only-setup-secret-with-sufficient-length",
+  );
+  await expect(page.getByLabel("One-time setup secret")).toHaveValue("");
+
+  await page.getByLabel("Confirmation code").fill("482913");
+  await page
+    .getByLabel("One-time setup secret")
+    .fill("test-only-setup-secret-with-sufficient-length");
+  await page.getByRole("button", { name: "Confirm email delivery" }).click();
+  await expect(
+    page.getByText(
+      "That confirmation code is not valid or has expired. Send another test if needed.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel("Confirmation code")).toHaveValue("");
+  await expect(page.getByLabel("One-time setup secret")).toHaveValue("");
+
+  await page.getByLabel("Confirmation code").fill("482913");
+  await page
+    .getByLabel("One-time setup secret")
+    .fill("test-only-setup-secret-with-sufficient-length");
+  await page.getByRole("button", { name: "Confirm email delivery" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Create the administrator account" }),
+  ).toBeVisible();
+  expect(JSON.parse(confirmationBody)).toEqual({ code: "482913" });
+  expect(confirmationKeys).toHaveLength(2);
+  expect(confirmationKeys[1]).not.toBe(confirmationKeys[0]);
+  expect(page.url()).not.toContain("smtp-password");
+  expect(
+    await page.evaluate(() => localStorage.length + sessionStorage.length),
+  ).toBe(0);
+});
+
+test("email errors are safe and clear secrets without clearing settings", async ({
+  page,
+}) => {
+  await page.unroute("**/api/v1/setup/email/status");
+  await page.route("**/api/v1/setup/email/status", (route) =>
+    route.fulfill({ json: { status: "required" } }),
+  );
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+  const idempotencyKeys: string[] = [];
+  await page.route("**/api/v1/setup/email/test", (route) => {
+    idempotencyKeys.push(route.request().headers()["idempotency-key"] ?? "");
+    return route.fulfill({
+      status: 422,
+      json: {
+        code: "EMAIL_DELIVERY_AUTHENTICATION_FAILED",
+        message: "provider said password=raw-secret",
+      },
+    });
+  });
+
+  await page.goto("/setup");
+  await continuePastSystemCheck(page);
+  await page.getByLabel("Sender email").fill("hello@example.test");
+  await page.getByLabel("SMTP host").fill("smtp.example.test");
+  await page.getByLabel("Username").fill("mailer");
+  await page.getByLabel("Password").fill("smtp-password-not-persisted");
+  await page.getByLabel("Send the test to").fill("owner@example.test");
+  await page
+    .getByLabel("One-time setup secret")
+    .fill("test-only-setup-secret-with-sufficient-length");
+  await page.getByRole("button", { name: "Send test email" }).click();
+
+  await expect(
+    page.getByText("The email server rejected the credentials.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("raw-secret")).toHaveCount(0);
+  await expect(page.getByLabel("SMTP host")).toHaveValue("smtp.example.test");
+  await expect(page.getByLabel("Username")).toHaveValue("mailer");
+  await expect(page.getByLabel("Password")).toHaveValue("");
+  await expect(page.getByLabel("One-time setup secret")).toHaveValue("");
+
+  await page.getByLabel("Password").fill("second-secret");
+  await page
+    .getByLabel("One-time setup secret")
+    .fill("second-test-only-setup-secret-with-sufficient-length");
+  await page.getByRole("button", { name: "Send test email" }).click();
+  await expect.poll(() => idempotencyKeys.length).toBe(2);
+  expect(idempotencyKeys[0]).toBeTruthy();
+  expect(idempotencyKeys[1]).toBeTruthy();
+  expect(idempotencyKeys[1]).not.toBe(idempotencyKeys[0]);
+});
+
+test("email confirmation recovery resumes safely after reload in Greek on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.unroute("**/api/v1/setup/email/status");
+  await page.route("**/api/v1/setup/email/status", (route) =>
+    route.fulfill({
+      json: {
+        status: "attention",
+        safeErrorCode: "IDENTITY_ACTIVATION_FAILED",
+        confirmationRetryable: true,
+      },
+    }),
+  );
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+
+  await page.goto("/setup");
+  await continuePastSystemCheck(page);
+  await page.getByRole("button", { name: "Ελληνικά" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Βάλε τον κωδικό επιβεβαίωσης" }),
+  ).toBeVisible();
+  await expect(page.getByText("Βήμα 2 από 6")).toBeVisible();
+  await expect(page.getByText("τη διεύθυνση δοκιμής σου")).toBeVisible();
+  const hasHorizontalOverflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
 });
 
 test("user signs in, sees the Core workspace, and signs out", async ({

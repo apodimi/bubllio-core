@@ -5,11 +5,13 @@ export const setupCopy = {
     progressLabel: "Setup progress",
     railSteps: [
       "System check",
-      "Your account",
+      "Email delivery",
+      "Administrator",
       "Installation access",
       "Organization",
       "Activate workspace",
     ],
+    stepOf: (current: number, total: number) => `Step ${current} of ${total}`,
     stepStatus: {
       complete: "Complete",
       current: "Current step",
@@ -36,6 +38,50 @@ export const setupCopy = {
       migrations: "System version",
       applications: "Application catalog",
     },
+    emailTitle: "Set up email delivery",
+    emailBody:
+      "Bubllio uses email to verify accounts, send invitations, and recover access. Test delivery before creating the administrator.",
+    emailLoading: "Checking email delivery…",
+    emailSenderName: "Sender name",
+    emailSenderEmail: "Sender email",
+    emailReplyTo: "Reply-to email (optional)",
+    emailHost: "SMTP host",
+    emailPort: "Port",
+    emailSecurity: "Connection security",
+    emailSecurityStarttls: "STARTTLS (recommended)",
+    emailSecurityTls: "TLS",
+    emailSecurityNone: "None",
+    emailInsecureWarning:
+      "Unencrypted email delivery is only appropriate for an isolated local environment.",
+    emailAuthentication: "The server requires authentication",
+    emailUsername: "Username",
+    emailPassword: "Password",
+    emailTestRecipient: "Send the test to",
+    emailSetupSecret: "One-time setup secret",
+    emailAdvanced: "Advanced settings",
+    emailSendTest: "Send test email",
+    emailSendingTest: "Sending a secure test…",
+    emailTestSent: "Enter the confirmation code",
+    emailTestSentBody:
+      "A six-digit code was sent to {recipient}. Enter it below to prove that email delivery works.",
+    emailRecipientHidden: "your test address",
+    emailConfirmationCode: "Confirmation code",
+    emailConfirm: "Confirm email delivery",
+    emailConfirming: "Confirming…",
+    emailSendAgain: "Send another test",
+    emailConnectionFailed:
+      "The email server could not be reached. Check its address, port, and firewall.",
+    emailAuthenticationFailed:
+      "The email server rejected the credentials. Enter the password again and retry.",
+    emailTlsFailed:
+      "A secure connection could not be established. Check the connection security setting.",
+    emailSenderRejected: "The email server did not accept this sender address.",
+    emailCodeInvalid:
+      "That confirmation code is not valid or has expired. Send another test if needed.",
+    emailIdentityActivationFailed:
+      "Email was confirmed, but the account service could not activate it. Check the service and retry the same confirmation.",
+    emailUnavailable:
+      "Email delivery could not be configured. Check the settings and try again.",
     signOut: "Sign out",
     unavailableTitle: "Setup could not load",
     unavailableHelp: "Confirm that Bubllio is available, then try again.",
@@ -106,11 +152,13 @@ export const setupCopy = {
     progressLabel: "Πρόοδος εγκατάστασης",
     railSteps: [
       "Έλεγχος συστήματος",
-      "Ο λογαριασμός σου",
+      "Αποστολή email",
+      "Διαχειριστής",
       "Πρόσβαση εγκατάστασης",
       "Οργανισμός",
       "Ενεργοποίηση workspace",
     ],
+    stepOf: (current: number, total: number) => `Βήμα ${current} από ${total}`,
     stepStatus: {
       complete: "Ολοκληρώθηκε",
       current: "Τώρα",
@@ -137,6 +185,51 @@ export const setupCopy = {
       migrations: "Έκδοση συστήματος",
       applications: "Κατάλογος εφαρμογών",
     },
+    emailTitle: "Ρύθμισε την αποστολή email",
+    emailBody:
+      "Το Bubllio χρησιμοποιεί email για επαλήθευση λογαριασμών, προσκλήσεις και ανάκτηση πρόσβασης. Δοκίμασε την αποστολή πριν δημιουργήσεις τον διαχειριστή.",
+    emailLoading: "Έλεγχος αποστολής email…",
+    emailSenderName: "Όνομα αποστολέα",
+    emailSenderEmail: "Email αποστολέα",
+    emailReplyTo: "Email απάντησης (προαιρετικό)",
+    emailHost: "SMTP host",
+    emailPort: "Θύρα",
+    emailSecurity: "Ασφάλεια σύνδεσης",
+    emailSecurityStarttls: "STARTTLS (προτείνεται)",
+    emailSecurityTls: "TLS",
+    emailSecurityNone: "Χωρίς κρυπτογράφηση",
+    emailInsecureWarning:
+      "Η αποστολή χωρίς κρυπτογράφηση είναι κατάλληλη μόνο για απομονωμένο τοπικό περιβάλλον.",
+    emailAuthentication: "Ο server απαιτεί ταυτοποίηση",
+    emailUsername: "Όνομα χρήστη",
+    emailPassword: "Κωδικός πρόσβασης",
+    emailTestRecipient: "Αποστολή δοκιμής στο",
+    emailSetupSecret: "Μυστικό εγκατάστασης",
+    emailAdvanced: "Προχωρημένες ρυθμίσεις",
+    emailSendTest: "Αποστολή δοκιμαστικού email",
+    emailSendingTest: "Στέλνεται ασφαλές δοκιμαστικό…",
+    emailTestSent: "Βάλε τον κωδικό επιβεβαίωσης",
+    emailTestSentBody:
+      "Στάλθηκε εξαψήφιος κωδικός στο {recipient}. Βάλ' τον παρακάτω για να επιβεβαιώσεις ότι η αποστολή email λειτουργεί.",
+    emailRecipientHidden: "τη διεύθυνση δοκιμής σου",
+    emailConfirmationCode: "Κωδικός επιβεβαίωσης",
+    emailConfirm: "Επιβεβαίωση αποστολής email",
+    emailConfirming: "Γίνεται επιβεβαίωση…",
+    emailSendAgain: "Νέα δοκιμή",
+    emailConnectionFailed:
+      "Δεν ήταν δυνατή η σύνδεση με τον email server. Έλεγξε τη διεύθυνση, τη θύρα και το firewall.",
+    emailAuthenticationFailed:
+      "Ο email server απέρριψε τα στοιχεία σύνδεσης. Βάλε ξανά τον κωδικό και δοκίμασε.",
+    emailTlsFailed:
+      "Δεν ήταν δυνατή η ασφαλής σύνδεση. Έλεγξε τη ρύθμιση ασφάλειας σύνδεσης.",
+    emailSenderRejected:
+      "Ο email server δεν αποδέχτηκε αυτή τη διεύθυνση αποστολέα.",
+    emailCodeInvalid:
+      "Ο κωδικός επιβεβαίωσης δεν είναι έγκυρος ή έχει λήξει. Στείλε νέα δοκιμή αν χρειάζεται.",
+    emailIdentityActivationFailed:
+      "Το email επιβεβαιώθηκε, αλλά η υπηρεσία λογαριασμών δεν μπόρεσε να το ενεργοποιήσει. Έλεγξε την υπηρεσία και επανάλαβε την ίδια επιβεβαίωση.",
+    emailUnavailable:
+      "Δεν ολοκληρώθηκε η ρύθμιση email. Έλεγξε τα στοιχεία και δοκίμασε ξανά.",
     signOut: "Αποσύνδεση",
     unavailableTitle: "Δεν φορτώθηκε η εγκατάσταση",
     unavailableHelp:
