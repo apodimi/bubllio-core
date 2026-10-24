@@ -3,6 +3,7 @@ name: Verify Core
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -64,6 +65,7 @@ jobs:
       - run: npm run build:keycloak
 
   browser:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: [api, web, identity-theme]
     runs-on: ubuntu-24.04
     timeout-minutes: 30

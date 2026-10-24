@@ -10,7 +10,8 @@ deployment contract for UAT and Production.
 
 The [Verify Core workflow](../../.github/workflows/verify.yml) runs production
 dependency audits, API tests and build, web format/build, the Keycloak theme
-build, and browser identity tests on pushes and pull requests. It does not
+build checks on pushes and pull requests. Browser identity tests run on pull
+requests and manual workflow runs before a release. It does not
 publish an image, provision a realm, or approve a deployment. Those release
 artifacts remain part of the UAT and Production work below.
 

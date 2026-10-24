@@ -126,8 +126,10 @@ npm run test:e2e
 ```
 
 The isolated first-run stack uses different ports and does not replace that
-browser-test fixture. GitHub Actions runs these code and browser checks on
-every push and pull request. The local exercise is not evidence that a public
+browser-test fixture. GitHub Actions runs code checks on every push and pull
+request. Browser checks run on pull requests and manual workflow runs before a
+release, avoiding a full Docker and Chrome run for every branch push.
+The local exercise is not evidence that a public
 deployment passes the [UAT and Production gate](#uat-and-production-gate).
 The imported local realm assigns the `organization` client scope to
 Core web. Core requests `organization:*` so a member of multiple organizations
