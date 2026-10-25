@@ -150,11 +150,13 @@ try {
         ...process.env,
         BUBLLIO_BASE_DOMAIN: "dev.bubllio.com",
         BUBLLIO_SETUP_SECRET: setupSecret,
+        BUBLLIO_EDGE_NETWORK: "example-proxy-network",
       },
     },
   );
   assert.equal(configured.status, 0, configured.stderr);
   const compose = JSON.parse(configured.stdout);
+  assert.equal(compose.networks.edge.name, "example-proxy-network");
   assert.equal(
     compose.services["installation-init"].environment.BUBLLIO_SETUP_SECRET,
     setupSecret,
@@ -183,6 +185,20 @@ try {
     const containerState = join(temporaryRoot, "container-state");
     await mkdir(containerState);
     await chmod(containerState, 0o777);
+    // The root initializer must not leave root-owned directories that the
+    // unprivileged CI runner cannot clean up after this bind-mount test.
+    for (const directory of [
+      "core-database",
+      "identity-database",
+      "core-identity",
+      "identity-agent",
+      "keycloak-bootstrap",
+      "setup",
+    ]) {
+      const path = join(containerState, directory);
+      await mkdir(path);
+      await chmod(path, 0o777);
+    }
     const containerRun = spawnSync(
       "docker",
       [
