@@ -12,7 +12,7 @@ the same conformance checks before they are described as validated.
 
 Connect the GitHub repository in your hosting panel and select
 `./deploy/managed/compose.yaml`. The checked-in file pins the published
-`0.1.0-alpha.2` images by digest, recorded in the adjacent
+`0.1.0-alpha.3` images by digest, recorded in the adjacent
 `release-manifest.json`. It is ready to deploy; the `.template.yaml` file is
 only for release tooling. Add these service-level values:
 
