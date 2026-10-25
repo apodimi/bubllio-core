@@ -25,6 +25,13 @@ builds multi-architecture images, records immutable digests, generates SBOMs,
 and publishes the release manifest and checksummed bundle after the same
 verification succeeds.
 
+Versioned installation releases are created only from reviewed `v*` tags. A
+tagged workflow publishes a GitHub prerelease or release whose direct assets are
+the bundle, its checksum, the manifest, and image SBOMs. A `main` push runs the
+ordinary verification workflow but does not silently create a new product
+version. Manual release-workflow runs remain rehearsal artifacts and do not
+create a GitHub Release.
+
 ## Portable delivery contract
 
 [ADR 0011](../decisions/0011-portable-delivery-and-ui-first-setup.md) defines
