@@ -4,14 +4,17 @@ This guide answers one question: how does an operator start a released Bubllio
 Core adapter from a Compose hosting panel without using SSH or generating host
 files?
 
-The first supported technical-alpha target is Dokploy. The contract is portable:
+The first technical-alpha target is Dokploy. The contract is portable:
 other panels can provide the same two inputs and must pass the same conformance
 checks before they are described as supported.
 
 ## Inputs
 
-Create a new Compose service from the release's
-`bubllio-core-<version>-dokploy.yaml` asset. Add these service-level values:
+Connect the GitHub repository in your hosting panel and select
+`./deploy/managed/compose.yaml`. The checked-in file pins the published
+`0.1.0-alpha.2` images by digest, recorded in the adjacent
+`release-manifest.json`. It is ready to deploy; the `.template.yaml` file is
+only for release tooling. Add these service-level values:
 
 ```dotenv
 BUBLLIO_BASE_DOMAIN=dev.bubllio.com
@@ -31,9 +34,13 @@ service-scoped named volumes. Repeating deployment preserves all credentials.
 
 ## Dokploy flow
 
-1. Create a **Compose** service and select **Raw** as the source.
-2. Paste the released Dokploy Compose asset; do not use an automatic GitHub
-   source archive or an Actions artifact.
+1. Create a **Compose** service, choose **Docker Compose** (not Stack), and
+   select **GitHub** as the source.
+2. Select repository `apodimi/bubllio-core`, branch `main`, and Compose Path
+   `./deploy/managed/compose.yaml`. Save with automatic deployment disabled for
+   this first setup test. No download or YAML copy is required. The Compose file
+   selects the reviewed release images even when application source changes on
+   `main`; promoting its digests is an explicit release change.
 3. Add the two service-level environment values above.
 4. Keep isolated deployment off; the adapter uses Dokploy's existing
    `dokploy-network` only for the three public services.
@@ -66,3 +73,12 @@ historical platform records or backups, so never reuse it.
 - Removing named volumes is destructive and is not a recovery procedure.
 - This adapter is not approved for real users, UAT, or Production until its
   clean-host rehearsal and the release gates in the main deployment guide pass.
+
+## Promote a new release into the Git deployment path
+
+Release maintainers update `deploy/managed/release-manifest.json` from the
+published release and regenerate `deploy/managed/compose.yaml` with
+`scripts/build-managed-adapter.mjs`. Review and commit both files together.
+The delivery CI gate regenerates the snapshot and rejects drift between the
+manifest, template, and deployable Compose file. Operators keep the same path
+and two environment inputs when a reviewed release is promoted.

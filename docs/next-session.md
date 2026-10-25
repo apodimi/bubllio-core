@@ -27,6 +27,9 @@ The first portable delivery slice of ADR 0011 is implemented:
   one-shot initializer accepts only the base domain and a unique setup secret,
   creates scoped named-volume credentials, and supports redeploy after the raw
   bootstrap value is removed from the panel.
+- The same deployable adapter is checked in at `deploy/managed/compose.yaml`
+  with its published release manifest, so Dokploy can deploy directly from
+  GitHub `main`. CI checks that the snapshot matches its manifest and template.
 - `deploy/compose/` is the first thin adapter. Separate non-root API, migration,
   web, and optimized Keycloak images are defined, with private database networks,
   read-only application containers, one-shot migrations, and realm bootstrap.

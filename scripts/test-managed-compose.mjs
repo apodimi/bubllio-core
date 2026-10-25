@@ -112,6 +112,26 @@ try {
   assert.equal(render.status, 0, render.stderr);
   assert.doesNotMatch(await readFile(adapterPath, "utf8"), /__[A-Z0-9_]+__/u);
 
+  // Git-based installs must consume exactly the reviewed release snapshot.
+  const publishedAdapterPath = join(temporaryRoot, "published-compose.yaml");
+  const publishedRender = spawnSync(
+    process.execPath,
+    [
+      resolve(root, "scripts/build-managed-adapter.mjs"),
+      "--release-manifest",
+      resolve(root, "deploy/managed/release-manifest.json"),
+      "--output",
+      publishedAdapterPath,
+    ],
+    { encoding: "utf8", cwd: root },
+  );
+  assert.equal(publishedRender.status, 0, publishedRender.stderr);
+  assert.equal(
+    await readFile(resolve(root, "deploy/managed/compose.yaml"), "utf8"),
+    await readFile(publishedAdapterPath, "utf8"),
+    "The Git deployment Compose must match its release manifest and template",
+  );
+
   const configured = spawnSync(
     "docker",
     [

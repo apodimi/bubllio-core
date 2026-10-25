@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1",
+  "releaseRef": "v0.1.0-alpha.2",
+  "version": "0.1.0-alpha.2",
+  "commitSha": "0acfc15b3dc9a51e765abcbdf0e241de0779fd15",
+  "images": {
+    "coreApi": "ghcr.io/apodimi/bubllio-core-api@sha256:d2627d949ca59e498f569652499510719902774358484495863bfc095a81856d",
+    "identitySetupAgent": "ghcr.io/apodimi/bubllio-core-identity-setup-agent@sha256:6fdbb5aa61adf7148a46959dc4a90b814f84949835cab00338f5bf6c2d63e879",
+    "installer": "ghcr.io/apodimi/bubllio-core-installer@sha256:85b76d05fafd8a971ac76dc49c3796f94676a99b6598f5510a7bca2dd89cd651",
+    "keycloak": "ghcr.io/apodimi/bubllio-core-keycloak@sha256:3414612abd16a5d4425e7ca19e644c0b6fd6687c0f3775914fb140d2e5e38714",
+    "coreMigrate": "ghcr.io/apodimi/bubllio-core-migrate@sha256:c2d31f2e502b4f528258fb7f83bd3b109fcad51f8d66e227b76658f35ee07896",
+    "coreWeb": "ghcr.io/apodimi/bubllio-core-web@sha256:09eebd8723c257913f510360d9f445d7da83b7c209a127cf71b1e9d0b0107776"
+  }
+}

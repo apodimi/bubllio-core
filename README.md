@@ -76,7 +76,14 @@ repository's [`AGENTS.md`](AGENTS.md) owns Core-specific rules.
 
 ## Install a published technical-alpha release
 
-Operators do not clone this repository. Download and verify the checksummed
+For a hosting panel, connect this GitHub repository, select branch `main` and
+Compose Path `./deploy/managed/compose.yaml`. Set `BUBLLIO_BASE_DOMAIN` and a
+unique `BUBLLIO_SETUP_SECRET`, configure the three HTTPS domains, and deploy.
+The checked-in Compose pins the published `0.1.0-alpha.2` images by digest and
+generates internal credentials automatically. Follow the complete
+[managed-platform setup guide](docs/deployment/managed-platforms.md).
+
+For a host operated directly through Docker, download and verify the checksummed
 release bundle, then provide the two environment-owned inputs:
 
 ```bash
