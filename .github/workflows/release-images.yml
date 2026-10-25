@@ -74,8 +74,20 @@ jobs:
         if: always()
         run: docker compose --env-file .env.example down
 
+  production-bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: docker build --target runtime -f infrastructure/keycloak/Dockerfile.production -t bubllio-keycloak:smoke .
+      - run: node scripts/test-keycloak-image.mjs bubllio-keycloak:smoke
+      - run: node scripts/test-managed-stack.mjs bubllio-keycloak:smoke
+
   publish:
-    needs: verify
+    needs: [verify, production-bootstrap]
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -143,6 +155,13 @@ jobs:
           sbom: true
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: Verify published identity image and production bootstrap
+        if: matrix.key == 'keycloak'
+        env:
+          IDENTITY_IMAGE: ghcr.io/${{ github.repository_owner }}/bubllio-${{ matrix.image }}@${{ steps.build.outputs.digest }}
+        run: |
+          node scripts/test-keycloak-image.mjs "$IDENTITY_IMAGE"
+          node scripts/test-managed-stack.mjs "$IDENTITY_IMAGE"
       - name: Generate downloadable SBOM
         uses: anchore/sbom-action@v0
         with:
@@ -198,6 +217,10 @@ jobs:
           export RELEASE_VERSION
           node -e "const fs=require('node:fs'); const images=Object.fromEntries(fs.readdirSync('release-fragments').sort().map(file=>{const item=JSON.parse(fs.readFileSync('release-fragments/'+file)); return [item.key,item.image]})); const expected=['coreApi','coreMigrate','coreWeb','identitySetupAgent','installer','keycloak']; if(JSON.stringify(Object.keys(images).sort())!==JSON.stringify(expected))throw new Error('Release manifest image set is incomplete'); fs.writeFileSync('release-manifest.json',JSON.stringify({schemaVersion:'1',releaseRef:process.env.RELEASE_REF,version:process.env.RELEASE_VERSION,commitSha:process.env.COMMIT_SHA,images},null,2)+'\n')"
           node -e "import('./deploy/release/manifest.mjs').then(({readReleaseManifest})=>readReleaseManifest('release-manifest.json'))"
+      - name: Verify complete published release before promotion
+        run: |
+          KEYCLOAK_IMAGE=$(node -p "require('./release-manifest.json').images.keycloak")
+          node scripts/test-managed-stack.mjs "$KEYCLOAK_IMAGE" --release-manifest release-manifest.json
       - name: Build portable release bundle
         run: |
           VERSION=$(node -p "require('./release-manifest.json').version")

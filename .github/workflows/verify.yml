@@ -100,3 +100,15 @@ jobs:
         working-directory: apps/web
       - if: always()
         run: docker compose --env-file .env.example down
+
+  production-bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: docker build --target runtime -f infrastructure/keycloak/Dockerfile.production -t bubllio-keycloak:smoke .
+      - run: node scripts/test-keycloak-image.mjs bubllio-keycloak:smoke
+      - run: node scripts/test-managed-stack.mjs bubllio-keycloak:smoke

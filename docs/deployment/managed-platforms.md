@@ -83,6 +83,12 @@ If an earlier checkout failed realm import with
 using the same environment and volumes. Bootstrap waits for vault initialization
 and mounts the vault read-only; no reset or credential rotation is needed.
 
+If realm import reports `bubllio-realm.json (Permission denied)`, use the
+corrected Keycloak release and its promoted Compose snapshot. The `alpha.2`
+image created a non-traversable import directory. The fixed image retains the
+non-root importer and read-only realm file; no runtime permission workaround,
+root user, extra capability, or data reset is required.
+
 - A changed base domain or setup secret is rejected after initialization.
 - An expired or lost setup secret has no non-destructive rotation flow yet.
 - Removing named volumes is destructive and is not a recovery procedure.
