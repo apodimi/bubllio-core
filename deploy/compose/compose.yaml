@@ -1,0 +1,351 @@
+name: bubllio-core
+
+services:
+  core-db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: bubllio_core
+      POSTGRES_PASSWORD_FILE: /run/secrets/core_database_password
+      POSTGRES_USER: bubllio_core
+    secrets:
+      - core_database_password
+    volumes:
+      - core_database:/var/lib/postgresql/data
+    networks:
+      - core_data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bubllio_core -d bubllio_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  identity-db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_PASSWORD_FILE: /run/secrets/identity_database_password
+      POSTGRES_USER: keycloak
+    secrets:
+      - identity_database_password
+    volumes:
+      - identity_database:/var/lib/postgresql/data
+    networks:
+      - identity_data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  identity-vault-init:
+    image: ${KEYCLOAK_IMAGE:?Use the digest-pinned Keycloak release image}
+    pull_policy: always
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - >-
+        umask 077;
+        mkdir -p /opt/keycloak/vault;
+        chown 1000:0 /opt/keycloak/vault;
+        chmod 0700 /opt/keycloak/vault
+    network_mode: none
+    volumes:
+      - identity_vault:/opt/keycloak/vault
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    restart: "no"
+
+  identity-bootstrap:
+    image: ${KEYCLOAK_IMAGE:?Use the digest-pinned Keycloak release image}
+    pull_policy: always
+    command:
+      [
+        "import",
+        "--file=/opt/keycloak/data/import/bubllio-realm.json",
+        "--override=false",
+      ]
+    environment:
+      CORE_KEYCLOAK_CLIENT_SECRET_FILE: /run/secrets/core_identity_client_secret
+      KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE: /run/secrets/keycloak_bootstrap_client_secret
+      CORE_WEB_URL: ${CORE_WEB_URL:?Set the public Core web origin}
+      KC_DB_URL: jdbc:postgresql://identity-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD_FILE: /run/secrets/identity_database_password
+    configs:
+      - source: identity_realm
+        target: /opt/keycloak/data/import/bubllio-realm.json
+        mode: 0444
+    secrets:
+      - core_identity_client_secret
+      - identity_database_password
+      - keycloak_bootstrap_client_secret
+    networks:
+      - identity_data
+    depends_on:
+      identity-db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:?Use the digest-pinned Keycloak release image}
+    pull_policy: always
+    command: ["start", "--optimized"]
+    environment:
+      KC_DB_URL: jdbc:postgresql://identity-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD_FILE: /run/secrets/identity_database_password
+      KC_HOSTNAME: ${KEYCLOAK_URL:?Set the public identity origin}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_VAULT: file
+      KC_VAULT_DIR: /opt/keycloak/vault
+    secrets:
+      - identity_database_password
+    networks:
+      edge: {}
+      identity_control: {}
+      identity_data: {}
+      smtp_egress:
+        gw_priority: 1
+    volumes:
+      - identity_vault:/opt/keycloak/vault:ro
+    depends_on:
+      identity-bootstrap:
+        condition: service_completed_successfully
+      identity-vault-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep 'HTTP/1.1 200 OK' <&3",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  identity-setup-agent:
+    image: ${IDENTITY_SETUP_AGENT_IMAGE:?Use the digest-pinned identity setup agent release image}
+    pull_policy: always
+    environment:
+      NODE_ENV: production
+      PORT: "3200"
+      IDENTITY_SETUP_AGENT_TOKEN_FILE: /run/secrets/identity_setup_agent_token
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE: /run/secrets/keycloak_bootstrap_client_secret
+      KEYCLOAK_RUNTIME_CLIENT_SECRET_FILE: /run/secrets/core_identity_client_secret
+    secrets:
+      - core_identity_client_secret
+      - identity_setup_agent_token
+      - keycloak_bootstrap_client_secret
+    volumes:
+      - identity_vault:/opt/keycloak/vault
+    networks:
+      - identity_control
+      - smtp_egress
+    depends_on:
+      identity-vault-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('node:net').connect(3200,'127.0.0.1').on('connect',function(){this.end()}).on('error',()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  core-migrate:
+    image: ${CORE_MIGRATE_IMAGE:?Use the digest-pinned Core migration release image}
+    pull_policy: always
+    environment:
+      CORE_DB_HOST: core-db
+      CORE_DB_NAME: bubllio_core
+      CORE_DB_PASSWORD_FILE: /run/secrets/core_database_password
+      CORE_DB_USER: bubllio_core
+    secrets:
+      - core_database_password
+    networks:
+      - core_data
+    depends_on:
+      core-db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+
+  core-api:
+    image: ${CORE_API_IMAGE:?Use the digest-pinned Core API release image}
+    pull_policy: always
+    environment:
+      NODE_ENV: production
+      PORT: "3100"
+      WEB_ORIGIN: ${CORE_WEB_URL:?Set the public Core web origin}
+      OIDC_ISSUER: ${KEYCLOAK_URL:?Set the public identity origin}/realms/bubllio
+      OIDC_JWKS_URL: http://keycloak:8080/realms/bubllio/protocol/openid-connect/certs
+      OIDC_AUDIENCE: bubllio-core-api
+      CORE_DB_HOST: core-db
+      CORE_DB_NAME: bubllio_core
+      CORE_DB_PASSWORD_FILE: /run/secrets/core_database_password
+      CORE_DB_USER: bubllio_core
+      CORE_KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      CORE_KEYCLOAK_CLIENT_SECRET_FILE: /run/secrets/core_identity_client_secret
+      CORE_IDENTITY_SETUP_AGENT_URL: http://identity-setup-agent:3200
+      CORE_IDENTITY_SETUP_AGENT_TOKEN_FILE: /run/secrets/identity_setup_agent_token
+      CORE_SETUP_CLAIM_ENABLED: "true"
+      CORE_SETUP_LOCAL_REHEARSAL: "false"
+      CORE_SETUP_SECRET_SHA256_FILE: /run/secrets/setup_secret_digest
+      CORE_SETUP_SECRET_EXPIRES_AT: ${CORE_SETUP_SECRET_EXPIRES_AT:?Prepare the installation first}
+      CORE_APPLICATION_MANIFEST_PATH: /run/config/applications.json
+    configs:
+      - source: application_manifest
+        target: /run/config/applications.json
+        mode: 0444
+    secrets:
+      - core_database_password
+      - core_identity_client_secret
+      - identity_setup_agent_token
+      - setup_secret_digest
+    networks:
+      - core_data
+      - edge
+      - identity_control
+    depends_on:
+      core-migrate:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+      identity-setup-agent:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100${CORE_READY_PATH:-/health/ready}').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  core-web:
+    image: ${CORE_WEB_IMAGE:?Use the digest-pinned Core web release image}
+    pull_policy: always
+    environment:
+      PORT: "8080"
+      CORE_API_URL: ${CORE_API_URL:?Set the public Core API origin}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:?Set the public identity origin}
+    networks:
+      - edge
+    depends_on:
+      core-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+configs:
+  application_manifest:
+    file: ${CORE_APPLICATION_MANIFEST_FILE:?Prepare the installation first}
+  identity_realm:
+    file: ../keycloak/bubllio-realm.json
+
+secrets:
+  core_database_password:
+    file: ${CORE_DATABASE_PASSWORD_FILE:?Prepare the installation first}
+  identity_database_password:
+    file: ${KEYCLOAK_DATABASE_PASSWORD_FILE:?Prepare the installation first}
+  core_identity_client_secret:
+    file: ${CORE_IDENTITY_CLIENT_SECRET_FILE:?Prepare the installation first}
+  identity_setup_agent_token:
+    file: ${IDENTITY_SETUP_AGENT_TOKEN_FILE:?Prepare the installation first}
+  keycloak_bootstrap_client_secret:
+    file: ${KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE:?Prepare the installation first}
+  setup_secret_digest:
+    file: ${CORE_SETUP_SECRET_DIGEST_FILE:?Prepare the installation first}
+
+volumes:
+  core_database:
+    name: ${CORE_DATABASE_VOLUME:?Set the Core database volume name}
+  identity_database:
+    name: ${KEYCLOAK_DATABASE_VOLUME:?Set the identity database volume name}
+  identity_vault:
+    name: ${KEYCLOAK_VAULT_VOLUME:?Set the identity vault volume name}
+
+networks:
+  core_data:
+    internal: true
+  identity_control:
+    internal: true
+  identity_data:
+    internal: true
+  smtp_egress:
+  edge:
+    external: true
+    name: ${BUBLLIO_EDGE_NETWORK:?Set the reverse-proxy network name}

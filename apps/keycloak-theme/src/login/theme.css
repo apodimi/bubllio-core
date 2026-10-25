@@ -192,9 +192,15 @@ a {
 
 .auth-form,
 #kc-form-login,
+#kc-register-form,
 #kc-reset-password-form {
   display: grid;
   gap: 22px;
+}
+
+/* The first-owner registration is a single-purpose setup step. */
+.identity-shell--registration #kc-form-options {
+  display: none;
 }
 
 .field-group {

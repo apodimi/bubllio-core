@@ -8,3 +8,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  __BUBLLIO_CONFIG__?: {
+    coreApiUrl?: unknown;
+    keycloakUrl?: unknown;
+  };
+}

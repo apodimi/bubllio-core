@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   globalSetup: "./e2e/global-setup.ts",
-  reporter: "list",
+  reporter: process.env.CI ? [["list"], ["./e2e/ci-reporter.ts"]] : "list",
   use: {
     baseURL: process.env.CORE_WEB_URL ?? "http://127.0.0.1:5174",
     trace: "retain-on-failure",

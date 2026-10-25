@@ -1,33 +1,58 @@
 import type Keycloak from "keycloak-js";
 
-export interface CoreIdentity {
-  audience: string[];
-  issuer: string;
-  organization: Record<string, { id?: string }>;
-  subject: string;
+import { browserRuntimeConfig } from "./runtime-config";
+
+export interface WorkspaceOrganization {
+  id: string;
+  displayName: string;
 }
 
-const coreApiUrl = import.meta.env.VITE_CORE_API_URL ?? "http://127.0.0.1:3100";
+export interface WorkspaceApplication {
+  key: string;
+  displayName: string;
+  launchUrl: string;
+}
 
-/** Calls Core with a fresh bearer token without persisting credentials. */
-export async function getCurrentIdentity(
+const { coreApiUrl } = browserRuntimeConfig();
+
+/** Reads Core using a fresh in-memory OIDC token; no credential is persisted. */
+async function getFromCore<T>(
   keycloak: Keycloak,
-): Promise<CoreIdentity> {
+  path: string,
+  signal?: AbortSignal,
+): Promise<T> {
   await keycloak.updateToken(30);
-
   if (!keycloak.token) {
-    throw new Error("No access token is available. Sign in again.");
+    throw new Error("SESSION_EXPIRED");
   }
 
-  const response = await fetch(`${coreApiUrl}/me`, {
+  const response = await fetch(`${coreApiUrl}${path}`, {
     headers: { Authorization: `Bearer ${keycloak.token}` },
+    signal,
   });
-
   if (!response.ok) {
-    const body = (await response.json().catch(() => undefined)) as
-      { message?: string } | undefined;
-    throw new Error(body?.message ?? `Core API returned ${response.status}`);
+    throw new Error(
+      response.status === 401 ? "SESSION_EXPIRED" : "CORE_UNAVAILABLE",
+    );
   }
+  return response.json() as Promise<T>;
+}
 
-  return response.json() as Promise<CoreIdentity>;
+export function getWorkspaceOrganizations(
+  keycloak: Keycloak,
+  signal?: AbortSignal,
+): Promise<WorkspaceOrganization[]> {
+  return getFromCore(keycloak, "/api/v1/me/organizations", signal);
+}
+
+export function getWorkspaceApplications(
+  keycloak: Keycloak,
+  organizationId: string,
+  signal?: AbortSignal,
+): Promise<WorkspaceApplication[]> {
+  return getFromCore(
+    keycloak,
+    `/api/v1/organizations/${encodeURIComponent(organizationId)}/applications`,
+    signal,
+  );
 }

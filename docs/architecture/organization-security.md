@@ -34,6 +34,22 @@ through operator automation before the product wizard is available. Bootstrap
 administrator, named Keycloak operator, Core product owner, deployment
 provisioner, and Core runtime service account are distinct principals.
 
+The realm begins with browser registration disabled. Before a human identity
+can be created, the operator must configure and prove email delivery through
+the product UI. Core authenticates that pre-account mutation with the one-time
+setup secret and delegates the privileged Keycloak work to the isolated,
+temporary identity setup agent defined in
+[ADR 0012](../decisions/0012-isolate-email-bootstrap-authority.md). A real test
+message carries a short-lived confirmation code. Registration opens only after
+the code is confirmed and the agent has retired its own bootstrap client.
+
+The permanent Core runtime cannot mutate realm settings or clients. Core never
+persists SMTP connection fields, credentials, the test recipient, or provider
+responses. Its durable email state contains only a non-secret fingerprint,
+keyed code digest, expiry and attempt counters, timestamps, and a bounded error
+code. Keycloak references the authenticated SMTP password from its file vault;
+the password is not duplicated in Core.
+
 Claiming an uninitialized installation requires two independent proofs:
 
 1. a valid Core-audience OIDC token with immutable subject, verified email, and
@@ -60,6 +76,13 @@ or inspect detailed progress. `READY` is terminal and disables setup even if a
 secret remains configured. Recovery never deletes the row or reopens an HTTP
 setup endpoint; it is an explicit host-side operation with audit evidence.
 
+The local Keycloak realm supports browser registration with verified email for
+both the first owner and later suite users. Registration creates an identity,
+not membership, a Core role, or an app grant. A registered account alone cannot
+claim Core without the independent setup secret. Production enrollment remains
+gated by [ADR 0010](../decisions/0010-general-browser-registration.md) and
+the deployment controls in the first-run runbook.
+
 Completion requires all of the following:
 
 - an active Core organization with an immutable Keycloak organization ID;
@@ -68,12 +91,12 @@ Completion requires all of the following:
 - a successful durable provisioning operation and audit outcome; and
 - a newly issued access token containing the exact organization ID.
 
-Setup mutations require a trusted exact `Origin`, exact CORS, JSON and request
-size validation, an idempotency key, shared rate limiting, and generic failure
-responses. Setup pages and responses are `no-store`, send no referrer, deny
-framing, use a strict CSP without third-party scripts, and redact authorization,
-setup secret, body, and provider data throughout proxy and application
-observability.
+Setup mutations, including pre-account email setup, require a trusted exact
+`Origin`, exact CORS, JSON and request size validation, an idempotency key,
+shared rate limiting, and generic failure responses. Setup pages and responses
+are `no-store`, send no referrer, deny framing, use a strict CSP without
+third-party scripts, and redact authorization, setup secret, body, and provider
+data throughout proxy and application observability.
 
 Initial rate-limit defaults are five failed claims per 15 minutes per IP, ten
 per hour installation-wide, one active claim globally, and 30 status reads per
@@ -82,8 +105,8 @@ provider work, and must use shared state before horizontal scaling.
 
 ## First-run attacker stories
 
-- **Internet scanner finds `/setup`**: public status returns only whether setup
-  is required; mutation still requires recent verified OIDC and the setup
+- **Internet scanner finds `/setup`**: public status returns only a coarse
+  installation phase; mutation still requires recent verified OIDC and the setup
   secret. Failures reveal no claimant or secret state.
 - **Setup secret is stolen**: it cannot grant authority without a verified
   human identity. Operators can rotate an unclaimed secret atomically.
@@ -96,6 +119,12 @@ provider work, and must use shared state before horizontal scaling.
   organization through the immutable Core marker and continues idempotently.
 - **Runtime machine credential is compromised**: it cannot administer realms,
   clients, passwords, identity providers, impersonation, or Core roles.
+- **Email bootstrap authority is compromised after setup**: the bootstrap
+  client is already disabled and cannot obtain another token. The runtime can
+  only read the non-secret readiness marker for crash reconciliation.
+- **SMTP test is replayed or guessed**: the mutation requires the independent
+  setup secret and idempotency key; the confirmation code is keyed, short-lived,
+  and attempt-bounded, and delivery inputs are not retained by Core.
 - **Completed setup is replayed**: terminal database state rejects the request
   regardless of secret validity or deployment configuration.
 - **Operator loses access during provisioning**: host-side break-glass recovery
@@ -111,6 +140,27 @@ provider work, and must use shared state before horizontal scaling.
 - `member` may enter the organization but has no suite-administration authority.
 
 These roles grant no CRM or Board domain permissions.
+
+## Application access
+
+Core owns an explicit grant identified by immutable organization ID, Keycloak
+subject, and stable application key. The grant is separate from Keycloak
+membership, the Core suite role, the organization's app availability, and an
+app's own domain role. Missing, revoked, or suspended grants deny access.
+
+An integrated application backend must validate its audience and the exact
+organization context, then obtain Core's decision for its own registered app
+key before resolving tenant data. Core checks active organization state,
+identity membership, installation/entitlement and organization availability,
+and the member grant. A direct URL or API request follows the same gate as the
+Core launcher. Frontend visibility is only a convenience.
+
+Positive decision caching, if used, has a short explicit lifetime and fails
+closed after expiry or Core unavailability. Revocation behavior and emergency
+session termination require cross-application tests before production rollout.
+Core suite owners do not receive automatic data access to installed apps.
+Core's own console is controlled by organization membership and suite roles;
+it is not a grantable app, so the first owner can manage grants after setup.
 
 ## Invitation invariants
 

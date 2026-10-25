@@ -3,16 +3,78 @@ info:
   title: Bubllio Core API
   version: 1.0.0-draft
   description: >-
-    Contract-first definition of the Core first-run setup seam. Paths in this
-    document are not considered implemented until the corresponding controller
-    and tests exist.
+    Core first-run setup contract. The status, claim, current-state,
+    organization, operation, and retry endpoints are available only while an
+    installation claim is explicitly enabled. Public system preflight exposes
+    sanitized dependency state without credentials or infrastructure details.
 servers:
   - url: http://127.0.0.1:3100
     description: Local development
 tags:
+  - name: System
+    description: Sanitized liveness, readiness, and first-run preflight state
   - name: Setup
     description: One-time installation claim and first organization provisioning
+  - name: Email setup
+    description: Pre-account email-delivery proof through temporary bootstrap authority
 paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      tags: [System]
+      summary: Confirm that the Core API process is alive
+      security: []
+      responses:
+        "200":
+          description: Process is alive
+  /health/ready:
+    get:
+      operationId: getReadiness
+      tags: [System]
+      summary: Read operational dependency readiness
+      security: []
+      responses:
+        "200":
+          description: All required dependencies are ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemReadiness"
+        "503":
+          description: At least one required dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemReadiness"
+  /api/v1/system/preflight:
+    get:
+      operationId: getSystemPreflight
+      tags: [System]
+      summary: Read sanitized first-run system checks
+      security: []
+      responses:
+        "200":
+          description: Product-safe preflight state without topology or credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemPreflight"
+  /api/v1/system/installation-manifest:
+    get:
+      operationId: getInstallationManifestStatus
+      tags: [System]
+      summary: Read the authenticated installation manifest status
+      security:
+        - oidcBearer: []
+      responses:
+        "200":
+          description: Sanitized manifest version and managed application keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstallationManifestStatus"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
   /api/v1/setup/status:
     get:
       operationId: getSetupStatus
@@ -29,6 +91,104 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SetupStatus"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/email/status:
+    get:
+      operationId: getEmailDeliverySetupStatus
+      tags: [Email setup]
+      summary: Read the non-sensitive email-delivery setup state
+      security: []
+      responses:
+        "200":
+          description: Durable state without SMTP fields, recipient, or credentials
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailDeliveryStatus"
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/email/test:
+    post:
+      operationId: testEmailDelivery
+      tags: [Email setup]
+      summary: Send a confirmation code through the proposed email transport
+      security:
+        - setupSecret: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailDeliveryTest"
+      responses:
+        "200":
+          description: The test message was accepted and awaits its confirmation code
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailDeliveryTestSent"
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
+        "409":
+          $ref: "#/components/responses/SetupConflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/email/confirm:
+    post:
+      operationId: confirmEmailDelivery
+      tags: [Email setup]
+      summary: Confirm delivery and retire the temporary identity authority
+      security:
+        - setupSecret: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          description: Email delivery is ready and account registration may begin
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
+        "409":
+          $ref: "#/components/responses/SetupConflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
   /api/v1/setup/claim:
@@ -75,8 +235,31 @@ paths:
           $ref: "#/components/responses/SetupUnavailable"
         "409":
           $ref: "#/components/responses/SetupConflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /api/v1/setup/current:
+    get:
+      operationId: getMySetupState
+      tags: [Setup]
+      summary: Resume the current claimant's first-run state
+      security:
+        - oidcBearer: []
+      responses:
+        "200":
+          description: The caller's claim or operation, without other claimant details
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentSetup"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          $ref: "#/components/responses/SetupUnavailable"
   /api/v1/setup/organization:
     post:
       operationId: startFirstOrganization
@@ -233,13 +416,183 @@ components:
         const: no-store, max-age=0
       description: Setup data must not be stored by browsers or intermediaries
   schemas:
+    SystemReadiness:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ready, unavailable]
+        checks:
+          type: object
+          additionalProperties: false
+          required: [database, identity, migrations, applications]
+          properties:
+            database: { type: string, enum: [ready, unavailable] }
+            identity: { type: string, enum: [ready, unavailable] }
+            migrations: { type: string, enum: [ready, unavailable] }
+            applications: { type: string, enum: [ready, unavailable] }
+    SystemPreflight:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ready, attention]
+        checks:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, status]
+            properties:
+              key:
+                type: string
+                enum: [database, identity, migrations, applications]
+              status:
+                type: string
+                enum: [ready, attention]
+              messageCode:
+                type: string
+    InstallationManifestStatus:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, configured, applicationCount, applications]
+      properties:
+        schemaVersion:
+          anyOf:
+            - type: string
+              const: "1"
+            - type: "null"
+        configured:
+          type: boolean
+        applicationCount:
+          type: integer
+          minimum: 0
+        applications:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, contractVersion]
+            properties:
+              key: { type: string }
+              contractVersion: { type: string }
     SetupStatus:
       type: object
       additionalProperties: false
-      required: [setupRequired]
+      required: [setupRequired, phase]
       properties:
         setupRequired:
           type: boolean
+        phase:
+          type: string
+          enum: [new, in_progress, ready]
+          description: Coarse public installation phase; no owner identity or operation details
+    EmailDeliveryStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [required, awaiting_confirmation, ready, attention]
+        safeErrorCode:
+          $ref: "#/components/schemas/EmailDeliveryErrorCode"
+        confirmationRetryable:
+          type: boolean
+          description: Present for attention state; retry the existing code when true
+      allOf:
+        - if:
+            properties:
+              status: { const: attention }
+          then:
+            required: [safeErrorCode, confirmationRetryable]
+    EmailDeliveryTest:
+      type: object
+      additionalProperties: false
+      required:
+        - senderName
+        - senderEmail
+        - host
+        - port
+        - security
+        - authentication
+        - testRecipient
+      properties:
+        senderName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        senderEmail:
+          type: string
+          format: email
+          maxLength: 254
+        replyToEmail:
+          type: string
+          format: email
+          maxLength: 254
+        host:
+          type: string
+          maxLength: 253
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        security:
+          type: string
+          enum: [starttls, tls, none]
+          description: Production rejects none; private local relays require explicit policy
+        authentication:
+          type: boolean
+        username:
+          type: string
+          minLength: 1
+          maxLength: 320
+        password:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+        testRecipient:
+          type: string
+          format: email
+          maxLength: 254
+          writeOnly: true
+      allOf:
+        - if:
+            properties:
+              authentication: { const: true }
+          then:
+            required: [username, password]
+          else:
+            not:
+              anyOf:
+                - required: [username]
+                - required: [password]
+    EmailDeliveryTestSent:
+      type: object
+      additionalProperties: false
+      required: [status, maskedRecipient]
+      properties:
+        status:
+          type: string
+          const: awaiting_confirmation
+        maskedRecipient:
+          type: string
+          description: Transient display hint returned only by this response
+    EmailDeliveryErrorCode:
+      type: string
+      enum:
+        - EMAIL_DELIVERY_UNAVAILABLE
+        - EMAIL_DELIVERY_AUTHENTICATION_FAILED
+        - EMAIL_DELIVERY_TLS_FAILED
+        - EMAIL_DELIVERY_REJECTED
+        - EMAIL_CONFIRMATION_EXPIRED
+        - EMAIL_CONFIRMATION_INVALID
+        - IDENTITY_ACTIVATION_FAILED
     SetupClaim:
       type: object
       additionalProperties: false
@@ -258,6 +611,16 @@ components:
           minLength: 2
           maxLength: 120
           description: Unicode product organization name; the server derives its slug
+    CurrentSetup:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [unclaimed, claimed, operation]
+        operation:
+          $ref: "#/components/schemas/SetupOperation"
     SetupOperation:
       type: object
       additionalProperties: false
@@ -273,7 +636,7 @@ components:
           format: uuid
         status:
           type: string
-          enum: [pending, processing, succeeded, needs_attention]
+          enum: [pending, processing, awaiting_owner, succeeded, needs_attention]
         stages:
           type: array
           minItems: 4
@@ -309,14 +672,17 @@ components:
     SetupErrorCode:
       type: string
       enum:
+        - UNAUTHENTICATED
         - SETUP_UNAVAILABLE
         - SETUP_CLAIM_CONFLICT
         - SETUP_IDEMPOTENCY_CONFLICT
+        - SETUP_INVALID_REQUEST
         - SETUP_REAUTHENTICATION_REQUIRED
         - KEYCLOAK_TEMPORARILY_UNAVAILABLE
         - KEYCLOAK_CREDENTIALS_INVALID
         - KEYCLOAK_PERMISSION_DENIED
         - KEYCLOAK_ORGANIZATION_CONFLICT
+        - OWNER_INVITATION_PENDING
         - SETUP_REPAIR_REQUIRED
     Problem:
       type: object

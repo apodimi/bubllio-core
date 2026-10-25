@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bubllio.com/schemas/installation/v1.json",
+  "title": "Bubllio installation contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "release",
+    "publicEndpoints",
+    "storage",
+    "bootstrap",
+    "secretReferences",
+    "health",
+    "applicationManifest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "images"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "images": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "coreApi",
+            "coreMigrate",
+            "coreWeb",
+            "identitySetupAgent",
+            "keycloak"
+          ],
+          "properties": {
+            "coreApi": { "$ref": "#/$defs/imageDigestReference" },
+            "coreMigrate": { "$ref": "#/$defs/imageDigestReference" },
+            "coreWeb": { "$ref": "#/$defs/imageDigestReference" },
+            "identitySetupAgent": {
+              "$ref": "#/$defs/imageDigestReference"
+            },
+            "keycloak": { "$ref": "#/$defs/imageDigestReference" }
+          }
+        }
+      }
+    },
+    "publicEndpoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["webUrl", "apiUrl", "identityUrl"],
+      "properties": {
+        "webUrl": { "$ref": "#/$defs/httpsOrigin" },
+        "apiUrl": { "$ref": "#/$defs/httpsOrigin" },
+        "identityUrl": { "$ref": "#/$defs/httpsOrigin" }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coreDatabaseVolume",
+        "identityDatabaseVolume",
+        "identityVaultVolume"
+      ],
+      "properties": {
+        "coreDatabaseVolume": { "$ref": "#/$defs/resourceName" },
+        "identityDatabaseVolume": { "$ref": "#/$defs/resourceName" },
+        "identityVaultVolume": { "$ref": "#/$defs/resourceName" }
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setupSecretOutput", "setupSecretTtlSeconds"],
+      "properties": {
+        "setupSecretOutput": { "const": "terminal-once" },
+        "setupSecretTtlSeconds": {
+          "type": "integer",
+          "minimum": 900,
+          "maximum": 86400
+        }
+      }
+    },
+    "secretReferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coreDatabasePassword",
+        "identityDatabasePassword",
+        "coreIdentityClientSecret",
+        "keycloakBootstrapClientSecret",
+        "identitySetupAgentToken",
+        "setupSecretDigest"
+      ],
+      "properties": {
+        "coreDatabasePassword": { "$ref": "#/$defs/secretFileName" },
+        "identityDatabasePassword": { "$ref": "#/$defs/secretFileName" },
+        "coreIdentityClientSecret": { "$ref": "#/$defs/secretFileName" },
+        "keycloakBootstrapClientSecret": {
+          "$ref": "#/$defs/secretFileName"
+        },
+        "identitySetupAgentToken": { "$ref": "#/$defs/secretFileName" },
+        "setupSecretDigest": { "$ref": "#/$defs/secretFileName" }
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["livenessPath", "readinessPath", "readinessTimeoutSeconds"],
+      "properties": {
+        "livenessPath": { "const": "/health/live" },
+        "readinessPath": { "const": "/health/ready" },
+        "readinessTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 900
+        }
+      }
+    },
+    "applicationManifest": { "$ref": "#/$defs/applicationManifest" }
+  },
+  "$defs": {
+    "imageDigestReference": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[a-f0-9]{64}$"
+    },
+    "httpsOrigin": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://[^/?#@]+(?::[0-9]+)?$",
+      "maxLength": 2048
+    },
+    "httpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://[^/?#@]+(?::[0-9]+)?(?:/[^?#]*)?$",
+      "maxLength": 2048
+    },
+    "resourceName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{2,62}$"
+    },
+    "secretFileName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{2,62}$",
+      "not": { "const": "setup_secret_expires_at" }
+    },
+    "applicationManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "applications"],
+      "properties": {
+        "schemaVersion": { "const": "1" },
+        "applications": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/application" }
+        }
+      }
+    },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "displayName",
+        "launchUrl",
+        "audience",
+        "contractVersion"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,62}$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "launchUrl": { "$ref": "#/$defs/httpsUrl" },
+        "audience": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{2,255}$"
+        },
+        "contractVersion": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(?:\\.[0-9]+){0,2}$"
+        }
+      }
+    }
+  }
+}

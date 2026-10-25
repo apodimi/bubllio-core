@@ -14,6 +14,7 @@ async function globalSetup(): Promise<void> {
   const authorization = { Authorization: `Bearer ${accessToken}` };
 
   await ensureOrganizationMapperIncludesIds(authorization);
+  await ensureCoreWebClientScopes(authorization);
 
   const organization = await ensureDemoOrganization(authorization);
   const user = await findOne<KeycloakResource>(
@@ -36,6 +37,40 @@ async function globalSetup(): Promise<void> {
     throw new Error(
       `Could not add spike-user to Demo Workspace (${response.status})`,
     );
+  }
+}
+
+async function ensureCoreWebClientScopes(
+  authorization: Record<string, string>,
+): Promise<void> {
+  const client = await findOne<KeycloakResource>(
+    `/admin/realms/${realm}/clients?clientId=bubllio-core-web`,
+    authorization,
+    "bubllio-core-web",
+  );
+  const scopes = await getResources<KeycloakResource>(
+    `/admin/realms/${realm}/clients/${client.id}/default-client-scopes`,
+    authorization,
+  );
+  const assigned = new Set(scopes.map((scope) => scope.name));
+  for (const required of ["profile", "email", "organization"]) {
+    if (assigned.has(required)) continue;
+
+    const scope = await findOne<KeycloakResource>(
+      `/admin/realms/${realm}/client-scopes`,
+      authorization,
+      required,
+      (item) => item.name === required,
+    );
+    const response = await fetch(
+      `${keycloakUrl}/admin/realms/${realm}/clients/${client.id}/default-client-scopes/${scope.id}`,
+      { method: "PUT", headers: authorization },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Could not assign the ${required} scope to Core web (${response.status})`,
+      );
+    }
   }
 }
 

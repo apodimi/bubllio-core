@@ -1,0 +1,199 @@
+openapi: 3.1.0
+info:
+  title: Bubllio Core application access
+  version: 1.0.0-draft
+  description: >-
+    Core workspace and application entry-grant contract. The app backend calls
+    the access endpoint with the user's bearer token before serving tenant data.
+    Core validates the token and derives its subject; callers cannot supply one.
+servers:
+  - url: http://127.0.0.1:3100
+    description: Local development
+security:
+  - oidcBearer: []
+paths:
+  /api/v1/me/organizations:
+    get:
+      operationId: listMyCoreOrganizations
+      summary: List active Core organizations linked to the caller's identity membership
+      responses:
+        "200":
+          description: Active organizations available to this subject
+          headers:
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /api/v1/organizations/{organizationId}/applications:
+    get:
+      operationId: listMyApplications
+      summary: List only apps with active grants in this organization
+      parameters:
+        - { $ref: "#/components/parameters/OrganizationId" }
+      responses:
+        "200":
+          description: Granted, enabled, entitled applications
+          headers:
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Application" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+  /api/v1/organizations/{organizationId}/applications/{applicationKey}/access:
+    get:
+      operationId: checkMyApplicationAccess
+      summary: Decide whether the caller may enter this app in this organization
+      description: >-
+        App backends call Core directly using the original user token. A 200 with
+        allowed=false denies entry. An unavailable or invalid Core response must
+        also deny entry; the response is not a substitute for app-local roles.
+      parameters:
+        - { $ref: "#/components/parameters/OrganizationId" }
+        - { $ref: "#/components/parameters/ApplicationKey" }
+      responses:
+        "200":
+          description: Current entry decision for this subject, app, and organization
+          headers:
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessDecision" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+  /api/v1/organizations/{organizationId}/application-catalog:
+    get:
+      operationId: listApplicationCatalog
+      summary: List manifest-provided apps for a Core organization owner or admin
+      parameters:
+        - { $ref: "#/components/parameters/OrganizationId" }
+      responses:
+        "200":
+          description: Available deployment application catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Application" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+  /api/v1/organizations/{organizationId}/applications/{applicationKey}:
+    parameters:
+      - { $ref: "#/components/parameters/OrganizationId" }
+      - { $ref: "#/components/parameters/ApplicationKey" }
+    put:
+      operationId: enableOrganizationApplication
+      summary: Enable a registered app for this organization
+      responses:
+        "200":
+          description: Application enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled: { type: boolean, const: true }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+    delete:
+      operationId: disableOrganizationApplication
+      summary: Disable an app for this organization without deleting member grants
+      responses:
+        "204": { description: Application disabled or already disabled }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+  /api/v1/organizations/{organizationId}/members/{subject}/applications/{applicationKey}:
+    parameters:
+      - { $ref: "#/components/parameters/OrganizationId" }
+      - { $ref: "#/components/parameters/Subject" }
+      - { $ref: "#/components/parameters/ApplicationKey" }
+    put:
+      operationId: grantMemberApplicationAccess
+      summary: Grant an existing Core organization member access to an enabled app
+      responses:
+        "200":
+          description: Grant active
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [active]
+                properties:
+                  active: { type: boolean, const: true }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+    delete:
+      operationId: revokeMemberApplicationAccess
+      summary: Revoke a member's app access
+      responses:
+        "204": { description: Grant revoked or already absent }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+components:
+  securitySchemes:
+    oidcBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak access token with Core API audience and organization claim
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: Immutable Core product organization ID
+    ApplicationKey:
+      name: applicationKey
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z][a-z0-9-]{1,62}$" }
+    Subject:
+      name: subject
+      in: path
+      required: true
+      schema: { type: string, maxLength: 255 }
+      description: Immutable Keycloak subject of an existing Core organization member
+  headers:
+    NoStore:
+      schema: { type: string, const: no-store }
+  schemas:
+    Organization:
+      type: object
+      additionalProperties: false
+      required: [id, displayName]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+    Application:
+      type: object
+      additionalProperties: false
+      required: [key, displayName, launchUrl]
+      properties:
+        key: { type: string }
+        displayName: { type: string }
+        launchUrl: { type: string, format: uri }
+    AccessDecision:
+      type: object
+      additionalProperties: false
+      required: [allowed]
+      properties:
+        allowed: { type: boolean }
+  responses:
+    Unauthenticated:
+      description: Bearer token missing or invalid
+    Forbidden:
+      description: Caller lacks Core administration role
+    OrganizationHidden:
+      description: Organization, member, or app is unavailable to this caller

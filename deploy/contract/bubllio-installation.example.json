@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1",
+  "release": {
+    "version": "0.1.0-alpha.1",
+    "images": {
+      "coreApi": "ghcr.io/bubllio/core-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coreMigrate": "ghcr.io/bubllio/core-migrate@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coreWeb": "ghcr.io/bubllio/core-web@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "identitySetupAgent": "ghcr.io/bubllio/core-identity-setup-agent@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "keycloak": "ghcr.io/bubllio/core-keycloak@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  },
+  "publicEndpoints": {
+    "webUrl": "https://core.example.com",
+    "apiUrl": "https://core-api.example.com",
+    "identityUrl": "https://identity.example.com"
+  },
+  "storage": {
+    "coreDatabaseVolume": "bubllio_core_database",
+    "identityDatabaseVolume": "bubllio_identity_database",
+    "identityVaultVolume": "bubllio_identity_vault"
+  },
+  "bootstrap": {
+    "setupSecretOutput": "terminal-once",
+    "setupSecretTtlSeconds": 86400
+  },
+  "secretReferences": {
+    "coreDatabasePassword": "core_database_password",
+    "identityDatabasePassword": "identity_database_password",
+    "coreIdentityClientSecret": "core_identity_client_secret",
+    "keycloakBootstrapClientSecret": "keycloak_bootstrap_client_secret",
+    "identitySetupAgentToken": "identity_setup_agent_token",
+    "setupSecretDigest": "setup_secret_digest"
+  },
+  "health": {
+    "livenessPath": "/health/live",
+    "readinessPath": "/health/ready",
+    "readinessTimeoutSeconds": 300
+  },
+  "applicationManifest": {
+    "schemaVersion": "1",
+    "applications": [
+      {
+        "key": "crm",
+        "displayName": "CRM",
+        "launchUrl": "https://crm.example.com",
+        "audience": "bubllio-crm-api",
+        "contractVersion": "1"
+      }
+    ]
+  }
+}

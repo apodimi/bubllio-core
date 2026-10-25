@@ -1,8 +1,8 @@
 # Identity and organization ownership
 
-This page defines the proposed boundary between Keycloak identity data and Core
-product data. ADR 0004 must be accepted before this becomes an implementation
-contract.
+This page defines the accepted boundary between Keycloak identity data and Core
+product data. ADR 0004 defines organization ownership; ADR 0009 defines
+application access. Implementation is still incremental.
 
 ## Ownership
 
@@ -18,13 +18,16 @@ Core owns the product representation of an organization:
 
 - enabled, suspended, or onboarding product state;
 - installed and available Bubllio applications;
+- explicit application grants for each organization member;
 - entitlements and compatibility state;
 - suite preferences that are not identity-provider configuration;
 - the immutable link to the Keycloak organization ID.
 
 Applications own domain roles and capabilities. Keycloak membership answers
-"may this identity enter this organization?" It does not by itself answer "may
-this member delete a CRM company or administer a Board project?"
+"does this identity belong to this organization?" Core answers "may this
+member enter this application in this organization?" The application answers
+"may this member perform this action on this record?" These are three separate
+checks. A Core suite role never grants app access automatically.
 
 ## NestJS resource-server convention
 

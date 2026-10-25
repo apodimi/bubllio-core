@@ -1,0 +1,98 @@
+name: Verify Core
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run build
+
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run format:check
+      - run: npm run build
+
+  identity-theme:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/keycloak-theme
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/keycloak-theme/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run build:keycloak
+
+  delivery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: node scripts/test-universal-installer.mjs
+      - run: docker build --target runtime -f deploy/installer/Dockerfile -t bubllio-core-installer:test .
+      - run: BUBLLIO_INSTALLER_TEST_IMAGE=bubllio-core-installer:test node scripts/test-universal-installer.mjs
+
+  browser:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: [api, web, identity-theme]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+        working-directory: apps/web
+      - run: npx playwright install --with-deps chrome
+        working-directory: apps/web
+      - run: docker compose --env-file .env.example up -d --build --wait keycloak core-api
+      - run: npm run test:e2e
+        working-directory: apps/web
+      - if: always()
+        run: docker compose --env-file .env.example down

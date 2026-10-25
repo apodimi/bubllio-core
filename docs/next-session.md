@@ -1,66 +1,84 @@
 # Next session
 
-Last updated: 2026-10-23
+Last updated: 2026-10-25
 
 ## Where we stopped
 
-The secure first-run foundation is ready:
+The first portable delivery slice of ADR 0011 is implemented:
 
-- Prisma 7.10.1 connects the Core API to its own PostgreSQL database through
-  `apps/api/prisma.config.ts`.
-- Three migrations create the organization foundation, the installation setup
-  singleton, and claim idempotency support.
-- OIDC verification accepts an authenticated user without an organization for
-  the narrow setup flow, while malformed organization claims are rejected.
-- Tenant endpoints can require an exact immutable organization ID through
-  `OrganizationContextGuard` and `@RequireOrganizationContext()`.
-- Setup access requires a recently authenticated, verified-email identity and
-  a time-limited setup secret whose SHA-256 digest is stored in configuration.
-- `InstallationSetup` models the first-run state machine. The database prevents
-  changes or deletion after the installation reaches `READY`.
-- `SetupRepository.claim()` atomically handles the initial claim, safe replay
-  with the same idempotency key, and conflicts from another claimant.
-- `SetupModule` contains the setup repository and guards, but it is deliberately
-  not imported by `AppModule` yet because the HTTP controller is the next slice.
+- The API reads one immutable validated runtime configuration. Production
+  rejects insecure public URLs, loopback dependencies, local-only flags,
+  incomplete setup proof, and missing application manifests before startup.
+- `/health/live`, `/health/ready`, and `/api/v1/system/preflight` separate process
+  liveness, operational dependency readiness, and product-safe setup guidance.
+- A strict data-only deployment manifest owns the installed application catalog.
+  Startup reconciliation is transactional, removed apps become unavailable, and
+  production HTTP registration is closed.
+- Core web receives public API and identity origins at container startup through
+  `/runtime-config.js`; no environment-specific frontend rebuild is required.
+- The setup UI begins with responsive EN/EL system checks and blocks progression
+  until database, identity, migrations, and the app manifest are ready. The
+  existing claim, owner, organization, retry, and workspace flow is preserved.
+- Releases include a Docker-only bundle. `./bubllio prepare` derives the strict
+  contract from a base domain and edge network, creates private file secrets,
+  writes exact runtime inputs, and prints the setup secret once. `doctor` checks
+  the host before `up`; a source checkout and host Node are not required.
+- `deploy/compose/` is the first thin adapter. Separate non-root API, migration,
+  web, and optimized Keycloak images are defined, with private database networks,
+  read-only application containers, one-shot migrations, and realm bootstrap.
+- `.github/workflows/release-images.yml` verifies and publishes multi-architecture
+  GHCR images with provenance, SBOMs, and an immutable digest manifest.
+- The setup UI configures and proves SMTP delivery before account creation. A
+  separate internal setup agent owns temporary Keycloak authority and writes
+  only the SMTP password to Keycloak's private file vault; the Core API cannot
+  access either.
 
-The detailed implementation plan remains local at
-`plan/feature-first-run-setup-1.md` and is intentionally ignored by Git.
+The root development Compose stack remains the authoritative local environment.
+The portable adapter is an internal technical-alpha reference, not an approved
+external or Production release.
 
-## Verification completed
+## Release blockers still open
 
-- API tests: 35 passing across 8 test files.
-- API production build passes.
-- Formatting and `git diff --check` pass.
-- Both installation setup SQL integration scripts pass against PostgreSQL:
-  `installation-setup.sql` and `installation-setup-claim.sql`.
-- All three local migrations are applied.
-- The local installation record remains `NOT_STARTED` at version 1 because the
-  integration tests run inside transactions and roll back.
-- The temporary integration-test database container was removed.
+1. Select and approve a real SMTP provider, sender-domain authentication,
+   bounce/complaint handling, processor terms, retention, and operational
+   ownership. The product configuration and proof flow is implemented, but the
+   external provider and privacy decision remain environment responsibilities.
+2. Close the external-registration privacy and abuse gate: privacy notice,
+   controller/processor decisions, DPIA screening, rate limits, recovery, and
+   named human approval. Do not describe the current build as GDPR-ready.
+3. Add a tested data lifecycle: member offboarding, access/export/rectification,
+   retention and pseudonymisation, Core-Keycloak reconciliation, privacy-safe
+   logging, and incident/breach operations.
+4. Build and start the exact production images behind real HTTPS on a clean host.
+   Prove least-privilege Keycloak permissions, setup convergence, health routing,
+   secret removal, and app-manifest reconciliation.
+5. Implement and rehearse encrypted backup/restore, upgrade, rollback, shared
+   rate limiting, monitoring, and alerting.
+6. Complete member directory and grant-management UI, then prove CRM denial and
+   allow paths against Core. Board is not required to validate the Core model.
 
-## Start here tomorrow
+## Verification baseline
 
-1. Build `POST /api/v1/setup/claim` test-first.
-2. Connect the guard chain in this order: authentication,
-   `SetupSubjectGuard`, `SetupSecretGuard`, then `SetupRepository.claim()`.
-3. Validate the idempotency header and return the OpenAPI-defined outcomes:
-   `201` for the first claim, `200` for a replay, and a generic conflict for a
-   competing claimant.
-4. Import `SetupModule` into `AppModule`, allow the required POST/custom headers
-   in CORS, and add `Cache-Control: no-store` to setup responses.
-5. Add HTTP tests covering a signed organization-less token, wrong secret,
-   stale authentication, unverified email, competing claimant, and replay.
-6. After the claim endpoint is complete, implement the setup status endpoint.
+- API focused and full tests, formatting, and production build must pass.
+- Web formatting and production build must pass; Playwright setup tests cover
+  ready, blocked, retry, Greek, and mobile behavior.
+- Installation schema positive/negative tests, secret-preparation idempotence,
+  Compose configuration, and adapter validation must pass.
+- Production image builds and a clean-host HTTPS rehearsal remain mandatory
+  before any UAT or external alpha claim.
 
-Useful verification command:
+Useful commands:
 
 ```bash
 cd apps/api
 npm test && npm run build && npm run format:check
+
+cd ../web
+npm run build && npm run format:check
+
+cd ../..
+node scripts/test-universal-installer.mjs
 ```
 
-To inspect the local services:
-
-```bash
-docker compose --env-file .env.example ps
-```
+The detailed executable plan remains local at
+`plan/infrastructure-portable-delivery-1.md` and is intentionally ignored by Git.
