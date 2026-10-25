@@ -7,8 +7,14 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const [command, ...arguments_] = process.argv.slice(2);
+if (command === "initialize-managed-compose") {
+  run(resolve(root, "scripts/initialize-managed-compose.mjs"), arguments_);
+  process.exit(0);
+}
 if (command !== "prepare") {
-  throw new Error("Usage: bubllio-installer prepare <options>");
+  throw new Error(
+    "Usage: bubllio-installer prepare <options> | initialize-managed-compose",
+  );
 }
 const options = parseArguments(arguments_);
 await mkdir(options.stateDirectory, { recursive: true, mode: 0o700 });

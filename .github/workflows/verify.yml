@@ -71,9 +71,13 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-      - run: node scripts/test-universal-installer.mjs
+      - run: |
+          node scripts/test-universal-installer.mjs
+          node scripts/test-managed-compose.mjs
       - run: docker build --target runtime -f deploy/installer/Dockerfile -t bubllio-core-installer:test .
-      - run: BUBLLIO_INSTALLER_TEST_IMAGE=bubllio-core-installer:test node scripts/test-universal-installer.mjs
+      - run: |
+          BUBLLIO_INSTALLER_TEST_IMAGE=bubllio-core-installer:test node scripts/test-universal-installer.mjs
+          BUBLLIO_INSTALLER_TEST_IMAGE=bubllio-core-installer:test node scripts/test-managed-compose.mjs
 
   browser:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'

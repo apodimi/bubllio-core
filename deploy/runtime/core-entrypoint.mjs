@@ -18,19 +18,34 @@ if (mode === "api") {
   environment.CORE_KEYCLOAK_CLIENT_SECRET = await readRequiredSecret(
     environment.CORE_KEYCLOAK_CLIENT_SECRET_FILE,
   );
-  environment.CORE_SETUP_SECRET_SHA256 = await readRequiredSecret(
-    environment.CORE_SETUP_SECRET_SHA256_FILE,
-  );
+  if (environment.CORE_SETUP_MATERIAL_FILE) {
+    const setupMaterial = JSON.parse(
+      await readRequiredSecret(environment.CORE_SETUP_MATERIAL_FILE),
+    );
+    if (
+      setupMaterial?.schemaVersion !== "1" ||
+      typeof setupMaterial.digest !== "string" ||
+      typeof setupMaterial.expiresAt !== "string"
+    ) {
+      throw new Error("Setup material file is invalid");
+    }
+    environment.CORE_SETUP_SECRET_SHA256 = setupMaterial.digest;
+    environment.CORE_SETUP_SECRET_EXPIRES_AT = setupMaterial.expiresAt;
+  } else {
+    environment.CORE_SETUP_SECRET_SHA256 = await readRequiredSecret(
+      environment.CORE_SETUP_SECRET_SHA256_FILE,
+    );
+    environment.CORE_SETUP_SECRET_EXPIRES_AT =
+      environment.CORE_SETUP_SECRET_EXPIRES_AT ??
+      (await readOptionalSecret(environment.CORE_SETUP_SECRET_EXPIRES_AT_FILE));
+  }
   environment.CORE_IDENTITY_SETUP_AGENT_TOKEN = await readRequiredSecret(
     environment.CORE_IDENTITY_SETUP_AGENT_TOKEN_FILE,
   );
 }
 
 const command = mode === "migrate" ? "/usr/local/bin/npm" : process.execPath;
-const arguments_ =
-  mode === "api"
-    ? ["dist/main.js"]
-    : ["run", "db:deploy"];
+const arguments_ = mode === "api" ? ["dist/main.js"] : ["run", "db:deploy"];
 const child = spawn(command, arguments_, {
   cwd: "/app",
   env: environment,
@@ -58,6 +73,10 @@ async function readRequiredSecret(path) {
   const value = (await readFile(path, "utf8")).trim();
   if (!value) throw new Error("A required secret file is empty");
   return value;
+}
+
+async function readOptionalSecret(path) {
+  return path ? readRequiredSecret(path) : undefined;
 }
 
 function createDatabaseUrl(source, password) {

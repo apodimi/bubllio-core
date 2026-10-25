@@ -21,3 +21,4 @@ Decision status meanings:
 | [0010](0010-general-browser-registration.md)           | Proposed | Allow permanent verified browser identity signup  |
 | [0011](0011-portable-delivery-and-ui-first-setup.md)   | Accepted | Keep delivery portable and setup UI-first         |
 | [0012](0012-isolate-email-bootstrap-authority.md)      | Accepted | Isolate temporary email bootstrap authority       |
+| [0013](0013-managed-deployment-bootstrap.md)           | Accepted | Bootstrap managed platforms from two inputs       |

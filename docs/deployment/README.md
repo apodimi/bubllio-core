@@ -27,10 +27,17 @@ verification succeeds.
 
 Versioned installation releases are created only from reviewed `v*` tags. A
 tagged workflow publishes a GitHub prerelease or release whose direct assets are
-the bundle, its checksum, the manifest, and image SBOMs. A `main` push runs the
+the bundle, its checksum, a digest-pinned Dokploy Compose adapter, the manifest,
+and image SBOMs. A `main` push runs the
 ordinary verification workflow but does not silently create a new product
 version. Manual release-workflow runs remain rehearsal artifacts and do not
 create a GitHub Release.
+
+Managed panels may consume the released Compose adapter with only a base domain
+and a unique setup secret. The first alpha flow and its explicit trust boundary
+are documented in [managed-platform installation](managed-platforms.md). It is
+an additive adapter to the same contract, not a replacement for the portable
+bundle or a general claim that every hosting panel is validated.
 
 ## Portable delivery contract
 

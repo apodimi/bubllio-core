@@ -1,0 +1,68 @@
+# Managed-platform installation
+
+This guide answers one question: how does an operator start a released Bubllio
+Core adapter from a Compose hosting panel without using SSH or generating host
+files?
+
+The first supported technical-alpha target is Dokploy. The contract is portable:
+other panels can provide the same two inputs and must pass the same conformance
+checks before they are described as supported.
+
+## Inputs
+
+Create a new Compose service from the release's
+`bubllio-core-<version>-dokploy.yaml` asset. Add these service-level values:
+
+```dotenv
+BUBLLIO_BASE_DOMAIN=dev.bubllio.com
+BUBLLIO_SETUP_SECRET=<43-character base64url secret>
+```
+
+Generate the setup secret as 32 random bytes in a password manager. It must be
+exactly 43 base64url characters (`A-Z`, `a-z`, `0-9`, `_`, `-`), must be unique
+to this installation, and must not be a human passphrase. Store it until browser
+setup is complete. Do not place it in project-wide variables, screenshots,
+support bundles, chat, tickets, or source control.
+
+The first deployment fails safely when the secret is absent or malformed. The
+initializer receives it without network access, prints no secret, stores only a
+SHA-256 digest and expiry, and creates independent internal credentials in
+service-scoped named volumes. Repeating deployment preserves all credentials.
+
+## Dokploy flow
+
+1. Create a **Compose** service and select **Raw** as the source.
+2. Paste the released Dokploy Compose asset; do not use an automatic GitHub
+   source archive or an Actions artifact.
+3. Add the two service-level environment values above.
+4. Keep isolated deployment off; the adapter uses Dokploy's existing
+   `dokploy-network` only for the three public services.
+5. Add these HTTPS domains in Dokploy:
+
+   | Domain                                     | Service    | Port |
+   | ------------------------------------------ | ---------- | ---: |
+   | base domain, for example `dev.bubllio.com` | `core-web` | 8080 |
+   | `api.` plus the base domain                | `core-api` | 3100 |
+   | `auth.` plus the base domain               | `keycloak` | 8080 |
+
+6. Preview the rendered Compose. Confirm that there are no host `ports`, and
+   only `core-web`, `core-api`, and `keycloak` join `dokploy-network`.
+7. Deploy, wait for the three public services to become healthy, then open
+   `https://<base-domain>/setup` and complete the browser flow.
+8. After the installation is claimed, delete `BUBLLIO_SETUP_SECRET` from the
+   Dokploy service and redeploy. The initializer must report that state is ready
+   without rotating it. Confirm the replacement initializer container no longer
+   contains the raw value.
+
+Dokploy administrators and anyone with equivalent Docker/configuration access
+may inspect the raw setup value during bootstrap. That is an explicit
+technical-alpha trust assumption. Deleting the current value may not erase
+historical platform records or backups, so never reuse it.
+
+## Recovery and limitations
+
+- A changed base domain or setup secret is rejected after initialization.
+- An expired or lost setup secret has no non-destructive rotation flow yet.
+- Removing named volumes is destructive and is not a recovery procedure.
+- This adapter is not approved for real users, UAT, or Production until its
+  clean-host rehearsal and the release gates in the main deployment guide pass.

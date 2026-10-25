@@ -6,7 +6,7 @@ RUN mkdir -p /input /state
 
 COPY deploy/contract ./deploy/contract
 COPY deploy/release ./deploy/release
-COPY scripts/bubllio-installer.mjs scripts/create-installation-contract.mjs scripts/prepare-installation.mjs ./scripts/
+COPY scripts/bubllio-installer.mjs scripts/create-installation-contract.mjs scripts/initialize-managed-compose.mjs scripts/prepare-installation.mjs ./scripts/
 
 USER node
 

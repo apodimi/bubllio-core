@@ -26,6 +26,7 @@ COPY --from=runtime-dependencies --chown=node:node /app/node_modules ./node_modu
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --chown=node:node deploy/runtime/core-entrypoint.mjs ./bin/core-entrypoint.mjs
+COPY --chown=node:node deploy/managed/applications.json ./config/applications.json
 USER node
 EXPOSE 3100
 ENTRYPOINT ["node", "/app/bin/core-entrypoint.mjs"]

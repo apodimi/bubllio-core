@@ -23,6 +23,10 @@ The first portable delivery slice of ADR 0011 is implemented:
   contract from a base domain and edge network, creates private file secrets,
   writes exact runtime inputs, and prints the setup secret once. `doctor` checks
   the host before `up`; a source checkout and host Node are not required.
+- Tagged releases also generate a digest-pinned Dokploy Compose adapter. Its
+  one-shot initializer accepts only the base domain and a unique setup secret,
+  creates scoped named-volume credentials, and supports redeploy after the raw
+  bootstrap value is removed from the panel.
 - `deploy/compose/` is the first thin adapter. Separate non-root API, migration,
   web, and optimized Keycloak images are defined, with private database networks,
   read-only application containers, one-shot migrations, and realm bootstrap.
@@ -52,6 +56,8 @@ external or Production release.
 4. Build and start the exact production images behind real HTTPS on a clean host.
    Prove least-privilege Keycloak permissions, setup convergence, health routing,
    secret removal, and app-manifest reconciliation.
+   The same rehearsal must exercise the Dokploy adapter's first deploy, browser
+   claim, environment-secret removal, redeploy, restart, and durable state.
 5. Implement and rehearse encrypted backup/restore, upgrade, rollback, shared
    rate limiting, monitoring, and alerting.
 6. Complete member directory and grant-management UI, then prove CRM denial and

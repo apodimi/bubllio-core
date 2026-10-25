@@ -54,6 +54,7 @@ jobs:
       - name: Verify portable contract and Compose adapter
         run: |
           node scripts/test-universal-installer.mjs
+          node scripts/test-managed-compose.mjs
           node scripts/prepare-installation.mjs \
             --contract deploy/contract/bubllio-installation.example.json \
             --output-dir /tmp/bubllio-installation >/dev/null
@@ -213,6 +214,9 @@ jobs:
             -czf "${BUNDLE_NAME}.tar.gz" \
             "$BUNDLE_NAME"
           sha256sum "${BUNDLE_NAME}.tar.gz" > "${BUNDLE_NAME}.tar.gz.sha256"
+          node scripts/build-managed-adapter.mjs \
+            --release-manifest release-manifest.json \
+            --output "bubllio-core-${VERSION}-dokploy.yaml"
       - uses: actions/upload-artifact@v4
         with:
           name: bubllio-core-release-${{ github.sha }}
@@ -220,6 +224,7 @@ jobs:
             release-manifest.json
             bubllio-core-*.tar.gz
             bubllio-core-*.tar.gz.sha256
+            bubllio-core-*-dokploy.yaml
             release-sboms/*.spdx.json
           if-no-files-found: error
       - name: Publish tagged GitHub release
@@ -236,6 +241,7 @@ jobs:
             gh release upload "$GITHUB_REF_NAME" \
               bubllio-core-*.tar.gz \
               bubllio-core-*.tar.gz.sha256 \
+              bubllio-core-*-dokploy.yaml \
               release-manifest.json \
               release-sboms/*.spdx.json \
               --clobber
@@ -249,6 +255,7 @@ jobs:
               $PRERELEASE \
               bubllio-core-*.tar.gz \
               bubllio-core-*.tar.gz.sha256 \
+              bubllio-core-*-dokploy.yaml \
               release-manifest.json \
               release-sboms/*.spdx.json
           fi

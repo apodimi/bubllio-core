@@ -35,6 +35,13 @@ developer receives Board access, a salesperson CRM access, and a project
 manager both, without changing their shared organization membership. Board is
 a future application; CRM is the first real integration target.
 
+Managed hosting panels may replace the bundle's host-side preparation with a
+thin release adapter. The operator supplies only the base domain and one unique
+setup secret; the adapter derives and durably stores every internal credential,
+runs migrations, and starts the same browser setup. This does not make the
+hosting panel part of Core or weaken the one-time proof against first-visitor
+takeover.
+
 ## Core workspace experience
 
 Core is the suite home after sign-in, similar to an application workspace. A

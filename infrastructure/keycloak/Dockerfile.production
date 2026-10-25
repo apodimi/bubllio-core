@@ -27,6 +27,7 @@ ENV KC_DB=postgres \
     KC_VAULT_DIR=/opt/keycloak/vault
 COPY --from=keycloak-build --chown=keycloak:keycloak /opt/keycloak/ /opt/keycloak/
 COPY --chown=keycloak:keycloak --chmod=755 deploy/runtime/keycloak-entrypoint.sh /opt/keycloak/bin/bubllio-entrypoint.sh
+COPY --chown=keycloak:keycloak --chmod=444 deploy/keycloak/bubllio-realm.json /opt/keycloak/data/import/bubllio-realm.json
 USER keycloak
 EXPOSE 8080 9000
 ENTRYPOINT ["/opt/keycloak/bin/bubllio-entrypoint.sh"]
