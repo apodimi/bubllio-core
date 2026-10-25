@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
+  chmod,
   mkdir,
   mkdtemp,
   readFile,
@@ -161,6 +162,7 @@ try {
   if (process.env.BUBLLIO_INSTALLER_TEST_IMAGE) {
     const containerState = join(temporaryRoot, "container-state");
     await mkdir(containerState);
+    await chmod(containerState, 0o777);
     const containerRun = spawnSync(
       "docker",
       [
