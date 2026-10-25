@@ -1,6 +1,22 @@
 # Next session
 
-Last updated: 2026-10-25
+Last updated: 2026-10-26
+
+## Resume here: UI review
+
+The next session starts with the user's requested review of the Core UI and
+first-run setup as an end user. Walk through the deployed flow screen by screen,
+review the stepper, visual hierarchy, copy, loading/error/retry states, and mobile
+behavior against the shared Bubllio MUI design system and CRM aesthetic. Record
+observed issues before choosing improvements.
+
+Deployment handoff: `main` now selects the verified `0.1.0-alpha.3` images in
+`deploy/managed/compose.yaml`. The vault mount and realm-import directory
+permissions are fixed. Release verification, browser tests, fresh production
+bootstrap, and secret-free redeploy checks passed. The user reported a successful
+server deployment and was configuring the three HTTPS domains in the hosting
+panel. Confirm valid certificates and route reachability before entering setup
+credentials; completion of the public-host browser setup remains unverified.
 
 ## Where we stopped
 
