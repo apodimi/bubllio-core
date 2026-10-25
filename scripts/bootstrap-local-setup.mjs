@@ -78,6 +78,7 @@ if (resume) {
     'CORE_SETUP_CLAIM_ENABLED=true',
     `CORE_SETUP_SECRET_SHA256=${digest}`,
     `CORE_SETUP_SECRET_EXPIRES_AT=${expiresAt}`,
+    'CORE_KEYCLOAK_ADMIN_URL=http://keycloak:8080',
     `CORE_KEYCLOAK_CLIENT_SECRET=${runtimeSecret}`,
     'CORE_IDENTITY_SETUP_AGENT_URL=http://identity-setup-agent:3200',
     `CORE_IDENTITY_SETUP_AGENT_TOKEN=${setupAgentToken}`,

@@ -86,4 +86,28 @@ describe('runtime configuration', () => {
       webOrigin: 'http://127.0.0.1:5174',
     })
   })
+
+  it('treats empty optional Compose values as absent', () => {
+    const config = parseRuntimeConfig({
+      NODE_ENV: 'development',
+      DATABASE_URL: 'postgresql://core:test@database:5432/core',
+      OIDC_AUDIENCE: 'bubllio-core-api',
+      OIDC_ISSUER: 'http://127.0.0.1:8180/realms/bubllio',
+      CORE_SETUP_SECRET_SHA256: '',
+      CORE_SETUP_SECRET_EXPIRES_AT: '',
+      CORE_KEYCLOAK_ADMIN_URL: '',
+      CORE_KEYCLOAK_CLIENT_SECRET: '',
+      CORE_IDENTITY_SETUP_AGENT_URL: '',
+      CORE_IDENTITY_SETUP_AGENT_TOKEN: '',
+      CORE_APPLICATION_MANIFEST_PATH: '',
+    })
+
+    expect(config.setup.secretSha256).toBeUndefined()
+    expect(config.setup.secretExpiresAt).toBeUndefined()
+    expect(config.keycloak.clientSecret).toBeUndefined()
+    expect(config.keycloak.adminUrl).toBeUndefined()
+    expect(config.identitySetupAgent.url).toBeUndefined()
+    expect(config.identitySetupAgent.token).toBeUndefined()
+    expect(config.applicationManifestPath).toBeUndefined()
+  })
 })

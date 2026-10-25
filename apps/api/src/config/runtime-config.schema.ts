@@ -48,7 +48,7 @@ export function parseRuntimeConfig(environment: RuntimeEnvironmentSource): Runti
     throw new Error('Local rehearsal and application registration must be disabled in production')
   }
 
-  const secretSha256 = environment.CORE_SETUP_SECRET_SHA256
+  const secretSha256 = optionalValue(environment.CORE_SETUP_SECRET_SHA256)
   if (secretSha256 && !SHA256_HEX_PATTERN.test(secretSha256)) {
     throw new Error('CORE_SETUP_SECRET_SHA256 must be a SHA-256 hex digest')
   }
@@ -63,14 +63,15 @@ export function parseRuntimeConfig(environment: RuntimeEnvironmentSource): Runti
     throw new Error('Enabled setup claims require a setup secret digest and expiry')
   }
 
-  const adminUrl = environment.CORE_KEYCLOAK_ADMIN_URL
-    ? parseUrl(environment.CORE_KEYCLOAK_ADMIN_URL, {
+  const configuredAdminUrl = optionalValue(environment.CORE_KEYCLOAK_ADMIN_URL)
+  const adminUrl = configuredAdminUrl
+    ? parseUrl(configuredAdminUrl, {
         name: 'CORE_KEYCLOAK_ADMIN_URL',
         production: mode === 'production',
         allowInternalHttp: true,
       })
     : undefined
-  const clientSecret = environment.CORE_KEYCLOAK_CLIENT_SECRET
+  const clientSecret = optionalValue(environment.CORE_KEYCLOAK_CLIENT_SECRET)
   if ((adminUrl === undefined) !== (clientSecret === undefined)) {
     throw new Error('Keycloak administration URL and client secret must be configured together')
   }
@@ -81,14 +82,15 @@ export function parseRuntimeConfig(environment: RuntimeEnvironmentSource): Runti
     throw new Error('Enabled setup claims require Keycloak administration configuration')
   }
 
-  const identitySetupAgentUrl = environment.CORE_IDENTITY_SETUP_AGENT_URL
-    ? parseUrl(environment.CORE_IDENTITY_SETUP_AGENT_URL, {
+  const configuredIdentitySetupAgentUrl = optionalValue(environment.CORE_IDENTITY_SETUP_AGENT_URL)
+  const identitySetupAgentUrl = configuredIdentitySetupAgentUrl
+    ? parseUrl(configuredIdentitySetupAgentUrl, {
         name: 'CORE_IDENTITY_SETUP_AGENT_URL',
         production: mode === 'production',
         allowInternalHttp: true,
       })
     : undefined
-  const identitySetupAgentToken = environment.CORE_IDENTITY_SETUP_AGENT_TOKEN
+  const identitySetupAgentToken = optionalValue(environment.CORE_IDENTITY_SETUP_AGENT_TOKEN)
   if ((identitySetupAgentUrl === undefined) !== (identitySetupAgentToken === undefined)) {
     throw new Error('Identity setup agent URL and token must be configured together')
   }
@@ -102,7 +104,7 @@ export function parseRuntimeConfig(environment: RuntimeEnvironmentSource): Runti
     throw new Error('Enabled setup claims require the identity setup agent')
   }
 
-  const applicationManifestPath = environment.CORE_APPLICATION_MANIFEST_PATH
+  const applicationManifestPath = optionalValue(environment.CORE_APPLICATION_MANIFEST_PATH)
   if (mode === 'production' && !applicationManifestPath) {
     throw new Error('CORE_APPLICATION_MANIFEST_PATH must be configured in production')
   }
@@ -151,12 +153,17 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
 }
 
 function parseOptionalDate(value: string | undefined, name: string): Date | undefined {
-  if (value === undefined) return undefined
-  const parsed = new Date(value)
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) {
+  const configuredValue = optionalValue(value)
+  if (configuredValue === undefined) return undefined
+  const parsed = new Date(configuredValue)
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== configuredValue) {
     throw new Error(`${name} must be an ISO-8601 UTC timestamp`)
   }
   return parsed
+}
+
+function optionalValue(value: string | undefined): string | undefined {
+  return value === '' || value === undefined ? undefined : value
 }
 
 function parseUrl(

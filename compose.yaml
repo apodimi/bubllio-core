@@ -177,6 +177,7 @@ services:
     build:
       context: ./apps/api
     environment:
+      NODE_ENV: development
       PORT: "3100"
       OIDC_ISSUER: http://127.0.0.1:${KEYCLOAK_PORT:-8180}/realms/bubllio
       OIDC_JWKS_URL: http://keycloak:8080/realms/bubllio/protocol/openid-connect/certs
@@ -186,7 +187,7 @@ services:
       CORE_SETUP_CLAIM_ENABLED: ${CORE_SETUP_CLAIM_ENABLED:-false}
       CORE_SETUP_SECRET_SHA256: ${CORE_SETUP_SECRET_SHA256:-}
       CORE_SETUP_SECRET_EXPIRES_AT: ${CORE_SETUP_SECRET_EXPIRES_AT:-}
-      CORE_KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      CORE_KEYCLOAK_ADMIN_URL: ${CORE_KEYCLOAK_ADMIN_URL:-}
       CORE_KEYCLOAK_CLIENT_SECRET: ${CORE_KEYCLOAK_CLIENT_SECRET:-}
       CORE_IDENTITY_SETUP_AGENT_URL: ${CORE_IDENTITY_SETUP_AGENT_URL:-}
       CORE_IDENTITY_SETUP_AGENT_TOKEN: ${CORE_IDENTITY_SETUP_AGENT_TOKEN:-}
