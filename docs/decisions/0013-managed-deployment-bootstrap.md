@@ -25,6 +25,11 @@ BUBLLIO_BASE_DOMAIN
 BUBLLIO_SETUP_SECRET
 ```
 
+Infrastructure-owned inputs remain explicit. The generic Compose adapter also
+requires `BUBLLIO_EDGE_NETWORK`, the existing reverse-proxy Docker network. It
+must never assume a hosting vendor's network name. Dokploy is the current test
+environment; equivalent platform adapters consume the same product contract.
+
 The base domain is ordinary configuration. For the internal technical alpha,
 the setup secret is unique 256-bit base64url material supplied through a
 service-scoped platform secret or environment field. Only a hardened one-shot

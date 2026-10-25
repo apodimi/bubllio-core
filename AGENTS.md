@@ -53,6 +53,20 @@ Before production implementation:
 
 ## Developer experience
 
+### Infrastructure portability is mandatory
+
+- Build one platform-independent installation contract. Product setup, runtime
+  configuration, secret generation, persistence, and health behavior must work
+  through adapters on different infrastructure providers and hosting platforms.
+- Never hard-code a hosting panel, vendor network, filesystem path, or routing
+  convention into the canonical Compose distribution or Core product logic.
+  Infrastructure-owned facts must be explicit configuration inputs.
+- Treat Dokploy as a test environment and documented example. It must not
+  determine product architecture or be required to install Bubllio.
+- Keep platform adapters thin. Verify the generic contract first, then record
+  evidence for each actual platform. Portability does not justify claiming that
+  untested infrastructure is certified or supported.
+
 - Before choosing a framework pattern, check the current official vendor
   guidance and the established community convention. Prefer the vendor's
   recommended path when it fits Bubllio; document the concrete reason for any
@@ -89,4 +103,3 @@ Before production implementation:
   sanitized operational guidance into `docs/`.
 - Every completed change must report checks run, skipped checks, and residual
   identity, tenant, compatibility, or deployment risks.
-

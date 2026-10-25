@@ -78,7 +78,8 @@ repository's [`AGENTS.md`](AGENTS.md) owns Core-specific rules.
 
 For a hosting panel, connect this GitHub repository, select branch `main` and
 Compose Path `./deploy/managed/compose.yaml`. Set `BUBLLIO_BASE_DOMAIN` and a
-unique `BUBLLIO_SETUP_SECRET`, configure the three HTTPS domains, and deploy.
+unique `BUBLLIO_SETUP_SECRET`, and `BUBLLIO_EDGE_NETWORK` for your reverse proxy,
+configure the three HTTPS domains, and deploy.
 The checked-in Compose pins the published `0.1.0-alpha.2` images by digest and
 generates internal credentials automatically. Follow the complete
 [managed-platform setup guide](docs/deployment/managed-platforms.md).

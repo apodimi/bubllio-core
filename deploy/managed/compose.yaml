@@ -349,4 +349,4 @@ networks:
   smtp_egress:
   edge:
     external: true
-    name: dokploy-network
+    name: ${BUBLLIO_EDGE_NETWORK:?Set the existing reverse-proxy Docker network}

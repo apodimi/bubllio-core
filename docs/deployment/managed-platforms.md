@@ -4,9 +4,9 @@ This guide answers one question: how does an operator start a released Bubllio
 Core adapter from a Compose hosting panel without using SSH or generating host
 files?
 
-The first technical-alpha target is Dokploy. The contract is portable:
-other panels can provide the same two inputs and must pass the same conformance
-checks before they are described as supported.
+The Compose distribution is independent of the hosting platform. Dokploy is
+the current test environment. Other panels supply the same inputs and must pass
+the same conformance checks before they are described as validated.
 
 ## Inputs
 
@@ -19,6 +19,7 @@ only for release tooling. Add these service-level values:
 ```dotenv
 BUBLLIO_BASE_DOMAIN=dev.bubllio.com
 BUBLLIO_SETUP_SECRET=<43-character base64url secret>
+BUBLLIO_EDGE_NETWORK=<existing-reverse-proxy-network>
 ```
 
 Generate the setup secret as 32 random bytes in a password manager. It must be
@@ -32,6 +33,12 @@ initializer receives it without network access, prints no secret, stores only a
 SHA-256 digest and expiry, and creates independent internal credentials in
 service-scoped named volumes. Repeating deployment preserves all credentials.
 
+`BUBLLIO_EDGE_NETWORK` names the existing Docker network shared with your HTTPS
+reverse proxy. Use your infrastructure's value: for example `dokploy-network`
+in a standard Dokploy installation. There is no hosting-vendor default. DNS,
+TLS, and the proxy network are infrastructure inputs; browser setup and internal
+credential generation use the same behavior on every adapter.
+
 ## Dokploy flow
 
 1. Create a **Compose** service, choose **Docker Compose** (not Stack), and
@@ -41,7 +48,8 @@ service-scoped named volumes. Repeating deployment preserves all credentials.
    this first setup test. No download or YAML copy is required. The Compose file
    selects the reviewed release images even when application source changes on
    `main`; promoting its digests is an explicit release change.
-3. Add the two service-level environment values above.
+3. Add the three service-level environment values above, setting
+   `BUBLLIO_EDGE_NETWORK=dokploy-network` for a standard Dokploy installation.
 4. Keep isolated deployment off; the adapter uses Dokploy's existing
    `dokploy-network` only for the three public services.
 5. Add these HTTPS domains in Dokploy:
@@ -81,4 +89,4 @@ published release and regenerate `deploy/managed/compose.yaml` with
 `scripts/build-managed-adapter.mjs`. Review and commit both files together.
 The delivery CI gate regenerates the snapshot and rejects drift between the
 manifest, template, and deployable Compose file. Operators keep the same path
-and two environment inputs when a reviewed release is promoted.
+and environment inputs when a reviewed release is promoted.

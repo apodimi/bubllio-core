@@ -34,7 +34,7 @@ process.stdout.write(`Built managed Compose adapter: ${options.output}\n`);
 function parseArguments(arguments_) {
   const result = {
     releaseManifest: undefined,
-    template: "deploy/managed/dokploy-compose.template.yaml",
+    template: "deploy/managed/compose.template.yaml",
     output: undefined,
   };
   for (let index = 0; index < arguments_.length; index += 2) {
