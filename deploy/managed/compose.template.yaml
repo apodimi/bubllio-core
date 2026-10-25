@@ -112,11 +112,14 @@ services:
       - core_identity_secret:/run/bubllio/core-identity:ro
       - identity_database_secret:/run/bubllio/identity-database:ro
       - keycloak_bootstrap_secret:/run/bubllio/keycloak-bootstrap:ro
+      - identity_vault:/opt/keycloak/vault:ro
     networks:
       - identity_data
     depends_on:
       identity-db:
         condition: service_healthy
+      identity-vault-init:
+        condition: service_completed_successfully
     security_opt:
       - no-new-privileges:true
     cap_drop:

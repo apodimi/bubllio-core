@@ -78,6 +78,11 @@ historical platform records or backups, so never reuse it.
 
 ## Recovery and limitations
 
+If an earlier checkout failed realm import with
+`The /opt/keycloak/vault directory doesn't exist`, deploy the latest `main`
+using the same environment and volumes. Bootstrap waits for vault initialization
+and mounts the vault read-only; no reset or credential rotation is needed.
+
 - A changed base domain or setup secret is rejected after initialization.
 - An expired or lost setup secret has no non-destructive rotation flow yet.
 - Removing named volumes is destructive and is not a recovery procedure.

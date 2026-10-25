@@ -157,6 +157,20 @@ try {
   assert.equal(configured.status, 0, configured.stderr);
   const compose = JSON.parse(configured.stdout);
   assert.equal(compose.networks.edge.name, "example-proxy-network");
+  const bootstrap = compose.services["identity-bootstrap"];
+  assert.equal(
+    bootstrap.depends_on["identity-vault-init"].condition,
+    "service_completed_successfully",
+  );
+  assert.ok(
+    bootstrap.volumes.some(
+      (volume) =>
+        volume.source === "identity_vault" &&
+        volume.target === "/opt/keycloak/vault" &&
+        volume.read_only === true,
+    ),
+    "Offline realm import needs the initialized file vault mounted read-only",
+  );
   assert.equal(
     compose.services["installation-init"].environment.BUBLLIO_SETUP_SECRET,
     setupSecret,

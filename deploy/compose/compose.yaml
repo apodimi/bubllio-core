@@ -87,11 +87,15 @@ services:
       - core_identity_client_secret
       - identity_database_password
       - keycloak_bootstrap_client_secret
+    volumes:
+      - identity_vault:/opt/keycloak/vault:ro
     networks:
       - identity_data
     depends_on:
       identity-db:
         condition: service_healthy
+      identity-vault-init:
+        condition: service_completed_successfully
     security_opt:
       - no-new-privileges:true
     cap_drop:
