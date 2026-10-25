@@ -22,7 +22,9 @@ BUBLLIO_SETUP_SECRET=<43-character base64url secret>
 BUBLLIO_EDGE_NETWORK=<existing-reverse-proxy-network>
 ```
 
-Generate the setup secret as 32 random bytes in a password manager. It must be
+Generate the setup secret as 32 random bytes using a password manager or the
+[OpenSSL commands in the README](../../README.md#install-a-published-technical-alpha-release),
+including macOS clipboard and ready-to-paste environment variants. It must be
 exactly 43 base64url characters (`A-Z`, `a-z`, `0-9`, `_`, `-`), must be unique
 to this installation, and must not be a human passphrase. Store it until browser
 setup is complete. Do not place it in project-wide variables, screenshots,

@@ -84,6 +84,31 @@ The checked-in Compose pins the published `0.1.0-alpha.2` images by digest and
 generates internal credentials automatically. Follow the complete
 [managed-platform setup guide](docs/deployment/managed-platforms.md).
 
+Generate the setup secret locally with OpenSSL (macOS/Linux). To display the
+43-character value in your terminal:
+
+```bash
+openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n'
+```
+
+On macOS, copy the value directly to the clipboard instead:
+
+```bash
+openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n' | pbcopy
+```
+
+To copy the complete environment assignment, ready to paste into your hosting
+panel's Environment editor:
+
+```bash
+{ printf 'BUBLLIO_SETUP_SECRET='; openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n'; printf '\n'; } | pbcopy
+```
+
+Run only one of these commands for your installation: each generates a new
+secret. Save that same value in a password manager and use it again in browser
+setup. After setup is complete, remove it from the panel environment and
+redeploy as described in the managed-platform guide.
+
 For a host operated directly through Docker, download and verify the checksummed
 release bundle, then provide the two environment-owned inputs:
 
