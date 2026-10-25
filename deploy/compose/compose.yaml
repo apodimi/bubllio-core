@@ -136,13 +136,6 @@ services:
       timeout: 5s
       retries: 30
       start_period: 30s
-    labels:
-      - ${KEYCLOAK_PROXY_LABEL_1:-bubllio.adapter.keycloak=configure-proxy}
-      - ${KEYCLOAK_PROXY_LABEL_2:-bubllio.adapter.service=identity}
-      - ${KEYCLOAK_PROXY_LABEL_3:-bubllio.adapter.identity.label-3=unused}
-      - ${KEYCLOAK_PROXY_LABEL_4:-bubllio.adapter.identity.label-4=unused}
-      - ${KEYCLOAK_PROXY_LABEL_5:-bubllio.adapter.identity.label-5=unused}
-      - ${KEYCLOAK_PROXY_LABEL_6:-bubllio.adapter.identity.label-6=unused}
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -274,13 +267,6 @@ services:
       timeout: 5s
       retries: 30
       start_period: 10s
-    labels:
-      - ${CORE_API_PROXY_LABEL_1:-bubllio.adapter.core-api=configure-proxy}
-      - ${CORE_API_PROXY_LABEL_2:-bubllio.adapter.service=core-api}
-      - ${CORE_API_PROXY_LABEL_3:-bubllio.adapter.core-api.label-3=unused}
-      - ${CORE_API_PROXY_LABEL_4:-bubllio.adapter.core-api.label-4=unused}
-      - ${CORE_API_PROXY_LABEL_5:-bubllio.adapter.core-api.label-5=unused}
-      - ${CORE_API_PROXY_LABEL_6:-bubllio.adapter.core-api.label-6=unused}
     read_only: true
     tmpfs:
       - /tmp:mode=1777
@@ -314,13 +300,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-    labels:
-      - ${CORE_WEB_PROXY_LABEL_1:-bubllio.adapter.core-web=configure-proxy}
-      - ${CORE_WEB_PROXY_LABEL_2:-bubllio.adapter.service=core-web}
-      - ${CORE_WEB_PROXY_LABEL_3:-bubllio.adapter.core-web.label-3=unused}
-      - ${CORE_WEB_PROXY_LABEL_4:-bubllio.adapter.core-web.label-4=unused}
-      - ${CORE_WEB_PROXY_LABEL_5:-bubllio.adapter.core-web.label-5=unused}
-      - ${CORE_WEB_PROXY_LABEL_6:-bubllio.adapter.core-web.label-6=unused}
     read_only: true
     tmpfs:
       - /tmp:mode=1777

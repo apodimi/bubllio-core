@@ -64,6 +64,17 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run build:keycloak
 
+  delivery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: node scripts/test-universal-installer.mjs
+      - run: docker build --target runtime -f deploy/installer/Dockerfile -t bubllio-core-installer:test .
+      - run: BUBLLIO_INSTALLER_TEST_IMAGE=bubllio-core-installer:test node scripts/test-universal-installer.mjs
+
   browser:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: [api, web, identity-theme]

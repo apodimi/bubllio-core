@@ -25,6 +25,14 @@ configuration, health contracts, and secret inputs. Infrastructure-specific
 packages are thin adapters to this contract. Core and its APIs do not contain
 Dokploy, Docker Compose, Kubernetes, Coolify, or cloud-provider branches.
 
+The reference distribution is a self-contained release bundle. Its operator
+helper runs through Docker, derives release-owned values from the immutable
+manifest, and accepts only environment-owned facts: a base domain, the external
+proxy network, and optional advanced overrides. A source checkout and a host
+Node installation are not part of the installation contract. Docker Compose is
+the first reference adapter, not a product dependency or a universal-support
+claim.
+
 Infrastructure bootstrap is deliberately small. An adapter must:
 
 1. start the selected versioned Bubllio services;
@@ -89,7 +97,8 @@ release.
 ## Consequences
 
 - Releases need versioned images, a validated configuration schema, health
-  contracts, migration automation, and at least one reference adapter.
+  contracts, migration automation, one installer image, a checksummed bundle,
+  and at least one reference adapter.
 - Each additional platform adapter must pass the same installation conformance
   tests rather than redefine setup behavior.
 - Secure UI-based email configuration requires an explicit secret-storage and

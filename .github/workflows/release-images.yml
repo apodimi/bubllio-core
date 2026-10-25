@@ -54,6 +54,7 @@ jobs:
           npm run build:keycloak
       - name: Verify portable contract and Compose adapter
         run: |
+          node scripts/test-universal-installer.mjs
           node scripts/prepare-installation.mjs \
             --contract deploy/contract/bubllio-installation.example.json \
             --output-dir /tmp/bubllio-installation >/dev/null
@@ -99,6 +100,10 @@ jobs:
           - image: core-keycloak
             key: keycloak
             dockerfile: infrastructure/keycloak/Dockerfile.production
+            target: runtime
+          - image: core-installer
+            key: installer
+            dockerfile: deploy/installer/Dockerfile
             target: runtime
     steps:
       - uses: actions/checkout@v7
@@ -165,6 +170,7 @@ jobs:
     needs: publish
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           pattern: digest-*
@@ -174,10 +180,37 @@ jobs:
         env:
           COMMIT_SHA: ${{ github.sha }}
           RELEASE_REF: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
-          node -e "const fs=require('node:fs'); const images=Object.fromEntries(fs.readdirSync('release-fragments').sort().map(file=>{const item=JSON.parse(fs.readFileSync('release-fragments/'+file)); if(!/@sha256:[a-f0-9]{64}$/.test(item.image)||item.image.includes(':latest'))throw new Error('Invalid immutable image reference'); return [item.key,item.image]})); if(JSON.stringify(Object.keys(images).sort())!==JSON.stringify(['coreApi','coreMigrate','coreWeb','identitySetupAgent','keycloak']))throw new Error('Release manifest image set is incomplete'); fs.writeFileSync('release-manifest.json',JSON.stringify({schemaVersion:'1',releaseRef:process.env.RELEASE_REF,commitSha:process.env.COMMIT_SHA,images},null,2)+'\n')"
+          if [[ "$RELEASE_REF" == v* ]]; then
+            RELEASE_VERSION=${RELEASE_REF#v}
+          else
+            RELEASE_VERSION="0.1.0-alpha.${RUN_NUMBER}"
+          fi
+          export RELEASE_VERSION
+          node -e "const fs=require('node:fs'); const images=Object.fromEntries(fs.readdirSync('release-fragments').sort().map(file=>{const item=JSON.parse(fs.readFileSync('release-fragments/'+file)); return [item.key,item.image]})); const expected=['coreApi','coreMigrate','coreWeb','identitySetupAgent','installer','keycloak']; if(JSON.stringify(Object.keys(images).sort())!==JSON.stringify(expected))throw new Error('Release manifest image set is incomplete'); fs.writeFileSync('release-manifest.json',JSON.stringify({schemaVersion:'1',releaseRef:process.env.RELEASE_REF,version:process.env.RELEASE_VERSION,commitSha:process.env.COMMIT_SHA,images},null,2)+'\n')"
+          node -e "import('./deploy/release/manifest.mjs').then(({readReleaseManifest})=>readReleaseManifest('release-manifest.json'))"
+      - name: Build portable release bundle
+        run: |
+          VERSION=$(node -p "require('./release-manifest.json').version")
+          BUNDLE_NAME="bubllio-core-${VERSION}"
+          node scripts/build-release-bundle.mjs \
+            --release-manifest release-manifest.json \
+            --output-dir "$BUNDLE_NAME"
+          tar \
+            --sort=name \
+            --mtime='UTC 1970-01-01' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf "${BUNDLE_NAME}.tar.gz" \
+            "$BUNDLE_NAME"
+          sha256sum "${BUNDLE_NAME}.tar.gz" > "${BUNDLE_NAME}.tar.gz.sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: bubllio-core-release-${{ github.sha }}
-          path: release-manifest.json
+          path: |
+            release-manifest.json
+            bubllio-core-*.tar.gz
+            bubllio-core-*.tar.gz.sha256
           if-no-files-found: error

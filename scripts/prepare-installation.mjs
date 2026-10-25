@@ -9,7 +9,7 @@ import {
   rename,
   writeFile,
 } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
 import { validateJsonSchema } from "../deploy/contract/validate.mjs";
 
@@ -23,6 +23,9 @@ const RELEASE_VERSION = /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u;
 const options = parseArguments(process.argv.slice(2));
 const contractPath = resolve(options.contract);
 const outputDirectory = resolve(options.outputDirectory);
+const runtimeOutputDirectory = resolve(
+  options.runtimeOutputDirectory ?? options.outputDirectory,
+);
 const contract = JSON.parse(await readFile(contractPath, "utf8"));
 const contractSchema = JSON.parse(
   await readFile(
@@ -97,10 +100,16 @@ await writePublicFile(
 const environmentPath = join(outputDirectory, "compose.env");
 const environment = createComposeEnvironment({
   contract,
-  contractPath,
-  manifestPath,
-  secretPaths,
+  contractPath: runtimePath(contractPath),
+  manifestPath: runtimePath(manifestPath),
+  secretPaths: Object.fromEntries(
+    Object.entries(secretPaths).map(([name, path]) => [
+      name,
+      runtimePath(path),
+    ]),
+  ),
   setupExpiresAt,
+  edgeNetwork: options.edgeNetwork,
 });
 await writePrivateFile(environmentPath, environment);
 
@@ -125,13 +134,15 @@ if (setupSecret) {
 function parseArguments(arguments_) {
   if (arguments_.includes("--help")) {
     process.stdout.write(
-      "Usage: node scripts/prepare-installation.mjs --contract <file> [--output-dir <directory>] [--validate-only]\n",
+      "Usage: node scripts/prepare-installation.mjs --contract <file> [--output-dir <directory>] [--runtime-output-dir <absolute-directory>] [--edge-network <name>] [--validate-only]\n",
     );
     process.exit(0);
   }
   const result = {
     contract: "deploy/contract/bubllio-installation.example.json",
     outputDirectory: ".local/installation",
+    runtimeOutputDirectory: undefined,
+    edgeNetwork: "bubllio_edge",
     validateOnly: false,
   };
   for (let index = 0; index < arguments_.length; index += 1) {
@@ -141,11 +152,30 @@ function parseArguments(arguments_) {
       continue;
     }
     const value = arguments_[index + 1];
-    if (!value || !["--contract", "--output-dir"].includes(name))
+    if (
+      !value ||
+      ![
+        "--contract",
+        "--output-dir",
+        "--runtime-output-dir",
+        "--edge-network",
+      ].includes(name)
+    )
       fail(`Unknown argument: ${name}`);
     if (name === "--contract") result.contract = value;
     if (name === "--output-dir") result.outputDirectory = value;
+    if (name === "--runtime-output-dir") result.runtimeOutputDirectory = value;
+    if (name === "--edge-network") result.edgeNetwork = value;
     index += 1;
+  }
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,62}$/u.test(result.edgeNetwork)) {
+    fail("edge network contains unsupported characters");
+  }
+  if (
+    result.runtimeOutputDirectory &&
+    !isAbsolute(result.runtimeOutputDirectory)
+  ) {
+    fail("runtime output directory must be absolute");
   }
   return result;
 }
@@ -297,6 +327,7 @@ function createComposeEnvironment({
   manifestPath,
   secretPaths,
   setupExpiresAt,
+  edgeNetwork,
 }) {
   const entries = {
     BUBLLIO_CONTRACT_FILE: contractPath,
@@ -323,11 +354,19 @@ function createComposeEnvironment({
     CORE_SETUP_SECRET_EXPIRES_AT: setupExpiresAt,
     CORE_READY_PATH: contract.health.readinessPath,
     CORE_READY_TIMEOUT_SECONDS: String(contract.health.readinessTimeoutSeconds),
-    BUBLLIO_EDGE_NETWORK: "bubllio_edge",
+    BUBLLIO_EDGE_NETWORK: edgeNetwork,
   };
   return `${Object.entries(entries)
     .map(([name, value]) => `${name}=${value}`)
     .join("\n")}\n`;
+}
+
+function runtimePath(path) {
+  if (path === outputDirectory) return runtimeOutputDirectory;
+  if (path.startsWith(`${outputDirectory}/`)) {
+    return join(runtimeOutputDirectory, relative(outputDirectory, path));
+  }
+  return path;
 }
 
 async function ensureRandomSecret(path, exactLength) {

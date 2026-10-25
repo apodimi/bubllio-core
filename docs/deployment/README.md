@@ -4,9 +4,9 @@ This guide explains how to obtain and run Bubllio Core locally and defines the
 deployment contract for UAT and Production.
 
 > **Current status:** the local foundation and isolated first-run rehearsal are
-> runnable. A canonical installation contract, digest-only reference Compose
-> adapter, production images, runtime secret adapters, system readiness, and a
-> GHCR release workflow are implemented. The first-run UI now configures and
+> runnable. A canonical installation contract, Docker-only release bundle,
+> digest-only reference Compose adapter, production images, runtime secret
+> adapters, system readiness, and a GHCR release workflow are implemented. The first-run UI now configures and
 > proves SMTP delivery through a temporary identity setup agent before opening
 > registration. This is still an internal technical-alpha delivery slice, not
 > an approved external or Production release: a reviewed real SMTP provider,
@@ -22,7 +22,8 @@ publish an image, provision a realm, or approve a deployment. Those release
 artifacts remain part of the UAT and Production gate below. The
 [`release-images.yml`](../../.github/workflows/release-images.yml) workflow
 builds multi-architecture images, records immutable digests, generates SBOMs,
-and publishes a release manifest after the same verification succeeds.
+and publishes the release manifest and checksummed bundle after the same
+verification succeeds.
 
 ## Portable delivery contract
 
@@ -45,33 +46,39 @@ For a first installation exercise from an empty checkout, follow the
 [isolated manual test](../operations/first-run.md#first-manual-test-from-a-fresh-checkout).
 It uses a separate Compose project and does not reset existing developer data.
 
-### Reference adapter rehearsal
+### Install a published release
 
-The canonical operator input is
-[`deploy/contract/bubllio-installation.schema.json`](../../deploy/contract/bubllio-installation.schema.json).
-The example contains intentionally fake image digests and domains; replace them
-with the digest values from a verified release manifest and real HTTPS origins.
-Keep the resulting contract and generated output outside version control.
+Download the release archive and adjacent SHA-256 file, verify the archive, and
+extract it. No source checkout or host Node installation is required. The
+reference adapter asks for only the base domain and the existing Docker network
+shared with the HTTPS reverse proxy:
 
 ```bash
-cp deploy/contract/bubllio-installation.example.json /secure/path/installation.json
-# Edit the private copy with release digests, origins, volumes, and app manifest.
-node scripts/prepare-installation.mjs \
-  --contract /secure/path/installation.json \
-  --output-dir /secure/path/prepared
-node deploy/adapter-conformance/verify.mjs \
-  --contract /secure/path/installation.json \
-  --env-file /secure/path/prepared/compose.env \
-  --validate-only
-docker compose --env-file /secure/path/prepared/compose.env \
-  -f deploy/compose/compose.yaml config
+sha256sum --check bubllio-core-<version>.tar.gz.sha256
+tar -xzf bubllio-core-<version>.tar.gz
+cd bubllio-core-<version>
+./bubllio prepare \
+  --base-domain core.example.com \
+  --edge-network proxy
+./bubllio doctor
+./bubllio up
 ```
 
-Preparation creates private secret files, an exact application manifest, and a
-Compose environment file, then prints the raw setup secret once. It never puts
-the raw secret in the contract, generated environment, or image. The operator
-must create the named external edge network and translate the adapter labels for
-their reverse proxy before starting the stack.
+Preparation derives the three public origins, immutable image digests, stable
+volume names, health defaults, and an empty Core-only app manifest. It creates
+independent private secret files and prints the setup secret once. It never puts
+raw secrets in the contract, Compose environment, command arguments, image, or
+release archive. `doctor` validates Docker, Compose rendering, generated state,
+and the external network without starting a service.
+
+The generated `bubllio-state/` directory and named Docker volumes are durable
+installation state. Keep them outside version control, restrict operator
+access, and include both in backup and restore procedures. The helper's `down`
+command retains data and there is intentionally no destructive reset command.
+
+The archive checksum detects corruption but does not prove publisher identity.
+Cryptographic release signing remains required before the bundle can be treated
+as an externally trusted production release.
 
 ### HTTPS ingress and private service boundary
 
@@ -126,39 +133,21 @@ Do not claim accurate Core API client-IP attribution or IP-based application
 rate limiting until Fastify proxy trust has been explicitly implemented and
 tested.
 
-#### Dokploy with Traefik
+#### Reverse-proxy adapters
 
-Dokploy's existing Traefik is a suitable candidate adapter for technical UAT;
-it is not yet a production-supported Bubllio adapter. Prefer Dokploy's native
-**Domains** UI for a Docker Compose application instead of hand-maintaining
-Traefik labels. Dokploy injects the routing labels during deployment, and domain
-changes require a redeploy. Configure these mappings with HTTPS enabled:
+The canonical Compose file intentionally contains no Traefik, Caddy, Nginx,
+Dokploy, Coolify, or cloud-specific labels. Configure the platform's routing
+layer to map the three exact hosts to `core-web:8080`, `core-api:3100`, and
+`keycloak:8080` on the selected edge network. Do not add host `ports:` entries.
+Disable automatic discovery for every private service and inspect the final
+rendered configuration before each ingress change.
 
-| Dokploy domain         | Service    | Container port |
-| ---------------------- | ---------- | -------------- |
-| `dev.bubllio.com`      | `core-web` | `8080`         |
-| `api.dev.bubllio.com`  | `core-api` | `3100`         |
-| `auth.dev.bubllio.com` | `keycloak` | `8080`         |
-
-Do not add host `ports:` entries for these services. The generic
-`*_PROXY_LABEL_*` values in the reference adapter are placeholders, not working
-Traefik configuration. Treat Dokploy's generated labels as deployment output
-and inspect **Preview Compose** before every ingress change. Each of the three
-public services must have a unique exact-host router, the `websecure`
-entrypoint, TLS, an explicit backend port, and an explicit
-`traefik.docker.network` value. Disable Traefik discovery for every other
-service, either with `exposedByDefault=false` plus explicit opt-in or with
-`traefik.enable=false` labels in the rendered deployment.
-
-Production support requires a dedicated Bubllio edge network connected only to
-Traefik and the three public services. Do not enable Dokploy **Isolated
-Deployments** unchanged: it adds its generated network to every Compose service,
-including databases and setup services, which violates this adapter's private
-network boundary. The global `dokploy-network` may prove routing during a
-restricted UAT, but is not the final production isolation design because it is
-shared with unrelated applications. A Dokploy-specific overlay must establish
-and preserve the dedicated edge network before this adapter can be called
-production-supported.
+A deployment panel may provide a convenient Compose and domain UI, but it is an
+adapter—not part of Bubllio's product architecture. Its generated networks must
+not attach databases, migration jobs, or setup services to a shared public edge.
+Support for any named platform requires that adapter to pass the same
+conformance and isolation checks; using the generic bundle does not imply that
+the platform is production-certified.
 
 Compose domains also need an explicit HTTP-to-HTTPS redirect. Add HSTS only
 after all three origins are proven HTTPS-only; `includeSubDomains` and preload
@@ -181,19 +170,17 @@ server:
 7. databases, setup-agent, Keycloak management, proxy dashboard, and direct
    application container ports are unreachable externally.
 
-Save the sanitized Preview Compose output with the UAT evidence. Verify that
+Save the sanitized rendered Compose and proxy output with the UAT evidence. Verify that
 the proxy rejects forged forwarding headers and that external access to
 `https://auth.dev.bubllio.com/admin/` is denied while OIDC, verification,
-registration, and account actions still work. Traefik and Dokploy access logs
+registration, and account actions still work. Reverse-proxy and platform access logs
 may contain IP addresses and identifiers: define their purpose, access, redaction,
 retention, deletion, storage location, and any external processor before real
 users. Never log authorization headers, cookies, setup secrets, SMTP
 credentials, verification codes, or full sensitive query strings.
 
-Dokploy simplifies the proxy integration but does not approve the release or
-replace the portable installation contract. The same topology and acceptance
-checks apply to Traefik outside Dokploy, Caddy, Nginx, a cloud load balancer, or
-another platform adapter.
+The same topology and acceptance checks apply to Traefik, Caddy, Nginx, a cloud
+load balancer, or another platform adapter.
 
 The installation contract includes an internal-only identity setup agent image,
 a Keycloak vault volume, an agent token, and a distinct temporary Keycloak
@@ -543,6 +530,8 @@ The following still blocks promotion beyond restricted technical UAT:
 - an approved privacy notice, controller/processor allocation, retention,
   DSAR, deletion, offboarding, and incident procedures;
 - CI vulnerability scanning/signing policy and registry promotion approval;
+- a non-destructive, audited recovery path for a lost or expired one-time setup
+  secret;
 - database and Keycloak-vault backup/restore automation with recorded restore
   evidence;
 - a clean-host rehearsal using exact published digests that proves bootstrap
@@ -550,12 +539,33 @@ The following still blocks promotion beyond restricted technical UAT:
 - environment-specific DNS, TLS, resource limits, monitoring, alerting, SLO,
   RTO, and RPO decisions.
 
+## Technical-alpha acceptance and decision owners
+
+The bundle is accepted as an internal technical-alpha delivery artifact when a
+clean operator host can verify and extract it, run `prepare`, pass `doctor`,
+start the exact digest-pinned release, and reach browser setup without a source
+checkout, host Node, Keycloak console work, or manual migrations. Repeating
+`prepare` must not rotate or reprint secrets; changing contract-owned inputs in
+an existing state directory must fail safely. The rendered deployment must keep
+databases and setup services private and expose only the three documented proxy
+targets.
+
+Human approval is still required before external alpha:
+
+- the Product Owner owns the release audience and operator journey decision;
+- the Release/Operations Owner owns supported-platform claims and clean-host,
+  backup, restore, upgrade, and rollback evidence;
+- the Security Owner owns release signing, registry trust, secret handling,
+  ingress, and threat-model acceptance; and
+- the Privacy/Legal Owner owns registration purpose, notices, processors,
+  retention, abuse handling, and real-user approval.
+
+Business, design, engineering/security, and privacy review informed these
+criteria. That review is not evidence that the named human owners approved an
+external release.
+
 ## References
 
-- [Dokploy Docker Compose domains](https://docs.dokploy.com/docs/core/docker-compose/domains)
-- [Dokploy domain management](https://docs.dokploy.com/docs/core/domains)
-- [Dokploy Compose utilities and isolated deployments](https://docs.dokploy.com/docs/core/docker-compose/utilities)
-- [Dokploy production hardening](https://docs.dokploy.com/docs/core/guides/production-hardening)
 - [Traefik Docker provider](https://doc.traefik.io/traefik/providers/docker/)
 - [Keycloak reverse-proxy guidance](https://www.keycloak.org/server/reverseproxy)
 - [Keycloak container deployment](https://www.keycloak.org/server/containers)

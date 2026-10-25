@@ -1,6 +1,6 @@
 # Next session
 
-Last updated: 2026-10-24
+Last updated: 2026-10-25
 
 ## Where we stopped
 
@@ -19,9 +19,10 @@ The first portable delivery slice of ADR 0011 is implemented:
 - The setup UI begins with responsive EN/EL system checks and blocks progression
   until database, identity, migrations, and the app manifest are ready. The
   existing claim, owner, organization, retry, and workspace flow is preserved.
-- `deploy/contract/` defines the canonical digest-only installation input.
-  `scripts/prepare-installation.mjs` validates it, creates private file secrets,
-  writes exact runtime inputs, and prints the setup secret once.
+- Releases include a Docker-only bundle. `./bubllio prepare` derives the strict
+  contract from a base domain and edge network, creates private file secrets,
+  writes exact runtime inputs, and prints the setup secret once. `doctor` checks
+  the host before `up`; a source checkout and host Node are not required.
 - `deploy/compose/` is the first thin adapter. Separate non-root API, migration,
   web, and optimized Keycloak images are defined, with private database networks,
   read-only application containers, one-shot migrations, and realm bootstrap.
@@ -76,9 +77,7 @@ cd ../web
 npm run build && npm run format:check
 
 cd ../..
-node scripts/prepare-installation.mjs \
-  --contract deploy/contract/bubllio-installation.example.json \
-  --validate-only
+node scripts/test-universal-installer.mjs
 ```
 
 The detailed executable plan remains local at

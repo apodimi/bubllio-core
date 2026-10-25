@@ -74,6 +74,24 @@ for existing users. Board is not a prerequisite for the Core access model.
 Workspace-wide guidance lives in [`../AGENTS.md`](../AGENTS.md). This
 repository's [`AGENTS.md`](AGENTS.md) owns Core-specific rules.
 
+## Install a published technical-alpha release
+
+Operators do not clone this repository. Download and verify the checksummed
+release bundle, then provide the two environment-owned inputs:
+
+```bash
+./bubllio prepare --base-domain core.example.com --edge-network proxy
+./bubllio doctor
+./bubllio up
+```
+
+The helper needs Docker with Compose v2. It derives immutable images, endpoints,
+storage names, health settings, and credentials, then prints the browser setup
+secret once. Configure the three HTTPS proxy routes described in the
+[deployment guide](docs/deployment/README.md), open `/setup`, and finish email,
+administrator, and organization configuration in the UI. This artifact remains
+technical alpha until the documented external-release gates are approved.
+
 ## Run the local foundation
 
 The environment is isolated to localhost and uses disposable credentials from

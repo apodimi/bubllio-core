@@ -18,11 +18,15 @@ direct URL.
 ## Target first journey
 
 An installation operator starts the versioned Bubllio distribution through the
-adapter for their infrastructure and securely hands the one-time setup secret
-to the named IT administrator. Once the HTTPS endpoint is reachable, ordinary
-product setup happens in the browser: system preflight, email delivery, first
-verified administrator, first organization, and final readiness. An
-unconfigured Core opens this setup before any ordinary sign-in route.
+adapter for their infrastructure. The reference release is one downloadable
+bundle: with Docker, a base domain, and a reverse-proxy network, the operator
+prepares generated state, checks it, and starts the suite without a source
+checkout, Node, Keycloak administration, or manual migrations. The operator
+securely hands the one-time setup secret to the named IT administrator. Once
+the HTTPS endpoint is reachable, ordinary product setup happens in the browser:
+system preflight, email delivery, first verified administrator, first
+organization, and final readiness. An unconfigured Core opens this setup before
+any ordinary sign-in route.
 
 The applications present in an installation come from its reviewed deployment
 manifest. Core does not install containers or execute deployment commands. It
@@ -86,6 +90,9 @@ its domain data and action-level permissions.
   thin adapters; product behavior must not depend on a hosting vendor.
 - Infrastructure bootstrap must stay minimal. Once Bubllio is reachable, the
   normal administrator configuration experience belongs in the product UI.
+- Release delivery asks only for environment-owned facts. Image digests,
+  credentials, filenames, health defaults, and internal topology are derived
+  from the release and never become operator questionnaire fields.
 - Deployment manifests install applications; Core presents them and manages
   access but is not an application installer or marketplace.
 - Safe staggered upgrades between independently released applications.
@@ -118,4 +125,3 @@ its domain data and action-level permissions.
 The suite is not complete until CRM accepts the shared identity and Core app
 grant while preserving a tested transition from its existing login. Board uses
 the same contract later, without changing Core's access model.
-

@@ -306,22 +306,20 @@ workflow runs before release.
 
 The portable Compose adapter is a technical-alpha reference for infrastructure
 integration. It is not the daily development stack and must not be exposed to
-real users yet.
+real users yet. Operators consume the published release bundle; this source
+workflow exists for contributor testing only.
 
-Start with the [deployment guide](../deployment/README.md) and a verified release
-manifest. Copy the example contract outside the repository, replace its fake
-digests and domains, and keep the prepared output outside version control:
+Run the release-bundle regression suite and the lower-level contract check:
 
 ```bash
+node scripts/test-universal-installer.mjs
 node scripts/prepare-installation.mjs \
-  --contract /secure/path/installation.json \
-  --output-dir /secure/path/prepared
+  --contract deploy/contract/bubllio-installation.example.json \
+  --output-dir /tmp/bubllio-prepared
 node deploy/adapter-conformance/verify.mjs \
-  --contract /secure/path/installation.json \
-  --env-file /secure/path/prepared/compose.env \
+  --contract deploy/contract/bubllio-installation.example.json \
+  --env-file /tmp/bubllio-prepared/compose.env \
   --validate-only
-docker compose --env-file /secure/path/prepared/compose.env \
-  -f deploy/compose/compose.yaml config
 ```
 
 Do not use the example image digests, mutable tags, localhost origins, or local
