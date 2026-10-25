@@ -73,6 +73,128 @@ the raw secret in the contract, generated environment, or image. The operator
 must create the named external edge network and translate the adapter labels for
 their reverse proxy before starting the stack.
 
+### HTTPS ingress and private service boundary
+
+The reference adapter requires a trusted reverse proxy or load balancer for UAT
+and Production. It is the only component that publishes host ports: expose
+`80/tcp` only to redirect to HTTPS and `443/tcp` for application traffic. Do not
+publish application container ports directly. This provides one controlled
+place for certificate issuance and renewal, HTTP-to-HTTPS redirects, forwarding
+headers, request limits, and ingress logs without making the hosting platform a
+Core product dependency.
+
+Three exact HTTPS origins are required because the browser must reach the
+workspace, API, and OIDC provider. “Public” here means routed through the proxy;
+it does not mean that protected API operations are unauthenticated.
+
+| Public origin                  | Proxy target    | Purpose                                                    |
+| ------------------------------ | --------------- | ---------------------------------------------------------- |
+| `https://dev.bubllio.com`      | `core-web:8080` | Browser workspace and setup UI                             |
+| `https://api.dev.bubllio.com`  | `core-api:3100` | Browser and approved application API requests              |
+| `https://auth.dev.bubllio.com` | `keycloak:8080` | OIDC authorization, tokens, discovery, and account actions |
+
+Set `publicEndpoints.webUrl`, `publicEndpoints.apiUrl`, and
+`publicEndpoints.identityUrl` in the installation contract to those exact
+origins. Path-based alternatives such as `/api` or `/auth` are not supported by
+contract version 1. The API still reaches Keycloak privately for JWKS and
+administration through `http://keycloak:8080`; public token issuer and redirect
+values continue to use `https://auth.dev.bubllio.com`.
+
+Only `core-web`, `core-api`, and `keycloak` join the proxy's external edge
+network. The following remain private, have no public hostname, and must not
+publish a host port:
+
+- `core-db` and `identity-db`;
+- `core-migrate` and `identity-bootstrap`;
+- `identity-setup-agent` and the Keycloak file vault; and
+- Keycloak's management and health port `9000`.
+
+Restrict Keycloak's `/admin` route at the proxy to the approved operator path,
+such as a VPN or an explicit IP allowlist. This is separate from port `9000`:
+the administrative console otherwise shares Keycloak's public application
+listener. Keep OIDC realm, protocol, account, and required action routes
+reachable. Protect the proxy dashboard as an administrative system and do not
+run Traefik's insecure dashboard mode.
+
+The proxy must replace untrusted forwarding headers and send the reviewed
+`X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` values. Backend
+ports must be reachable only from the proxy network, so clients cannot bypass
+TLS, routing policy, or ingress controls. A production adapter must also set
+Keycloak's proxy trusted addresses to the dedicated proxy subnet or addresses;
+the generic reference adapter cannot derive that environment-specific value.
+Do not claim accurate Core API client-IP attribution or IP-based application
+rate limiting until Fastify proxy trust has been explicitly implemented and
+tested.
+
+#### Dokploy with Traefik
+
+Dokploy's existing Traefik is a suitable candidate adapter for technical UAT;
+it is not yet a production-supported Bubllio adapter. Prefer Dokploy's native
+**Domains** UI for a Docker Compose application instead of hand-maintaining
+Traefik labels. Dokploy injects the routing labels during deployment, and domain
+changes require a redeploy. Configure these mappings with HTTPS enabled:
+
+| Dokploy domain         | Service    | Container port |
+| ---------------------- | ---------- | -------------- |
+| `dev.bubllio.com`      | `core-web` | `8080`         |
+| `api.dev.bubllio.com`  | `core-api` | `3100`         |
+| `auth.dev.bubllio.com` | `keycloak` | `8080`         |
+
+Do not add host `ports:` entries for these services. The generic
+`*_PROXY_LABEL_*` values in the reference adapter are placeholders, not working
+Traefik configuration. Treat Dokploy's generated labels as deployment output
+and inspect **Preview Compose** before every ingress change. Each of the three
+public services must have a unique exact-host router, the `websecure`
+entrypoint, TLS, an explicit backend port, and an explicit
+`traefik.docker.network` value. Disable Traefik discovery for every other
+service, either with `exposedByDefault=false` plus explicit opt-in or with
+`traefik.enable=false` labels in the rendered deployment.
+
+Production support requires a dedicated Bubllio edge network connected only to
+Traefik and the three public services. Do not enable Dokploy **Isolated
+Deployments** unchanged: it adds its generated network to every Compose service,
+including databases and setup services, which violates this adapter's private
+network boundary. The global `dokploy-network` may prove routing during a
+restricted UAT, but is not the final production isolation design because it is
+shared with unrelated applications. A Dokploy-specific overlay must establish
+and preserve the dedicated edge network before this adapter can be called
+production-supported.
+
+Compose domains also need an explicit HTTP-to-HTTPS redirect. Add HSTS only
+after all three origins are proven HTTPS-only; `includeSubDomains` and preload
+affect other domain owners and require an explicit human decision. Do not add a
+single proxy-level CSP or CORS policy to every service: Core web and Keycloak
+have different application-owned requirements.
+
+Before beginning product setup, verify all of the following from outside the
+server:
+
+1. all three hostnames resolve to the intended server and present valid,
+   renewable certificates;
+2. HTTP redirects to the matching HTTPS origin without changing host or path;
+3. `/runtime-config.js` contains the exact public API and identity origins;
+4. OIDC discovery reports
+   `https://auth.dev.bubllio.com/realms/bubllio` as the issuer;
+5. login returns to `https://dev.bubllio.com` and API requests have no CORS or
+   mixed-content failure;
+6. only intended ingress ports are reachable from the internet; and
+7. databases, setup-agent, Keycloak management, proxy dashboard, and direct
+   application container ports are unreachable externally.
+
+Save the sanitized Preview Compose output with the UAT evidence. Verify that
+the proxy rejects forged forwarding headers and that external access to
+`https://auth.dev.bubllio.com/admin/` is denied while OIDC, verification,
+registration, and account actions still work. Traefik and Dokploy access logs
+may contain IP addresses and identifiers: define their purpose, access, redaction,
+retention, deletion, storage location, and any external processor before real
+users. Never log authorization headers, cookies, setup secrets, SMTP
+credentials, verification codes, or full sensitive query strings.
+
+Dokploy simplifies the proxy integration but does not approve the release or
+replace the portable installation contract. The same topology and acceptance
+checks apply to Traefik outside Dokploy, Caddy, Nginx, a cloud load balancer, or
+another platform adapter.
+
 The installation contract includes an internal-only identity setup agent image,
 a Keycloak vault volume, an agent token, and a distinct temporary Keycloak
 bootstrap-client secret. Core can call the agent but cannot mount the vault or
@@ -430,6 +552,12 @@ The following still blocks promotion beyond restricted technical UAT:
 
 ## References
 
+- [Dokploy Docker Compose domains](https://docs.dokploy.com/docs/core/docker-compose/domains)
+- [Dokploy domain management](https://docs.dokploy.com/docs/core/domains)
+- [Dokploy Compose utilities and isolated deployments](https://docs.dokploy.com/docs/core/docker-compose/utilities)
+- [Dokploy production hardening](https://docs.dokploy.com/docs/core/guides/production-hardening)
+- [Traefik Docker provider](https://doc.traefik.io/traefik/providers/docker/)
+- [Keycloak reverse-proxy guidance](https://www.keycloak.org/server/reverseproxy)
 - [Keycloak container deployment](https://www.keycloak.org/server/containers)
 - [Keycloak production configuration](https://www.keycloak.org/server/configuration-production)
 - [Keycloak hostname configuration](https://www.keycloak.org/server/hostname)
