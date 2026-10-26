@@ -14,18 +14,15 @@ deployment contract for UAT and Production.
 > proof, and a clean public-host rehearsal remain blocking. Never deploy the
 > development Compose file or its demo realm outside a developer machine.
 
-The [Verify Core workflow](../../.github/workflows/verify.yml) runs production
-dependency audits, API tests and build, web format/build, the Keycloak theme
-build checks on pushes and pull requests. Browser identity tests run on pull
-requests and manual workflow runs before a release. It does not
-publish an image, provision a realm, or approve a deployment. Those release
-artifacts remain part of the UAT and Production gate below. The
-[`release-images.yml`](../../.github/workflows/release-images.yml) workflow
-builds multi-architecture images, records immutable digests, generates SBOMs,
-and publishes the release manifest and checksummed bundle after the same
-verification succeeds. During technical alpha, a successful `main` run also
-commits the complete verified manifest and regenerated managed Compose adapter
-back to `main`. This is continuous alpha delivery, not Production approval.
+Pull requests and manual checks use the
+[Verify Core workflow](../../.github/workflows/verify.yml). A push to `main`
+uses one delivery workflow only:
+[`release-images.yml`](../../.github/workflows/release-images.yml) verifies the
+API, web app, identity theme, browser journeys, portable adapter, and production
+bootstrap before it builds multi-architecture images. It then records immutable
+digests, generates SBOMs and the bundle, and commits the complete managed
+Compose snapshot back to `main`. This is continuous alpha delivery, not
+Production approval.
 
 Versioned installation releases are created only from reviewed `v*` tags. A
 tagged workflow publishes a GitHub prerelease or release whose direct assets are

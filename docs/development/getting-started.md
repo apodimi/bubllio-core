@@ -298,9 +298,10 @@ npm run test:e2e
 ```
 
 The suite requires Google Chrome and the ordinary ports `8180`, `3100`, and
-`5174`; the isolated first-run stack is not its fixture. CI runs code checks on
-pushes and pull requests. Browser checks run on pull requests and manual
-workflow runs before release.
+`5174`; the isolated first-run stack is not its fixture. CI runs review checks
+on pull requests and manual workflow runs. Pushes to `main` use the single
+technical-alpha delivery workflow, which repeats the full verification suite
+before publishing or promoting any image.
 
 ## Validate portable installation inputs
 

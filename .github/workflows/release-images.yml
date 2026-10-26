@@ -1,4 +1,4 @@
-name: Release immutable Core images
+name: Deliver Core technical alpha
 
 on:
   push:
