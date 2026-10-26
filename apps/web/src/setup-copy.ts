@@ -3,7 +3,7 @@ export type SetupLocale = "en" | "el";
 export const setupCopy = {
   en: {
     progressLabel: "Setup progress",
-    railSteps: [
+    progressSteps: [
       "System check",
       "Email delivery",
       "Administrator",
@@ -15,7 +15,6 @@ export const setupCopy = {
     stepStatus: {
       complete: "Complete",
       current: "Current step",
-      upcoming: "Up next",
     },
     title: "Set up your Bubllio workspace",
     intro: "Create the first organization for this installation.",
@@ -157,7 +156,7 @@ export const setupCopy = {
   },
   el: {
     progressLabel: "Πρόοδος εγκατάστασης",
-    railSteps: [
+    progressSteps: [
       "Έλεγχος συστήματος",
       "Αποστολή email",
       "Διαχειριστής",
@@ -169,7 +168,6 @@ export const setupCopy = {
     stepStatus: {
       complete: "Ολοκληρώθηκε",
       current: "Τώρα",
-      upcoming: "Ακολουθεί",
     },
     title: "Ρύθμισε το Bubllio workspace",
     intro: "Δημιούργησε τον πρώτο οργανισμό αυτής της εγκατάστασης.",

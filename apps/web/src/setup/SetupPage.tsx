@@ -25,10 +25,10 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
       title={content.title}
       body={content.body}
       viewKey={`${state.step}:${state.operation?.status ?? ""}`}
-      activeStage={activeStage(state.step, copy.railSteps.length)}
+      activeStage={activeStage(state.step, copy.progressSteps.length)}
       progress={{
         label: copy.progressLabel,
-        steps: copy.railSteps,
+        steps: copy.progressSteps,
         statuses: copy.stepStatus,
         stepOf: copy.stepOf,
       }}

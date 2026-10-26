@@ -43,8 +43,8 @@ the auth domain target changes from `keycloak:8080` to `identity-edge:8080`.
 
 The observed UI improvements are implemented in `apps/web`:
 
-1. The compact progress view remains through tablet widths; the six-column rail
-   appears only from 1200 pixels.
+1. The compact progress view is used at every viewport width so long Greek and
+   English step labels never compete with the setup task.
 2. SPA step changes move focus to the new `h1`.
 3. Native validation bubbles are replaced by localized inline errors that focus
    the first invalid field.

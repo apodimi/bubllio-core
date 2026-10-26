@@ -26,7 +26,7 @@ interface SetupFrameProps {
   progress: {
     label: string;
     steps: readonly string[];
-    statuses: { complete: string; current: string; upcoming: string };
+    statuses: { complete: string; current: string };
     stepOf: (current: number, total: number) => string;
   };
   signOutLabel: string;

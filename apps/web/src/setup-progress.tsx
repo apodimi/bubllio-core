@@ -7,7 +7,6 @@ interface SetupProgressProps {
   statusLabels: {
     complete: string;
     current: string;
-    upcoming: string;
   };
   stepOf: (current: number, total: number) => string;
 }
@@ -28,7 +27,7 @@ export function SetupProgress({
 
   return (
     <Box component="nav" aria-label={progressLabel}>
-      <Box sx={{ display: { xs: "block", lg: "none" }, py: 1 }}>
+      <Box sx={{ py: 1 }}>
         <StackLabel
           step={stepOf(currentIndex + 1, labels.length)}
           label={labels[currentIndex]}
@@ -40,94 +39,6 @@ export function SetupProgress({
           aria-label={progressLabel}
           sx={{ mt: 1.5, height: 4, borderRadius: 2 }}
         />
-      </Box>
-      <Box
-        component="ol"
-        sx={{
-          display: { xs: "none", lg: "grid" },
-          gridTemplateColumns: {
-            lg: `repeat(${labels.length}, minmax(0, 1fr))`,
-          },
-          gap: 1,
-          listStyle: "none",
-          p: 0,
-          m: 0,
-          borderTop: "1px solid",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        {labels.map((label, index) => {
-          const complete = activeStage > index;
-          const current = activeStage === index;
-          const status = complete
-            ? statusLabels.complete
-            : current
-              ? statusLabels.current
-              : statusLabels.upcoming;
-
-          return (
-            <Box
-              component="li"
-              key={label}
-              aria-current={current ? "step" : undefined}
-              sx={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 1.5,
-                minWidth: 0,
-                py: 2.25,
-                px: 1.5,
-                borderTop: "3px solid",
-                borderTopColor: current ? "primary.main" : "transparent",
-                minHeight: 0,
-              }}
-            >
-              <Box
-                aria-hidden="true"
-                sx={{
-                  display: "grid",
-                  placeItems: "center",
-                  width: 32,
-                  height: 32,
-                  flex: "0 0 32px",
-                  borderRadius: "8px",
-                  bgcolor: current
-                    ? "primary.main"
-                    : complete
-                      ? "action.selected"
-                      : "background.default",
-                  color: current
-                    ? "primary.contrastText"
-                    : complete
-                      ? "primary.main"
-                      : "text.secondary",
-                  fontSize: ".75rem",
-                  fontWeight: 800,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {String(index + 1).padStart(2, "0")}
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: current ? 700 : 600,
-                    color:
-                      current || complete ? "text.primary" : "text.secondary",
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {label}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {status}
-                </Typography>
-              </Box>
-            </Box>
-          );
-        })}
       </Box>
     </Box>
   );

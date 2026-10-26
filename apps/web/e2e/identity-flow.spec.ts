@@ -200,7 +200,7 @@ test("setup validation is localized, focuses the first error, and exposes stable
   ).toBeVisible();
 });
 
-test("setup progress stays compact until a wide desktop", async ({ page }) => {
+test("setup progress stays compact at every viewport", async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.route("**/api/v1/setup/status", (route) =>
     route.fulfill({ json: { setupRequired: true, phase: "new" } }),
@@ -212,11 +212,11 @@ test("setup progress stays compact until a wide desktop", async ({ page }) => {
     name: "Πρόοδος εγκατάστασης",
   });
   await expect(progress.getByRole("progressbar")).toBeVisible();
-  await expect(progress.locator("ol")).toBeHidden();
+  await expect(progress.locator("ol")).toHaveCount(0);
 
-  await page.setViewportSize({ width: 1200, height: 900 });
-  await expect(progress.locator("ol")).toBeVisible();
-  await expect(progress.getByRole("progressbar")).toBeHidden();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(progress.getByRole("progressbar")).toBeVisible();
+  await expect(progress.locator("ol")).toHaveCount(0);
 });
 
 test("email errors are safe and clear secrets without clearing settings", async ({
