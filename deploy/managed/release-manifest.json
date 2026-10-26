@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1",
   "releaseRef": "main",
-  "version": "0.1.0-alpha.8",
-  "commitSha": "a4c6cac490985e4f3f0d5711527d3a439958ebb7",
+  "version": "0.1.0-alpha.9",
+  "commitSha": "66fa32f78a33add3c15a57aa1562590d9f503e30",
   "images": {
-    "coreApi": "ghcr.io/apodimi/bubllio-core-api@sha256:5c94fc735369c759c64f806398362db2ee395cb46d36c29dec1f8e0717260e95",
-    "identitySetupAgent": "ghcr.io/apodimi/bubllio-core-identity-setup-agent@sha256:9e88c3744980c01458153c0b1f3cf82e5dabac19ad58aef2f9fcd16edf426668",
-    "installer": "ghcr.io/apodimi/bubllio-core-installer@sha256:b27e7ba7b75f2c14e7a661d07b7409e97cea253237628a623bf01bce4ab647ab",
-    "keycloak": "ghcr.io/apodimi/bubllio-core-keycloak@sha256:6b09af5d838be290ae0be0e28c3d1d5fc04af35424a842d2c58b8164eafcb856",
-    "coreMigrate": "ghcr.io/apodimi/bubllio-core-migrate@sha256:f2874fe44a8a38bc09bd45e088dabe82b9b905182ecad7e559dfc41cc18cf405",
-    "coreWeb": "ghcr.io/apodimi/bubllio-core-web@sha256:6a0871b44fac4a053e277c5abb6a8fd2cc76537f92c245c07a5cfb18c54b4dbc"
+    "coreApi": "ghcr.io/apodimi/bubllio-core-api@sha256:b7f8f712dddefd13ac900a9dc810c78f0fba3985a9bd4fa4e6d52c5dd911bf2d",
+    "identitySetupAgent": "ghcr.io/apodimi/bubllio-core-identity-setup-agent@sha256:e203e4725f79f67b717cef0f57fc3d36944651f387aa1f995de8d692fa798de3",
+    "installer": "ghcr.io/apodimi/bubllio-core-installer@sha256:34060e2c8e284b787b07a8e2181984f2466ce10f751f4d515e31535f3a6c9766",
+    "keycloak": "ghcr.io/apodimi/bubllio-core-keycloak@sha256:dd3a5bceb72850f17eb777717e424ff047699e2a883d6dfbb890aaf69385a4f8",
+    "coreMigrate": "ghcr.io/apodimi/bubllio-core-migrate@sha256:3082ddefcac0543b53c9a9faf919bdab36061b2d48456affc81950510b202477",
+    "coreWeb": "ghcr.io/apodimi/bubllio-core-web@sha256:015543b33839b43d758d26dd7a2c7526a263aec4dfae88e5742f5fa2bdcf195e"
   }
 }
