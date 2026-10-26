@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type Keycloak from "keycloak-js";
 import {
   Box,
@@ -21,6 +21,7 @@ interface SetupFrameProps {
   onLocaleChange: (locale: SetupLocale) => void;
   title: string;
   body: string;
+  viewKey: string;
   activeStage: number;
   progress: {
     label: string;
@@ -38,11 +39,20 @@ export function SetupFrame({
   onLocaleChange,
   title,
   body,
+  viewKey,
   activeStage,
   progress,
   signOutLabel,
   children,
 }: SetupFrameProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const previousViewKey = useRef(viewKey);
+
+  useEffect(() => {
+    if (previousViewKey.current !== viewKey) headingRef.current?.focus();
+    previousViewKey.current = viewKey;
+  }, [viewKey]);
+
   return (
     <Box
       component="main"
@@ -104,6 +114,8 @@ export function SetupFrame({
             </Stack>
             <Box sx={{ pt: { xs: 1, sm: 2 } }}>
               <Typography
+                ref={headingRef}
+                tabIndex={-1}
                 variant="h3"
                 component="h1"
                 sx={{

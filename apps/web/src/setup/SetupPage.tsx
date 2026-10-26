@@ -24,6 +24,7 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
       onLocaleChange={flow.setLocale}
       title={content.title}
       body={content.body}
+      viewKey={`${state.step}:${state.operation?.status ?? ""}`}
       activeStage={activeStage(state.step, copy.railSteps.length)}
       progress={{
         label: copy.progressLabel,

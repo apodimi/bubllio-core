@@ -1,6 +1,6 @@
-import type { FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import type Keycloak from "keycloak-js";
-import { Button, Stack, TextField } from "@mui/material";
+import { Button, CircularProgress, Stack, TextField } from "@mui/material";
 
 import type { setupCopy, SetupLocale } from "../setup-copy";
 
@@ -23,6 +23,9 @@ export function AccountStep({
   onSecretChange: (value: string) => void;
   onClaim: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const [fieldError, setFieldError] = useState("");
+  const secretInput = useRef<HTMLInputElement>(null);
+
   if (step === "intro")
     return (
       <Button
@@ -52,17 +55,40 @@ export function AccountStep({
       </Button>
     );
   if (step !== "secret") return null;
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (secret.length < 32) {
+      setFieldError(copy.validSetupSecret);
+      secretInput.current?.focus();
+      return;
+    }
+    setFieldError("");
+    onClaim(event);
+  }
   return (
-    <Stack component="form" spacing={2.5} onSubmit={onClaim}>
+    <Stack
+      component="form"
+      spacing={2.5}
+      onSubmit={submit}
+      aria-busy={busy}
+      noValidate
+    >
       <TextField
         id="setup-secret"
+        name="setupSecret"
         label={copy.secretLabel}
         type="password"
         autoComplete="off"
         spellCheck={false}
         value={secret}
-        onChange={(event) => onSecretChange(event.target.value)}
+        onChange={(event) => {
+          onSecretChange(event.target.value);
+          setFieldError("");
+        }}
+        inputRef={secretInput}
         required
+        error={Boolean(fieldError)}
+        helperText={fieldError}
         slotProps={{ htmlInput: { minLength: 32 } }}
         fullWidth
       />
@@ -88,14 +114,43 @@ export function OrganizationStep({
   onChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const [fieldError, setFieldError] = useState("");
+  const organizationInput = useRef<HTMLInputElement>(null);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const length = value.trim().length;
+    if (length < 2 || length > 120) {
+      setFieldError(copy.validOrganizationName);
+      organizationInput.current?.focus();
+      return;
+    }
+    setFieldError("");
+    onSubmit(event);
+  }
+
   return (
-    <Stack component="form" spacing={2.5} onSubmit={onSubmit}>
+    <Stack
+      component="form"
+      spacing={2.5}
+      onSubmit={submit}
+      aria-busy={busy}
+      noValidate
+    >
       <TextField
         id="organization-name"
+        name="organizationName"
         label={copy.organizationLabel}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setFieldError("");
+        }}
+        inputRef={organizationInput}
+        autoComplete="organization"
         required
+        error={Boolean(fieldError)}
+        helperText={fieldError}
         slotProps={{ htmlInput: { minLength: 2, maxLength: 120 } }}
         fullWidth
       />
@@ -122,6 +177,9 @@ function SubmitButton({
       type="submit"
       variant="contained"
       disabled={busy}
+      startIcon={
+        busy ? <CircularProgress size={18} color="inherit" /> : undefined
+      }
       sx={{ alignSelf: { xs: "stretch", sm: "flex-end" } }}
     >
       {busy ? busyLabel : idleLabel}

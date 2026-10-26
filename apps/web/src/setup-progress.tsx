@@ -28,7 +28,7 @@ export function SetupProgress({
 
   return (
     <Box component="nav" aria-label={progressLabel}>
-      <Box sx={{ display: { xs: "block", sm: "none" }, py: 1 }}>
+      <Box sx={{ display: { xs: "block", lg: "none" }, py: 1 }}>
         <StackLabel
           step={stepOf(currentIndex + 1, labels.length)}
           label={labels[currentIndex]}
@@ -44,9 +44,9 @@ export function SetupProgress({
       <Box
         component="ol"
         sx={{
-          display: { xs: "none", sm: "grid" },
+          display: { xs: "none", lg: "grid" },
           gridTemplateColumns: {
-            sm: `repeat(${labels.length}, minmax(0, 1fr))`,
+            lg: `repeat(${labels.length}, minmax(0, 1fr))`,
           },
           gap: 1,
           listStyle: "none",

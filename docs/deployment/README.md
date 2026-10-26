@@ -108,11 +108,11 @@ Three exact HTTPS origins are required because the browser must reach the
 workspace, API, and OIDC provider. “Public” here means routed through the proxy;
 it does not mean that protected API operations are unauthenticated.
 
-| Public origin                  | Proxy target    | Purpose                                                    |
-| ------------------------------ | --------------- | ---------------------------------------------------------- |
-| `https://dev.bubllio.com`      | `core-web:8080` | Browser workspace and setup UI                             |
-| `https://api.dev.bubllio.com`  | `core-api:3100` | Browser and approved application API requests              |
-| `https://auth.dev.bubllio.com` | `keycloak:8080` | OIDC authorization, tokens, discovery, and account actions |
+| Public origin                  | Proxy target         | Purpose                                                                     |
+| ------------------------------ | -------------------- | --------------------------------------------------------------------------- |
+| `https://dev.bubllio.com`      | `core-web:8080`      | Browser workspace and setup UI                                              |
+| `https://api.dev.bubllio.com`  | `core-api:3100`      | Browser and approved application API requests                               |
+| `https://auth.dev.bubllio.com` | `identity-edge:8080` | OIDC authorization, tokens, discovery, and account actions; `/admin` denied |
 
 Set `publicEndpoints.webUrl`, `publicEndpoints.apiUrl`, and
 `publicEndpoints.identityUrl` in the installation contract to those exact
@@ -121,21 +121,22 @@ contract version 1. The API still reaches Keycloak privately for JWKS and
 administration through `http://keycloak:8080`; public token issuer and redirect
 values continue to use `https://auth.dev.bubllio.com`.
 
-Only `core-web`, `core-api`, and `keycloak` join the proxy's external edge
-network. The following remain private, have no public hostname, and must not
-publish a host port:
+Only `core-web`, `core-api`, and `identity-edge` join the proxy's external edge
+network. Keycloak shares a dedicated internal network with `identity-edge`, so
+Core retains private administration access while the public gateway denies
+`/admin` and its child paths. The following remain private, have no public
+hostname, and must not publish a host port:
 
 - `core-db` and `identity-db`;
 - `core-migrate` and `identity-bootstrap`;
 - `identity-setup-agent` and the Keycloak file vault; and
 - Keycloak's management and health port `9000`.
 
-Restrict Keycloak's `/admin` route at the proxy to the approved operator path,
-such as a VPN or an explicit IP allowlist. This is separate from port `9000`:
-the administrative console otherwise shares Keycloak's public application
-listener. Keep OIDC realm, protocol, account, and required action routes
-reachable. Protect the proxy dashboard as an administrative system and do not
-run Traefik's insecure dashboard mode.
+Never route the public identity origin directly to Keycloak. The bundled
+`identity-edge` policy is the portable enforcement point that denies Keycloak's
+administrative console and API while keeping OIDC realm, protocol, account, and
+required action routes reachable. Protect the infrastructure proxy dashboard as
+an administrative system and do not run Traefik's insecure dashboard mode.
 
 The proxy must replace untrusted forwarding headers and send the reviewed
 `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` values. Backend
@@ -152,7 +153,8 @@ tested.
 The canonical Compose file intentionally contains no Traefik, Caddy, Nginx,
 Dokploy, Coolify, or cloud-specific labels. Configure the platform's routing
 layer to map the three exact hosts to `core-web:8080`, `core-api:3100`, and
-`keycloak:8080` on the selected edge network. Do not add host `ports:` entries.
+`identity-edge:8080` on the selected edge network. Do not route public traffic
+to `keycloak:8080` and do not add host `ports:` entries.
 Disable automatic discovery for every private service and inspect the final
 rendered configuration before each ingress change.
 

@@ -143,9 +143,9 @@ services:
       - identity_database_secret:/run/bubllio/identity-database:ro
       - identity_vault:/opt/keycloak/vault:ro
     networks:
-      edge: {}
       identity_control: {}
       identity_data: {}
+      identity_public: {}
       smtp_egress:
         gw_priority: 1
     depends_on:
@@ -163,6 +163,42 @@ services:
       timeout: 5s
       retries: 30
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  identity-edge:
+    image: nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
+    pull_policy: always
+    configs:
+      - source: identity_edge_proxy
+        target: /etc/nginx/nginx.conf
+        mode: 0444
+    networks:
+      - edge
+      - identity_public
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:8080/realms/bubllio/.well-known/openid-configuration",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+      - /var/cache/nginx:mode=0755,uid=101,gid=101
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -342,12 +378,18 @@ volumes:
   keycloak_bootstrap_secret:
   setup_material:
 
+configs:
+  identity_edge_proxy:
+    file: ../identity-edge/nginx.conf
+
 networks:
   core_data:
     internal: true
   identity_control:
     internal: true
   identity_data:
+    internal: true
+  identity_public:
     internal: true
   smtp_egress:
   edge:

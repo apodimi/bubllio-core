@@ -192,7 +192,22 @@ try {
       .filter(([, service]) => Object.hasOwn(service.networks ?? {}, "edge"))
       .map(([name]) => name)
       .sort(),
-    ["core-api", "core-web", "keycloak"],
+    ["core-api", "core-web", "identity-edge"],
+  );
+  assert.equal(
+    Object.hasOwn(compose.services.keycloak.networks, "edge"),
+    false,
+    "Keycloak must not join the public reverse-proxy network",
+  );
+  assert.equal(compose.networks.identity_public.internal, true);
+  assert.deepEqual(
+    Object.entries(compose.services)
+      .filter(([, service]) =>
+        Object.hasOwn(service.networks ?? {}, "identity_public"),
+      )
+      .map(([name]) => name)
+      .sort(),
+    ["identity-edge", "keycloak"],
   );
 
   if (process.env.BUBLLIO_INSTALLER_TEST_IMAGE) {

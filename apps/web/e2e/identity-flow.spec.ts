@@ -54,6 +54,7 @@ test("email delivery is tested and confirmed before account creation", async ({
       secret: route.request().headers()["x-bubllio-setup-secret"],
     };
     emailStatus = "awaiting_confirmation";
+    await new Promise((resolve) => setTimeout(resolve, 250));
     await route.fulfill({
       status: 200,
       json: {
@@ -99,6 +100,11 @@ test("email delivery is tested and confirmed before account creation", async ({
     .getByLabel("One-time setup secret")
     .fill("test-only-setup-secret-with-sufficient-length");
   await page.getByRole("button", { name: "Send test email" }).click();
+
+  await expect(
+    page.getByRole("button", { name: "Sending a secure test…" }),
+  ).toBeDisabled();
+  await expect(page.getByRole("progressbar")).toBeVisible();
 
   await expect(
     page.getByRole("heading", { name: "Enter the confirmation code" }),
@@ -147,6 +153,70 @@ test("email delivery is tested and confirmed before account creation", async ({
   expect(
     await page.evaluate(() => localStorage.length + sessionStorage.length),
   ).toBe(0);
+});
+
+test("setup validation is localized, focuses the first error, and exposes stable field semantics", async ({
+  page,
+}) => {
+  await page.unroute("**/api/v1/setup/email/status");
+  await page.route("**/api/v1/setup/email/status", (route) =>
+    route.fulfill({ json: { status: "required" } }),
+  );
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+
+  await page.goto("/setup");
+  await continuePastSystemCheck(page);
+  await expect(
+    page.getByRole("heading", { name: "Set up email delivery" }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Ελληνικά" }).click();
+  await page
+    .getByRole("button", { name: "Αποστολή δοκιμαστικού email" })
+    .click();
+
+  const senderEmail = page.getByLabel("Email αποστολέα");
+  await expect(senderEmail).toBeFocused();
+  await expect(senderEmail).toHaveAttribute("name", "senderEmail");
+  await expect(senderEmail).toHaveAttribute("autocomplete", "email");
+  await expect(senderEmail).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByText("Συμπλήρωσε το πεδίο «email αποστολέα»."),
+  ).toBeVisible();
+
+  const advanced = page.getByRole("button", {
+    name: "Εμφάνιση προχωρημένων ρυθμίσεων",
+  });
+  await expect(advanced).toHaveAttribute(
+    "aria-controls",
+    "email-advanced-settings",
+  );
+  await advanced.click();
+  await expect(
+    page.getByRole("button", {
+      name: "Απόκρυψη προχωρημένων ρυθμίσεων",
+    }),
+  ).toBeVisible();
+});
+
+test("setup progress stays compact until a wide desktop", async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+  await page.goto("/setup");
+  await page.getByRole("button", { name: "Ελληνικά" }).click();
+
+  const progress = page.getByRole("navigation", {
+    name: "Πρόοδος εγκατάστασης",
+  });
+  await expect(progress.getByRole("progressbar")).toBeVisible();
+  await expect(progress.locator("ol")).toBeHidden();
+
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await expect(progress.locator("ol")).toBeVisible();
+  await expect(progress.getByRole("progressbar")).toBeHidden();
 });
 
 test("email errors are safe and clear secrets without clearing settings", async ({
@@ -383,6 +453,12 @@ test("first-run screen claims setup and resumes the owner operation", async ({
     .getByLabel("One-time setup secret")
     .fill("test-only-setup-secret-with-sufficient-length");
   await page.getByRole("button", { name: "Continue" }).click();
+  await expect(
+    page.getByText(
+      "Member and application administration is not available in this technical alpha.",
+      { exact: false },
+    ),
+  ).toBeVisible();
   await page.getByLabel("Organization name").fill("Example Team");
   await page.getByRole("button", { name: "Create organization" }).click();
   await expect(

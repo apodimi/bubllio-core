@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -71,6 +72,7 @@ const configuration = JSON.parse(
 verifyPrivateDatabases(configuration);
 verifyConfiguredImages(configuration, contract.release.images);
 verifyIdentitySetupBoundary(configuration);
+verifyPublicIdentityBoundary(configuration);
 verifyRealmBootstrapContract();
 
 if (options.validateOnly) {
@@ -206,8 +208,7 @@ function verifyIdentitySetupBoundary(configuration) {
   }
   const expectedAgentEnvironment = {
     PORT: "3200",
-    IDENTITY_SETUP_AGENT_TOKEN_FILE:
-      "/run/secrets/identity_setup_agent_token",
+    IDENTITY_SETUP_AGENT_TOKEN_FILE: "/run/secrets/identity_setup_agent_token",
     KEYCLOAK_ADMIN_URL: "http://keycloak:8080",
     KEYCLOAK_BOOTSTRAP_CLIENT_SECRET_FILE:
       "/run/secrets/keycloak_bootstrap_client_secret",
@@ -229,14 +230,18 @@ function verifyIdentitySetupBoundary(configuration) {
     throw new Error("Core API has an invalid identity setup agent contract");
   }
   if (vaultInit.network_mode !== "none") {
-    throw new Error("Identity vault initialization must not have network access");
+    throw new Error(
+      "Identity vault initialization must not have network access",
+    );
   }
 
   const agentVault = findMount(agent, "/opt/keycloak/vault");
   const keycloakVault = findMount(keycloak, "/opt/keycloak/vault");
   const initVault = findMount(vaultInit, "/opt/keycloak/vault");
   if (!agentVault || !keycloakVault || !initVault) {
-    throw new Error("Identity vault must be mounted by init, setup agent, and Keycloak");
+    throw new Error(
+      "Identity vault must be mounted by init, setup agent, and Keycloak",
+    );
   }
   if (
     agentVault.source !== keycloakVault.source ||
@@ -244,7 +249,9 @@ function verifyIdentitySetupBoundary(configuration) {
     keycloakVault.read_only !== true ||
     agentVault.read_only === true
   ) {
-    throw new Error("Identity vault ownership or read-only boundaries are invalid");
+    throw new Error(
+      "Identity vault ownership or read-only boundaries are invalid",
+    );
   }
   if (
     keycloak.environment?.KC_VAULT !== "file" ||
@@ -255,11 +262,71 @@ function verifyIdentitySetupBoundary(configuration) {
   if (findMount(configuration.services?.["core-api"], "/opt/keycloak/vault")) {
     throw new Error("Core API must not mount the identity vault");
   }
-  if (
-    coreEnvironment?.CORE_INSTALLATION_MASTER_KEY_FILE !== undefined
-  ) {
-    throw new Error("The obsolete installation master key must not be configured");
+  if (coreEnvironment?.CORE_INSTALLATION_MASTER_KEY_FILE !== undefined) {
+    throw new Error(
+      "The obsolete installation master key must not be configured",
+    );
   }
+}
+
+function verifyPublicIdentityBoundary(configuration) {
+  const gateway = configuration.services?.["identity-edge"];
+  const keycloak = configuration.services?.keycloak;
+  if (!gateway || !keycloak) {
+    throw new Error("Compose adapter is missing the public identity boundary");
+  }
+  const gatewayNetworks = serviceNetworks(gateway);
+  const keycloakNetworks = serviceNetworks(keycloak);
+  const sharedPrivateNetworks = gatewayNetworks.filter(
+    (network) =>
+      keycloakNetworks.includes(network) &&
+      configuration.networks?.[network]?.internal === true,
+  );
+  const gatewayExternalNetworks = gatewayNetworks.filter(
+    (network) => configuration.networks?.[network]?.external === true,
+  );
+  const keycloakExternalNetworks = keycloakNetworks.filter(
+    (network) => configuration.networks?.[network]?.external === true,
+  );
+  if (
+    sharedPrivateNetworks.length !== 1 ||
+    gatewayExternalNetworks.length !== 1 ||
+    keycloakExternalNetworks.length !== 0
+  ) {
+    throw new Error(
+      "Only identity-edge may expose Keycloak through one external and one shared private network",
+    );
+  }
+  if (gateway.ports?.length || gateway.network_mode === "host") {
+    throw new Error(
+      "identity-edge must use only the selected reverse-proxy network",
+    );
+  }
+  const proxy = findConfig(gateway, "/etc/nginx/nginx.conf");
+  if (!proxy || String(proxy.mode) !== "0444") {
+    throw new Error(
+      "identity-edge must mount its reviewed proxy policy read-only",
+    );
+  }
+  const policy = readFileSync(
+    resolve(repositoryRoot, "deploy/identity-edge/nginx.conf"),
+    "utf8",
+  );
+  if (!policy.includes("location ~ ^/admin(?:/|$)")) {
+    throw new Error("identity-edge must deny /admin and all child paths");
+  }
+}
+
+function serviceNetworks(service) {
+  return Array.isArray(service.networks)
+    ? service.networks
+    : Object.keys(service.networks ?? {});
+}
+
+function findConfig(service, target) {
+  return (service?.configs ?? []).find((config) =>
+    typeof config === "string" ? false : config.target === target,
+  );
 }
 
 function findMount(service, target) {
@@ -279,13 +346,14 @@ function verifyRealmBootstrapContract() {
     ]),
   );
   if (realm.registrationAllowed !== false) {
-    throw new Error("Portable realm registration must stay closed until identity finalization");
+    throw new Error(
+      "Portable realm registration must stay closed until identity finalization",
+    );
   }
   const roleSet = (clientId) =>
     new Set(
-      realm.users?.find(
-        (user) => user.serviceAccountClientId === clientId,
-      )?.clientRoles?.["realm-management"] ?? [],
+      realm.users?.find((user) => user.serviceAccountClientId === clientId)
+        ?.clientRoles?.["realm-management"] ?? [],
     );
   const bootstrapRoles = roleSet("bubllio-identity-bootstrap");
   if (
@@ -293,10 +361,14 @@ function verifyRealmBootstrapContract() {
     !bootstrapRoles.has("manage-realm") ||
     !bootstrapRoles.has("manage-clients")
   ) {
-    throw new Error("Identity bootstrap client roles differ from the reviewed authority");
+    throw new Error(
+      "Identity bootstrap client roles differ from the reviewed authority",
+    );
   }
   if (!roleSet("bubllio-core-runtime").has("view-realm")) {
-    throw new Error("Core runtime must retain the reviewed view-realm capability");
+    throw new Error(
+      "Core runtime must retain the reviewed view-realm capability",
+    );
   }
 }
 

@@ -26,6 +26,18 @@ import {
 } from "./email-delivery.reducer";
 
 type Copy = (typeof setupCopy)[SetupLocale];
+type EmailFieldName =
+  | "senderName"
+  | "senderEmail"
+  | "replyToEmail"
+  | "host"
+  | "port"
+  | "username"
+  | "password"
+  | "testRecipient"
+  | "setupSecret"
+  | "confirmationCode";
+type FieldErrors = Partial<Record<EmailFieldName, string>>;
 
 export function EmailDeliveryStep({
   copy,
@@ -40,6 +52,7 @@ export function EmailDeliveryStep({
   );
   const [testKey, setTestKey] = useState(() => crypto.randomUUID());
   const [confirmKey, setConfirmKey] = useState(() => crypto.randomUUID());
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const statusQuery = useEmailDeliveryStatus();
   const testMutation = useTestEmailDelivery();
@@ -59,26 +72,34 @@ export function EmailDeliveryStep({
     if (testMutation.data || form.errorCode) resultHeading.current?.focus();
   }, [form.errorCode, testMutation.data]);
 
-  function setField(
-    field: Parameters<typeof emailDeliveryFormReducer>[1] extends infer Action
-      ? Action extends { type: "set-field"; field: infer Field }
-        ? Field
-        : never
-      : never,
-    value: string,
-  ) {
+  function setField(field: EmailFieldName | "security", value: string) {
     dispatch({ type: "set-field", field, value });
+    if (field !== "security")
+      setFieldErrors((current) => ({ ...current, [field]: undefined }));
     setTestKey(crypto.randomUUID());
   }
 
   async function submitTest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     dispatch({ type: "set-error", value: "" });
-    const port = Number(form.port);
-    if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-      dispatch({ type: "set-error", value: "EMAIL_INVALID_REQUEST" });
+    const validationErrors = validateTestForm(form, copy);
+    setFieldErrors(validationErrors);
+    const firstInvalid = TEST_FIELD_ORDER.find(
+      (field) => validationErrors[field],
+    );
+    if (firstInvalid) {
+      const formElement = event.currentTarget;
+      if (firstInvalid === "replyToEmail" && !form.advanced) {
+        dispatch({ type: "set-advanced", value: true });
+        requestAnimationFrame(() =>
+          focusNamedControl(formElement, firstInvalid),
+        );
+      } else {
+        focusNamedControl(formElement, firstInvalid);
+      }
       return;
     }
+    const port = Number(form.port);
     const settings: EmailDeliverySettings = {
       senderName: form.senderName.trim(),
       senderEmail: form.senderEmail.trim(),
@@ -123,6 +144,15 @@ export function EmailDeliveryStep({
   async function submitConfirmation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     dispatch({ type: "set-error", value: "" });
+    const validationErrors = validateConfirmationForm(form, copy);
+    setFieldErrors(validationErrors);
+    const firstInvalid = CONFIRMATION_FIELD_ORDER.find(
+      (field) => validationErrors[field],
+    );
+    if (firstInvalid) {
+      focusNamedControl(event.currentTarget, firstInvalid);
+      return;
+    }
     try {
       await confirmMutation.mutateAsync({
         confirmationCode: form.confirmationCode,
@@ -188,6 +218,7 @@ export function EmailDeliveryStep({
         spacing={2.5}
         onSubmit={submitConfirmation}
         aria-busy={busy}
+        noValidate
       >
         <Box role="status" aria-live="polite">
           <Typography
@@ -216,17 +247,24 @@ export function EmailDeliveryStep({
         >
           <TextField
             label={copy.emailConfirmationCode}
+            name="confirmationCode"
             value={form.confirmationCode}
-            onChange={(event) =>
+            onChange={(event) => {
               dispatch({
                 type: "set-field",
                 field: "confirmationCode",
                 value: event.target.value.replace(/\D/gu, "").slice(0, 6),
-              })
-            }
+              });
+              setFieldErrors((current) => ({
+                ...current,
+                confirmationCode: undefined,
+              }));
+            }}
             autoComplete="one-time-code"
             required
             fullWidth
+            error={Boolean(fieldErrors.confirmationCode)}
+            helperText={fieldErrors.confirmationCode}
             slotProps={{
               htmlInput: {
                 inputMode: "numeric",
@@ -238,19 +276,26 @@ export function EmailDeliveryStep({
           />
           <TextField
             label={copy.emailSetupSecret}
+            name="setupSecret"
             type="password"
             value={form.setupSecret}
-            onChange={(event) =>
+            onChange={(event) => {
               dispatch({
                 type: "set-field",
                 field: "setupSecret",
                 value: event.target.value,
-              })
-            }
+              });
+              setFieldErrors((current) => ({
+                ...current,
+                setupSecret: undefined,
+              }));
+            }}
             autoComplete="off"
             spellCheck={false}
             required
             fullWidth
+            error={Boolean(fieldErrors.setupSecret)}
+            helperText={fieldErrors.setupSecret}
             slotProps={{ htmlInput: { minLength: 32 } }}
           />
         </Box>
@@ -267,7 +312,14 @@ export function EmailDeliveryStep({
           >
             {copy.emailSendAgain}
           </Button>
-          <Button type="submit" variant="contained" disabled={busy}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={busy}
+            startIcon={
+              busy ? <CircularProgress size={18} color="inherit" /> : undefined
+            }
+          >
             {busy ? copy.emailConfirming : copy.emailConfirm}
           </Button>
         </Stack>
@@ -281,6 +333,7 @@ export function EmailDeliveryStep({
       spacing={2.5}
       onSubmit={submitTest}
       aria-busy={busy}
+      noValidate
     >
       {errorMessage && (
         <Alert severity="error" role="alert">
@@ -298,29 +351,38 @@ export function EmailDeliveryStep({
       >
         <TextField
           label={copy.emailSenderName}
+          name="senderName"
           value={form.senderName}
           onChange={(event) => setField("senderName", event.target.value)}
           required
           fullWidth
+          error={Boolean(fieldErrors.senderName)}
+          helperText={fieldErrors.senderName}
           slotProps={{ htmlInput: { maxLength: 80 } }}
         />
         <TextField
           label={copy.emailSenderEmail}
+          name="senderEmail"
           type="email"
           value={form.senderEmail}
           onChange={(event) => setField("senderEmail", event.target.value)}
-          autoComplete="off"
+          autoComplete="email"
           required
           fullWidth
+          error={Boolean(fieldErrors.senderEmail)}
+          helperText={fieldErrors.senderEmail}
         />
         <TextField
           label={copy.emailHost}
+          name="host"
           value={form.host}
           onChange={(event) => setField("host", event.target.value)}
           autoComplete="off"
           spellCheck={false}
           required
           fullWidth
+          error={Boolean(fieldErrors.host)}
+          helperText={fieldErrors.host}
         />
         <Box
           sx={{
@@ -331,16 +393,22 @@ export function EmailDeliveryStep({
         >
           <TextField
             label={copy.emailPort}
+            name="port"
             type="number"
             value={form.port}
             onChange={(event) => setField("port", event.target.value)}
             required
             fullWidth
-            slotProps={{ htmlInput: { min: 1, max: 65_535 } }}
+            error={Boolean(fieldErrors.port)}
+            helperText={fieldErrors.port}
+            slotProps={{
+              htmlInput: { min: 1, max: 65_535, inputMode: "numeric" },
+            }}
           />
           <TextField
             select
             label={copy.emailSecurity}
+            name="security"
             value={form.security}
             onChange={(event) => setField("security", event.target.value)}
             fullWidth
@@ -357,9 +425,16 @@ export function EmailDeliveryStep({
       <FormControlLabel
         control={
           <Switch
+            name="authentication"
             checked={form.authentication}
             onChange={(_, value) => {
               dispatch({ type: "set-authentication", value });
+              if (!value)
+                setFieldErrors((current) => ({
+                  ...current,
+                  username: undefined,
+                  password: undefined,
+                }));
               setTestKey(crypto.randomUUID());
             }}
           />
@@ -376,20 +451,26 @@ export function EmailDeliveryStep({
         >
           <TextField
             label={copy.emailUsername}
+            name="username"
             value={form.username}
             onChange={(event) => setField("username", event.target.value)}
-            autoComplete="off"
+            autoComplete="username"
             required
             fullWidth
+            error={Boolean(fieldErrors.username)}
+            helperText={fieldErrors.username}
           />
           <TextField
             label={copy.emailPassword}
+            name="password"
             type="password"
             value={form.password}
             onChange={(event) => setField("password", event.target.value)}
             autoComplete="off"
             required
             fullWidth
+            error={Boolean(fieldErrors.password)}
+            helperText={fieldErrors.password}
           />
         </Box>
       )}
@@ -398,13 +479,14 @@ export function EmailDeliveryStep({
         variant="text"
         sx={{ alignSelf: "flex-start" }}
         aria-expanded={form.advanced}
+        aria-controls="email-advanced-settings"
         onClick={() =>
           dispatch({ type: "set-advanced", value: !form.advanced })
         }
       >
-        {copy.emailAdvanced}
+        {form.advanced ? copy.emailAdvancedHide : copy.emailAdvancedShow}
       </Button>
-      <Collapse in={form.advanced}>
+      <Collapse id="email-advanced-settings" in={form.advanced}>
         <Box
           sx={{
             display: "grid",
@@ -415,11 +497,14 @@ export function EmailDeliveryStep({
         >
           <TextField
             label={copy.emailReplyTo}
+            name="replyToEmail"
             type="email"
             value={form.replyToEmail}
             onChange={(event) => setField("replyToEmail", event.target.value)}
-            autoComplete="off"
+            autoComplete="email"
             fullWidth
+            error={Boolean(fieldErrors.replyToEmail)}
+            helperText={fieldErrors.replyToEmail}
           />
         </Box>
       </Collapse>
@@ -432,15 +517,19 @@ export function EmailDeliveryStep({
       >
         <TextField
           label={copy.emailTestRecipient}
+          name="testRecipient"
           type="email"
           value={form.testRecipient}
           onChange={(event) => setField("testRecipient", event.target.value)}
-          autoComplete="off"
+          autoComplete="email"
           required
           fullWidth
+          error={Boolean(fieldErrors.testRecipient)}
+          helperText={fieldErrors.testRecipient}
         />
         <TextField
           label={copy.emailSetupSecret}
+          name="setupSecret"
           type="password"
           value={form.setupSecret}
           onChange={(event) => setField("setupSecret", event.target.value)}
@@ -448,6 +537,8 @@ export function EmailDeliveryStep({
           spellCheck={false}
           required
           fullWidth
+          error={Boolean(fieldErrors.setupSecret)}
+          helperText={fieldErrors.setupSecret}
           slotProps={{ htmlInput: { minLength: 32 } }}
         />
       </Box>
@@ -455,6 +546,9 @@ export function EmailDeliveryStep({
         type="submit"
         variant="contained"
         disabled={busy}
+        startIcon={
+          busy ? <CircularProgress size={18} color="inherit" /> : undefined
+        }
         sx={{ alignSelf: { xs: "stretch", sm: "flex-end" } }}
       >
         {busy ? copy.emailSendingTest : copy.emailSendTest}
@@ -482,4 +576,69 @@ function emailErrorMessage(code: string, copy: Copy): string {
     return copy.emailIdentityActivationFailed;
   if (code === "EMAIL_INVALID_REQUEST") return copy.invalid;
   return copy.emailUnavailable;
+}
+
+const TEST_FIELD_ORDER: readonly EmailFieldName[] = [
+  "senderName",
+  "senderEmail",
+  "host",
+  "port",
+  "username",
+  "password",
+  "replyToEmail",
+  "testRecipient",
+  "setupSecret",
+];
+const CONFIRMATION_FIELD_ORDER: readonly EmailFieldName[] = [
+  "confirmationCode",
+  "setupSecret",
+];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+
+function validateTestForm(
+  form: typeof initialEmailDeliveryFormState,
+  copy: Copy,
+): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!form.senderName.trim())
+    errors.senderName = copy.fieldRequired(copy.emailSenderName);
+  if (!form.senderEmail.trim())
+    errors.senderEmail = copy.fieldRequired(copy.emailSenderEmail);
+  else if (!EMAIL_PATTERN.test(form.senderEmail.trim()))
+    errors.senderEmail = copy.validEmail;
+  if (!form.host.trim()) errors.host = copy.fieldRequired(copy.emailHost);
+  const port = Number(form.port);
+  if (!Number.isInteger(port) || port < 1 || port > 65_535)
+    errors.port = copy.validPort;
+  if (form.authentication && !form.username.trim())
+    errors.username = copy.fieldRequired(copy.emailUsername);
+  if (form.authentication && !form.password)
+    errors.password = copy.fieldRequired(copy.emailPassword);
+  if (form.replyToEmail.trim() && !EMAIL_PATTERN.test(form.replyToEmail.trim()))
+    errors.replyToEmail = copy.validEmail;
+  if (!form.testRecipient.trim())
+    errors.testRecipient = copy.fieldRequired(copy.emailTestRecipient);
+  else if (!EMAIL_PATTERN.test(form.testRecipient.trim()))
+    errors.testRecipient = copy.validEmail;
+  if (form.setupSecret.length < 32) errors.setupSecret = copy.validSetupSecret;
+  return errors;
+}
+
+function validateConfirmationForm(
+  form: typeof initialEmailDeliveryFormState,
+  copy: Copy,
+): FieldErrors {
+  return {
+    ...(form.confirmationCode.length === 6
+      ? {}
+      : { confirmationCode: copy.validConfirmationCode }),
+    ...(form.setupSecret.length >= 32
+      ? {}
+      : { setupSecret: copy.validSetupSecret }),
+  };
+}
+
+function focusNamedControl(form: HTMLFormElement, name: EmailFieldName) {
+  const control = form.elements.namedItem(name);
+  if (control instanceof HTMLElement) control.focus();
 }

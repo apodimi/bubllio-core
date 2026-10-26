@@ -18,6 +18,46 @@ server deployment and was configuring the three HTTPS domains in the hosting
 panel. Confirm valid certificates and route reachability before entering setup
 credentials; completion of the public-host browser setup remains unverified.
 
+## Public-host UI review, 2026-10-26
+
+The read-only end-user review reached the email-delivery form and stopped before
+submitting SMTP credentials or the setup secret. The three intended origins
+resolved over HTTPS with valid certificates; Core web, API liveness/readiness,
+and OIDC discovery returned successfully. `/runtime-config.js` contained the
+expected `api.dev.bubllio.com` and `auth.dev.bubllio.com` origins. Desktop and
+390-pixel mobile layouts had clear hierarchy, readable contrast, and no
+horizontal overflow in English or Greek.
+
+The review found this deployment blocker:
+
+- `https://auth.dev.bubllio.com/admin/` is publicly reachable and redirects to
+  the Keycloak administration login. The deployment contract requires the edge
+  proxy to deny this route while preserving realm OIDC, registration,
+  verification, and account actions.
+
+The repository now contains a portable fix: `identity-edge` is the only public
+identity service, it proxies ordinary Keycloak traffic, and it returns `404` for
+`/admin` and all child paths. Keycloak no longer joins the external edge
+network. The live blocker remains open until the updated adapter is deployed and
+the auth domain target changes from `keycloak:8080` to `identity-edge:8080`.
+
+The observed UI improvements are implemented in `apps/web`:
+
+1. The compact progress view remains through tablet widths; the six-column rail
+   appears only from 1200 pixels.
+2. SPA step changes move focus to the new `h1`.
+3. Native validation bubbles are replaced by localized inline errors that focus
+   the first invalid field.
+4. Forms have stable field names, visible busy indicators, `aria-busy`, and a
+   controlled Advanced settings disclosure. Browser theme metadata now matches
+   the product canvas.
+5. Organization copy explicitly states that member and application
+   administration is not available in this technical alpha.
+
+These UI changes are local to `apps/web`. Completing the live flow remains a
+deployment/identity/email contract rehearsal across Core web, Core API,
+Keycloak, the setup agent, the edge proxy, and the selected SMTP provider.
+
 ## Where we stopped
 
 The first portable delivery slice of ADR 0011 is implemented:

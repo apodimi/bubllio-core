@@ -58,7 +58,8 @@ export const setupCopy = {
     emailPassword: "Password",
     emailTestRecipient: "Send the test to",
     emailSetupSecret: "One-time setup secret",
-    emailAdvanced: "Advanced settings",
+    emailAdvancedShow: "Show advanced settings",
+    emailAdvancedHide: "Hide advanced settings",
     emailSendTest: "Send test email",
     emailSendingTest: "Sending a secure test…",
     emailTestSent: "Enter the confirmation code",
@@ -82,6 +83,12 @@ export const setupCopy = {
       "Email was confirmed, but the account service could not activate it. Check the service and retry the same confirmation.",
     emailUnavailable:
       "Email delivery could not be configured. Check the settings and try again.",
+    fieldRequired: (field: string) => `Enter ${field.toLowerCase()}.`,
+    validEmail: "Enter a valid email address.",
+    validPort: "Enter a port from 1 to 65,535.",
+    validSetupSecret: "Enter the setup secret (at least 32 characters).",
+    validConfirmationCode: "Enter the 6-digit confirmation code.",
+    validOrganizationName: "Enter an organization name with 2–120 characters.",
     signOut: "Sign out",
     unavailableTitle: "Setup could not load",
     unavailableHelp: "Confirm that Bubllio is available, then try again.",
@@ -104,7 +111,7 @@ export const setupCopy = {
     continue: "Continue",
     organizationTitle: "Name your first organization",
     organizationBody:
-      "You will become its first owner. You can add members and applications later.",
+      "You will become its first owner. Member and application administration is not available in this technical alpha.",
     organizationLabel: "Organization name",
     create: "Create organization",
     progressTitle: "Creating your organization",
@@ -205,7 +212,8 @@ export const setupCopy = {
     emailPassword: "Κωδικός πρόσβασης",
     emailTestRecipient: "Αποστολή δοκιμής στο",
     emailSetupSecret: "Μυστικό εγκατάστασης",
-    emailAdvanced: "Προχωρημένες ρυθμίσεις",
+    emailAdvancedShow: "Εμφάνιση προχωρημένων ρυθμίσεων",
+    emailAdvancedHide: "Απόκρυψη προχωρημένων ρυθμίσεων",
     emailSendTest: "Αποστολή δοκιμαστικού email",
     emailSendingTest: "Στέλνεται ασφαλές δοκιμαστικό…",
     emailTestSent: "Βάλε τον κωδικό επιβεβαίωσης",
@@ -230,6 +238,14 @@ export const setupCopy = {
       "Το email επιβεβαιώθηκε, αλλά η υπηρεσία λογαριασμών δεν μπόρεσε να το ενεργοποιήσει. Έλεγξε την υπηρεσία και επανάλαβε την ίδια επιβεβαίωση.",
     emailUnavailable:
       "Δεν ολοκληρώθηκε η ρύθμιση email. Έλεγξε τα στοιχεία και δοκίμασε ξανά.",
+    fieldRequired: (field: string) =>
+      `Συμπλήρωσε το πεδίο «${field.toLocaleLowerCase("el-GR")}».`,
+    validEmail: "Βάλε έγκυρη διεύθυνση email.",
+    validPort: "Βάλε θύρα από 1 έως 65.535.",
+    validSetupSecret:
+      "Βάλε το μυστικό εγκατάστασης (τουλάχιστον 32 χαρακτήρες).",
+    validConfirmationCode: "Βάλε τον εξαψήφιο κωδικό επιβεβαίωσης.",
+    validOrganizationName: "Βάλε όνομα οργανισμού από 2 έως 120 χαρακτήρες.",
     signOut: "Αποσύνδεση",
     unavailableTitle: "Δεν φορτώθηκε η εγκατάσταση",
     unavailableHelp:
@@ -253,7 +269,7 @@ export const setupCopy = {
     continue: "Συνέχεια",
     organizationTitle: "Ονόμασε τον πρώτο οργανισμό",
     organizationBody:
-      "Θα γίνεις ο πρώτος ιδιοκτήτης του. Μέλη και εφαρμογές θα προστεθούν αργότερα.",
+      "Θα γίνεις ο πρώτος ιδιοκτήτης του. Η διαχείριση μελών και εφαρμογών δεν είναι ακόμη διαθέσιμη σε αυτή την τεχνική alpha έκδοση.",
     organizationLabel: "Όνομα οργανισμού",
     create: "Δημιουργία οργανισμού",
     progressTitle: "Δημιουργία οργανισμού",

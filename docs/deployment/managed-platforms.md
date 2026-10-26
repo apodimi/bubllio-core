@@ -56,20 +56,27 @@ credential generation use the same behavior on every adapter.
    `dokploy-network` only for the three public services.
 5. Add these HTTPS domains in Dokploy:
 
-   | Domain                                     | Service    | Port |
-   | ------------------------------------------ | ---------- | ---: |
-   | base domain, for example `dev.bubllio.com` | `core-web` | 8080 |
-   | `api.` plus the base domain                | `core-api` | 3100 |
-   | `auth.` plus the base domain               | `keycloak` | 8080 |
+   | Domain                                     | Service         | Port |
+   | ------------------------------------------ | --------------- | ---: |
+   | base domain, for example `dev.bubllio.com` | `core-web`      | 8080 |
+   | `api.` plus the base domain                | `core-api`      | 3100 |
+   | `auth.` plus the base domain               | `identity-edge` | 8080 |
 
 6. Preview the rendered Compose. Confirm that there are no host `ports`, and
-   only `core-web`, `core-api`, and `keycloak` join `dokploy-network`.
+   only `core-web`, `core-api`, and `identity-edge` join `dokploy-network`.
+   `keycloak` must remain private; routing the auth domain to it bypasses the
+   mandatory `/admin` denial policy.
 7. Deploy, wait for the three public services to become healthy, then open
    `https://<base-domain>/setup` and complete the browser flow.
 8. After the installation is claimed, delete `BUBLLIO_SETUP_SECRET` from the
    Dokploy service and redeploy. The initializer must report that state is ready
    without rotating it. Confirm the replacement initializer container no longer
    contains the raw value.
+
+For an existing technical-alpha deployment that routed the auth domain directly
+to `keycloak`, deploy the current adapter and change that domain's service to
+`identity-edge` on port `8080`. Confirm OIDC discovery and account actions still
+work, then verify that `/admin` returns `404` before entering setup credentials.
 
 Dokploy administrators and anyone with equivalent Docker/configuration access
 may inspect the raw setup value during bootstrap. That is an explicit

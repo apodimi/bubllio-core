@@ -22,6 +22,7 @@ await ensureEmptyDirectory(outputDirectory);
 
 const files = new Map([
   ["deploy/compose/compose.yaml", "deploy/compose/compose.yaml"],
+  ["deploy/identity-edge/nginx.conf", "deploy/identity-edge/nginx.conf"],
   ["deploy/keycloak/bubllio-realm.json", "deploy/keycloak/bubllio-realm.json"],
 ]);
 for (const [source, target] of files) {
@@ -53,6 +54,7 @@ const checksumFiles = [
   "README.md",
   "bubllio",
   "deploy/compose/compose.yaml",
+  "deploy/identity-edge/nginx.conf",
   "deploy/keycloak/bubllio-realm.json",
   "release-manifest.json",
 ];

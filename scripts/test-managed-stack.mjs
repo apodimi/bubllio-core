@@ -3,7 +3,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -19,7 +26,8 @@ if (
 const project = `bubllio-smoke-${randomBytes(6).toString("hex")}`;
 const network = `${project}-edge`;
 const directory = await mkdtemp(join(tmpdir(), `${project}-`));
-const composePath = join(directory, "compose.yaml");
+const composeDirectory = join(directory, "deploy", "managed");
+const composePath = join(composeDirectory, "compose.yaml");
 const manifest = JSON.parse(
   await readFile(
     new URL("../deploy/managed/release-manifest.json", import.meta.url),
@@ -44,6 +52,12 @@ if (manifestPath) {
 compose = compose
   // The candidate Keycloak image is built locally before publication.
   .replaceAll("pull_policy: always", "pull_policy: missing");
+await mkdir(join(directory, "deploy", "identity-edge"), { recursive: true });
+await copyFile(
+  new URL("../deploy/identity-edge/nginx.conf", import.meta.url),
+  join(directory, "deploy", "identity-edge", "nginx.conf"),
+);
+await mkdir(composeDirectory, { recursive: true });
 await writeFile(composePath, compose);
 const secret = randomBytes(32).toString("base64url");
 const environment = {
@@ -140,6 +154,15 @@ function verify() {
       "The test stack must not publish host ports",
     );
   }
+  run([
+    ...args,
+    "exec",
+    "-T",
+    "identity-edge",
+    "sh",
+    "-ec",
+    "wget -q -O /dev/null http://127.0.0.1:8080/realms/bubllio/.well-known/openid-configuration && for path in /admin /admin/ /admin/realms/master; do test \"$(wget -S -O /dev/null http://127.0.0.1:8080$path 2>&1 | sed -n 's/.*HTTP\/1.1 \\([0-9][0-9][0-9]\\).*/\\1/p' | tail -n 1)\" = 404; done",
+  ]);
   run([
     ...args,
     "exec",

@@ -22,7 +22,9 @@ existing Docker network shared with an HTTPS reverse proxy.
    the setup secret once. Store that secret immediately.
 
 5. Configure the reverse proxy to route those three hosts to `core-web:8080`,
-   `core-api:3100`, and `keycloak:8080` on the selected network.
+   `core-api:3100`, and `identity-edge:8080` on the selected network. The
+   identity gateway permits public realm and account flows but denies Keycloak
+   administration; never route the public hostname directly to `keycloak`.
 6. Validate and start:
 
    ```sh
