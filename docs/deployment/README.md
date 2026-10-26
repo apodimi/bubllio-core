@@ -23,15 +23,22 @@ artifacts remain part of the UAT and Production gate below. The
 [`release-images.yml`](../../.github/workflows/release-images.yml) workflow
 builds multi-architecture images, records immutable digests, generates SBOMs,
 and publishes the release manifest and checksummed bundle after the same
-verification succeeds.
+verification succeeds. During technical alpha, a successful `main` run also
+commits the complete verified manifest and regenerated managed Compose adapter
+back to `main`. This is continuous alpha delivery, not Production approval.
 
 Versioned installation releases are created only from reviewed `v*` tags. A
 tagged workflow publishes a GitHub prerelease or release whose direct assets are
 the bundle, its checksum, a digest-pinned Dokploy Compose adapter, the manifest,
-and image SBOMs. A `main` push runs the
-ordinary verification workflow but does not silently create a new product
-version. Manual release-workflow runs remain rehearsal artifacts and do not
-create a GitHub Release.
+and image SBOMs. A `main` push creates a non-versioned technical-alpha snapshot
+only after the full release and production-bootstrap gates pass; it does not
+create a GitHub Release or claim a product version. Manual release-workflow runs
+remain rehearsal artifacts and do not auto-promote the Git adapter.
+
+Before declaring a stable, UAT, or Production release, the release owner must
+disable `ALPHA_MAIN_AUTO_PROMOTION`, remove the `main` release trigger, restore
+reviewed tag/manual promotion, and review that policy change. The workflow
+blocks stable tags while technical-alpha auto-promotion remains enabled.
 
 Managed panels may consume the released Compose adapter with only a base domain
 and a unique setup secret. The first alpha flow and its explicit trust boundary

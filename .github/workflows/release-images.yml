@@ -2,8 +2,18 @@ name: Release immutable Core images
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
+    paths-ignore:
+      - deploy/managed/release-manifest.json
+      - deploy/managed/compose.yaml
   workflow_dispatch:
+
+# TODO(release): Set this to false and remove main auto-promotion before the
+# first stable, UAT, or Production release. Stable tags are blocked while this
+# technical-alpha delivery mode is enabled.
+env:
+  ALPHA_MAIN_AUTO_PROMOTION: "true"
 
 permissions:
   contents: read
@@ -11,10 +21,21 @@ permissions:
 
 concurrency:
   group: core-images-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
 
 jobs:
+  release-policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Enforce the technical-alpha release boundary
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != *-* && "$ALPHA_MAIN_AUTO_PROMOTION" == "true" ]]; then
+            echo "Stable releases require disabling and reviewing technical-alpha main auto-promotion first." >&2
+            exit 1
+          fi
+
   verify:
+    needs: release-policy
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -75,6 +96,7 @@ jobs:
         run: docker compose --env-file .env.example down
 
   production-bootstrap:
+    needs: release-policy
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -282,3 +304,34 @@ jobs:
               release-manifest.json \
               release-sboms/*.spdx.json
           fi
+
+      - name: Promote the verified technical-alpha snapshot
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.ALPHA_MAIN_AUTO_PROMOTION == 'true'
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          git fetch origin main
+          CURRENT_MAIN=$(git rev-parse origin/main)
+          if [[ "$CURRENT_MAIN" != "$SOURCE_SHA" ]]; then
+            echo "Skipping stale promotion: main advanced from $SOURCE_SHA to $CURRENT_MAIN."
+            exit 0
+          fi
+
+          git checkout -B main origin/main
+          cp release-manifest.json deploy/managed/release-manifest.json
+          node scripts/build-managed-adapter.mjs \
+            --release-manifest deploy/managed/release-manifest.json \
+            --output "$RUNNER_TEMP/managed-compose.yaml"
+          mv "$RUNNER_TEMP/managed-compose.yaml" deploy/managed/compose.yaml
+          node scripts/test-managed-compose.mjs
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/managed/release-manifest.json deploy/managed/compose.yaml
+          if git diff --cached --quiet; then
+            echo "Managed adapter already points at this snapshot."
+            exit 0
+          fi
+          SHORT_SHA=${SOURCE_SHA:0:7}
+          git commit -m "🚀 Promote technical-alpha images for $SHORT_SHA"
+          git push origin HEAD:main

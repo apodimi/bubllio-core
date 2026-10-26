@@ -12,8 +12,9 @@ the same conformance checks before they are described as validated.
 
 Connect the GitHub repository in your hosting panel and select
 `./deploy/managed/compose.yaml`. The checked-in file pins the published
-`0.1.0-alpha.3` images by digest, recorded in the adjacent
-`release-manifest.json`. It is ready to deploy; the `.template.yaml` file is
+technical-alpha images by digest, recorded in the adjacent
+`release-manifest.json`. Successful `main` release runs update those two files
+as one coherent snapshot. It is ready to deploy; the `.template.yaml` file is
 only for release tooling. Add these service-level values:
 
 ```dotenv
@@ -46,10 +47,9 @@ credential generation use the same behavior on every adapter.
 1. Create a **Compose** service, choose **Docker Compose** (not Stack), and
    select **GitHub** as the source.
 2. Select repository `apodimi/bubllio-core`, branch `main`, and Compose Path
-   `./deploy/managed/compose.yaml`. Save with automatic deployment disabled for
-   this first setup test. No download or YAML copy is required. The Compose file
-   selects the reviewed release images even when application source changes on
-   `main`; promoting its digests is an explicit release change.
+   `./deploy/managed/compose.yaml`. Keep automatic deployment disabled until the
+   first setup test and public identity-boundary checks pass. No download or
+   YAML copy is required. The Compose file always selects immutable digests.
 3. Add the three service-level environment values above, setting
    `BUBLLIO_EDGE_NETWORK=dokploy-network` for a standard Dokploy installation.
 4. Keep isolated deployment off; the adapter uses Dokploy's existing
@@ -72,6 +72,10 @@ credential generation use the same behavior on every adapter.
    Dokploy service and redeploy. The initializer must report that state is ready
    without rotating it. Confirm the replacement initializer container no longer
    contains the raw value.
+9. For the internal technical alpha only, enable Dokploy automatic deployment.
+   A successful `main` release run commits one complete tested digest snapshot;
+   that bot commit is the deployment signal. A Git promotion does not prove the
+   live deployment succeeded, so retain health and endpoint monitoring.
 
 For an existing technical-alpha deployment that routed the auth domain directly
 to `keycloak`, deploy the current adapter and change that domain's service to
@@ -104,9 +108,15 @@ root user, extra capability, or data reset is required.
 
 ## Promote a new release into the Git deployment path
 
-Release maintainers update `deploy/managed/release-manifest.json` from the
-published release and regenerate `deploy/managed/compose.yaml` with
-`scripts/build-managed-adapter.mjs`. Review and commit both files together.
-The delivery CI gate regenerates the snapshot and rejects drift between the
-manifest, template, and deployable Compose file. Operators keep the same path
-and environment inputs when a reviewed release is promoted.
+During technical alpha, a successful `main` image workflow updates
+`deploy/managed/release-manifest.json` from the tested image set, regenerates
+`deploy/managed/compose.yaml`, validates the result, and commits exactly those
+two files. It skips promotion if `main` advanced while the run was in progress;
+the generated-file path filter prevents a recursive image build. Reverting that
+bot commit restores the preceding immutable snapshot.
+
+Before a stable, UAT, or Production release, remove this continuous-alpha path
+and restore reviewed tag/manual promotion. Release maintainers then update the
+manifest from the published release and regenerate the adapter with
+`scripts/build-managed-adapter.mjs`, reviewing and committing both files
+together. Operators keep the same path and environment inputs.
