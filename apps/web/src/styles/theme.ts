@@ -161,6 +161,7 @@ export const theme = createTheme(baseTheme, {
       },
     },
     MuiOutlinedInput: {
+      defaultProps: { notched: false },
       styleOverrides: {
         root: {
           backgroundColor: brand.colors.surface,

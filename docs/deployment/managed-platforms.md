@@ -100,6 +100,12 @@ image created a non-traversable import directory. The fixed image retains the
 non-root importer and read-only realm file; no runtime permission workaround,
 root user, extra capability, or data reset is required.
 
+Existing realms are deliberately not overwritten during deployment. During the
+technical alpha, Core requests only the realm's compatible `organization`
+scope. Multi-organization token expansion and the standard profile/email scopes
+remain a release gate until a non-destructive online realm reconciliation is
+implemented and rehearsed; do not remove identity volumes to force a re-import.
+
 - A changed base domain or setup secret is rejected after initialization.
 - An expired or lost setup secret has no non-destructive rotation flow yet.
 - Removing named volumes is destructive and is not a recovery procedure.

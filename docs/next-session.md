@@ -121,6 +121,12 @@ external or Production release.
    rate limiting, monitoring, and alerting.
 6. Complete member directory and grant-management UI, then prove CRM denial and
    allow paths against Core. Board is not required to validate the Core model.
+7. Add a non-destructive online Keycloak realm reconciliation before stable
+   release. The technical-alpha web client currently requests the compatible
+   `organization` scope because an already-created managed realm cannot acquire
+   new default scopes through the intentionally non-overwriting offline import.
+   Re-enable `profile email organization:*` only after an upgrade rehearsal
+   proves existing users and organizations are preserved.
 
 ## Verification baseline
 

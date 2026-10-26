@@ -22,7 +22,9 @@ export async function initializeAuth(): Promise<Keycloak> {
       window.location.pathname === "/setup" ? "check-sso" : "login-required",
     flow: "standard",
     pkceMethod: "S256",
-    scope: "profile email organization:*",
+    // TODO(release): Restore organization:* after existing realms can be
+    // reconciled online without replacing their users or organizations.
+    scope: "organization",
     checkLoginIframe: false,
   });
 

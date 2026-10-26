@@ -220,6 +220,30 @@ test("setup progress stays compact at every viewport", async ({ page }) => {
   await expect(progress.locator("ol")).toHaveCount(0);
 });
 
+test("static field labels keep the outlined border continuous", async ({
+  page,
+}) => {
+  await page.unroute("**/api/v1/setup/email/status");
+  await page.route("**/api/v1/setup/email/status", (route) =>
+    route.fulfill({ json: { status: "required" } }),
+  );
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+
+  await page.goto("/setup");
+  await continuePastSystemCheck(page);
+  await page.getByRole("button", { name: "Ελληνικά" }).click();
+
+  const senderName = page.getByLabel("Όνομα αποστολέα");
+  await senderName.focus();
+  const notchWidth = await senderName
+    .locator("xpath=..")
+    .locator("fieldset > legend")
+    .evaluate((legend) => legend.getBoundingClientRect().width);
+  expect(notchWidth).toBeLessThan(1);
+});
+
 test("email errors are safe and clear secrets without clearing settings", async ({
   page,
 }) => {
