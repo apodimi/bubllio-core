@@ -161,7 +161,7 @@ function verify() {
     "identity-edge",
     "sh",
     "-ec",
-    "wget -q -O /dev/null http://127.0.0.1:8080/realms/bubllio/.well-known/openid-configuration && for path in /admin /admin/ /admin/realms/master; do test \"$(wget -S -O /dev/null http://127.0.0.1:8080$path 2>&1 | sed -n 's/.*HTTP\/1.1 \\([0-9][0-9][0-9]\\).*/\\1/p' | tail -n 1)\" = 404; done",
+    "wget -q -O /dev/null http://127.0.0.1:8080/realms/bubllio/.well-known/openid-configuration && for path in /admin /admin/ /admin/realms/master; do test \"$(wget -S -O /dev/null http://127.0.0.1:8080$path 2>&1 | awk '$1 ~ /^HTTP/ { code = $2 } END { print code }')\" = 404; done",
   ]);
   run([
     ...args,
