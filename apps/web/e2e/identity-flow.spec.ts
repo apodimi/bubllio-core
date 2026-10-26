@@ -101,10 +101,11 @@ test("email delivery is tested and confirmed before account creation", async ({
     .fill("test-only-setup-secret-with-sufficient-length");
   await page.getByRole("button", { name: "Send test email" }).click();
 
-  await expect(
-    page.getByRole("button", { name: "Sending a secure test…" }),
-  ).toBeDisabled();
-  await expect(page.getByRole("progressbar")).toBeVisible();
+  const sendingButton = page.getByRole("button", {
+    name: "Sending a secure test…",
+  });
+  await expect(sendingButton).toBeDisabled();
+  await expect(sendingButton.getByRole("progressbar")).toBeVisible();
 
   await expect(
     page.getByRole("heading", { name: "Enter the confirmation code" }),
