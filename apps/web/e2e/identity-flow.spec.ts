@@ -304,15 +304,6 @@ test("email confirmation recovery resumes safely after reload in Greek on mobile
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const workspaceRequests: string[] = [];
-  page.on("request", (request) => {
-    if (
-      request.url().includes("/api/v1/me/organizations") ||
-      request.url().includes("/applications")
-    ) {
-      workspaceRequests.push(request.url());
-    }
-  });
   await page.unroute("**/api/v1/setup/email/status");
   await page.route("**/api/v1/setup/email/status", (route) =>
     route.fulfill({
@@ -445,6 +436,15 @@ test("signed-in owner finishes setup from a workspace task list", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  const workspaceRequests: string[] = [];
+  page.on("request", (request) => {
+    if (
+      request.url().includes("/api/v1/me/organizations") ||
+      request.url().includes("/applications")
+    ) {
+      workspaceRequests.push(request.url());
+    }
+  });
   await page.route("**/api/v1/setup/current", (route) =>
     route.fulfill({ json: { state: "unclaimed" } }),
   );
