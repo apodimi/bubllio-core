@@ -335,7 +335,7 @@ services:
     restart: unless-stopped
 
   core-web:
-    image: ghcr.io/apodimi/bubllio-core-web@sha256:1efc9a35345a931768ecdb54d42cc7ab53a6041745d1001ed029d992cbd55cd7
+    image: ghcr.io/apodimi/bubllio-core-web@sha256:9132e826a008a4d7b56f8ff40815a8e825f1c879e9be84aa0092fdd8576c9439
     pull_policy: always
     environment:
       PORT: "8080"
