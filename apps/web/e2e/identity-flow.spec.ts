@@ -604,7 +604,7 @@ test("workspace setup asks the same administrator to sign in again after token r
   await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
 });
 
-test("a claimed installation offers continuation instead of another account", async ({
+test("a claimed installation opens login and rejects a different account", async ({
   page,
 }) => {
   await page.route("**/api/v1/setup/status", (route) =>
@@ -614,15 +614,10 @@ test("a claimed installation offers continuation instead of another account", as
     route.fulfill({ json: { state: "unclaimed" } }),
   );
   await page.goto("/");
-  await expect(page).toHaveURL("http://127.0.0.1:5174/setup");
-  await expect(
-    page.getByRole("heading", { name: "Continue installation setup" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
   await expect(
     page.getByRole("button", { name: "Create administrator account" }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Continue setup" }).click();
-  await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
   await switchToEnglish(page);
   await enterUsername(page);
   await page.locator("#password").fill(password);
