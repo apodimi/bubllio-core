@@ -516,10 +516,9 @@ test("signed-in owner finishes setup from a workspace task list", async ({
   await page.getByLabel("Organization name").fill("Example Team");
   await page.getByRole("button", { name: "Create organization" }).click();
   await expect(
-    page.getByText("A membership invitation was sent to your email.", {
-      exact: false,
-    }),
+    page.getByText("Owner membership", { exact: true }),
   ).toBeVisible();
+  await expect(page.getByText("In progress", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Enter the setup secret again")).toHaveValue("");
   expect(
     await page.evaluate(() => localStorage.length + sessionStorage.length),
