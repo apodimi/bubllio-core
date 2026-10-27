@@ -19,10 +19,15 @@ Pull requests and manual checks use the
 uses one delivery workflow only:
 [`release-images.yml`](../../.github/workflows/release-images.yml) verifies the
 API, web app, identity theme, browser journeys, portable adapter, and production
-bootstrap before it builds multi-architecture images. It then records immutable
-digests, generates SBOMs and the bundle, and commits the complete managed
-Compose snapshot back to `main`. This is continuous alpha delivery, not
-Production approval.
+bootstrap before it builds multi-architecture images. Main-branch delivery
+compares the new source with the last promoted manifest, rebuilds only the
+affected images, then smoke-tests the complete digest-pinned image set before
+promotion. Tags and forced manual runs always rebuild all images. The manifest's
+`commitSha` identifies the source revision that composed and verified the
+snapshot; unchanged entries may intentionally retain digests built by an older
+revision. The workflow generates SBOMs for rebuilt images and commits the
+complete managed Compose snapshot back to `main`. This is continuous alpha
+delivery, not Production approval.
 
 Versioned installation releases are created only from reviewed `v*` tags. A
 tagged workflow publishes a GitHub prerelease or release whose direct assets are

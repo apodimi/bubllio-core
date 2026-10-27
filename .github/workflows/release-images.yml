@@ -5,9 +5,21 @@ on:
     branches: [main]
     tags: ["v*"]
     paths-ignore:
+      - AGENTS.md
+      - LICENSE
+      - PRODUCT.md
+      - README.md
+      - docs/**
+      - .gitignore
       - deploy/managed/release-manifest.json
       - deploy/managed/compose.yaml
   workflow_dispatch:
+    inputs:
+      force_all_images:
+        description: Rebuild every release image
+        required: false
+        type: boolean
+        default: true
 
 # TODO(release): Set this to false and remove main auto-promotion before the
 # first stable, UAT, or Production release. Stable tags are blocked while this
@@ -34,8 +46,47 @@ jobs:
             exit 1
           fi
 
-  verify:
+  plan:
     needs: release-policy
+    runs-on: ubuntu-24.04
+    outputs:
+      full_build: ${{ steps.images.outputs.full_build }}
+      has_images: ${{ steps.images.outputs.has_images }}
+      matrix: ${{ steps.images.outputs.matrix }}
+      needs_bootstrap: ${{ steps.images.outputs.needs_bootstrap }}
+      release_needed: ${{ steps.images.outputs.release_needed }}
+      verify_needed: ${{ steps.images.outputs.verify_needed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: images
+        name: Select affected release images
+        run: |
+          FORCE_ALL=false
+          if [[ "$GITHUB_REF_TYPE" == "tag" || "${{ inputs.force_all_images }}" == "true" ]]; then
+            FORCE_ALL=true
+          fi
+
+          BASELINE=$(node -p "require('./deploy/managed/release-manifest.json').commitSha")
+          if [[ "$FORCE_ALL" == "false" ]] && git merge-base --is-ancestor "$BASELINE" "$GITHUB_SHA"; then
+            git diff --name-only --diff-filter=ACDMRT "$BASELINE" "$GITHUB_SHA" > "$RUNNER_TEMP/release-paths.txt"
+          else
+            : > "$RUNNER_TEMP/release-paths.txt"
+            FORCE_ALL=true
+          fi
+
+          if [[ "$FORCE_ALL" == "true" ]]; then
+            node scripts/changed-release-images.mjs "$RUNNER_TEMP/release-paths.txt" --force-all
+          else
+            node scripts/changed-release-images.mjs "$RUNNER_TEMP/release-paths.txt"
+          fi
+      - name: Verify release image selection
+        run: node scripts/test-changed-release-images.mjs
+
+  verify:
+    needs: plan
+    if: needs.plan.outputs.verify_needed == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -96,7 +147,8 @@ jobs:
         run: docker compose --env-file .env.example down
 
   production-bootstrap:
-    needs: release-policy
+    needs: [plan, verify]
+    if: needs.plan.outputs.needs_bootstrap == 'true' && needs.verify.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -109,36 +161,16 @@ jobs:
       - run: node scripts/test-managed-stack.mjs bubllio-keycloak:smoke
 
   publish:
-    needs: [verify, production-bootstrap]
+    needs: [plan, verify, production-bootstrap]
+    if: >-
+      always() &&
+      needs.plan.outputs.has_images == 'true' &&
+      needs.verify.result == 'success' &&
+      (needs.production-bootstrap.result == 'success' || needs.production-bootstrap.result == 'skipped')
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - image: core-api
-            key: coreApi
-            dockerfile: apps/api/Dockerfile.production
-            target: runtime
-          - image: core-migrate
-            key: coreMigrate
-            dockerfile: apps/api/Dockerfile.production
-            target: migration
-          - image: core-identity-setup-agent
-            key: identitySetupAgent
-            dockerfile: apps/api/Dockerfile.production
-            target: identity-setup-agent
-          - image: core-web
-            key: coreWeb
-            dockerfile: apps/web/Dockerfile.production
-            target: runtime
-          - image: core-keycloak
-            key: keycloak
-            dockerfile: infrastructure/keycloak/Dockerfile.production
-            target: runtime
-          - image: core-installer
-            key: installer
-            dockerfile: deploy/installer/Dockerfile
-            target: runtime
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
@@ -208,19 +240,34 @@ jobs:
           if-no-files-found: error
 
   release-manifest:
-    needs: publish
+    needs: [plan, verify, production-bootstrap, publish]
+    if: >-
+      always() &&
+      needs.plan.outputs.release_needed == 'true' &&
+      needs.verify.result == 'success' &&
+      (needs.production-bootstrap.result == 'success' || needs.production-bootstrap.result == 'skipped') &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: write
+      packages: read
     steps:
       - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.has_images == 'true'
         with:
           pattern: digest-*
           path: release-fragments
           merge-multiple: true
       - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.has_images == 'true'
         with:
           pattern: "*.spdx.json"
           path: release-sboms
@@ -237,8 +284,11 @@ jobs:
             RELEASE_VERSION="0.1.0-alpha.${RUN_NUMBER}"
           fi
           export RELEASE_VERSION
-          node -e "const fs=require('node:fs'); const images=Object.fromEntries(fs.readdirSync('release-fragments').sort().map(file=>{const item=JSON.parse(fs.readFileSync('release-fragments/'+file)); return [item.key,item.image]})); const expected=['coreApi','coreMigrate','coreWeb','identitySetupAgent','installer','keycloak']; if(JSON.stringify(Object.keys(images).sort())!==JSON.stringify(expected))throw new Error('Release manifest image set is incomplete'); fs.writeFileSync('release-manifest.json',JSON.stringify({schemaVersion:'1',releaseRef:process.env.RELEASE_REF,version:process.env.RELEASE_VERSION,commitSha:process.env.COMMIT_SHA,images},null,2)+'\n')"
+          node -e "const fs=require('node:fs'); const base=JSON.parse(fs.readFileSync('deploy/managed/release-manifest.json')); const images={...base.images}; if(fs.existsSync('release-fragments')) for(const file of fs.readdirSync('release-fragments').sort()){const item=JSON.parse(fs.readFileSync('release-fragments/'+file)); images[item.key]=item.image;} const expected=['coreApi','coreMigrate','coreWeb','identitySetupAgent','installer','keycloak']; if(JSON.stringify(Object.keys(images).sort())!==JSON.stringify(expected))throw new Error('Release manifest image set is incomplete'); fs.writeFileSync('release-manifest.json',JSON.stringify({schemaVersion:'1',releaseRef:process.env.RELEASE_REF,version:process.env.RELEASE_VERSION,commitSha:process.env.COMMIT_SHA,images},null,2)+'\n')"
           node -e "import('./deploy/release/manifest.mjs').then(({readReleaseManifest})=>readReleaseManifest('release-manifest.json'))"
+      - name: Verify every immutable image is available
+        run: |
+          node -e "const {spawnSync}=require('node:child_process'); const {images}=require('./release-manifest.json'); for(const [key,image] of Object.entries(images)){const result=spawnSync('docker',['buildx','imagetools','inspect',image],{stdio:'inherit'}); if(result.status!==0)throw new Error('Release image is unavailable: '+key)}"
       - name: Verify complete published release before promotion
         run: |
           KEYCLOAK_IMAGE=$(node -p "require('./release-manifest.json').images.keycloak")
@@ -270,7 +320,7 @@ jobs:
             bubllio-core-*.tar.gz
             bubllio-core-*.tar.gz.sha256
             bubllio-core-*-dokploy.yaml
-            release-sboms/*.spdx.json
+            release-sboms/
           if-no-files-found: error
       - name: Publish tagged GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
