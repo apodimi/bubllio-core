@@ -733,6 +733,28 @@ test("startup does not open login when the setup status is unavailable or invali
   ).toBeVisible();
 });
 
+test("registered administrator returns to login while installation tasks remain", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({
+      json: {
+        setupRequired: true,
+        phase: "new",
+        registrationRequired: false,
+      },
+    }),
+  );
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
+  await expect(page.locator("#username")).toBeVisible();
+
+  await page.goto("/setup");
+  await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
+  await expect(page.locator("#username")).toBeVisible();
+});
+
 test("password reset keeps its value and switches between English and Greek", async ({
   page,
 }) => {

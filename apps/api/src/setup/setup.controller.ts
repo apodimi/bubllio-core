@@ -27,6 +27,7 @@ import { SetupSubjectGuard } from './guards/setup-subject.guard.js'
 import { SetupProblemFilter } from './setup-problem.filter.js'
 import { SetupProvisioningService, type SetupOperationView } from './setup-provisioning.service.js'
 import { SetupRepository, type PublicSetupStatus } from './setup.repository.js'
+import { KeycloakOrganizationClient } from './keycloak-organization.client.js'
 
 const IDEMPOTENCY_KEY_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
@@ -43,6 +44,7 @@ export class SetupController {
     private readonly setupRepository: SetupRepository,
     private readonly provisioning: SetupProvisioningService,
     private readonly emailDeliveryRepository: EmailDeliveryRepository,
+    private readonly identityDirectory: KeycloakOrganizationClient,
     @Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig,
   ) {}
 
@@ -54,8 +56,13 @@ export class SetupController {
   @Header('X-Content-Type-Options', 'nosniff')
   @Header('X-Frame-Options', 'DENY')
   @Header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'")
-  async getStatus(): Promise<PublicSetupStatus> {
-    return this.setupRepository.readPublicStatus()
+  async getStatus(): Promise<PublicSetupStatus & { registrationRequired: boolean }> {
+    const status = await this.setupRepository.readPublicStatus()
+    if (status.phase !== 'new') return { ...status, registrationRequired: false }
+    return {
+      ...status,
+      registrationRequired: !(await this.identityDirectory.hasVerifiedAccount()),
+    }
   }
 
   @Get('current')

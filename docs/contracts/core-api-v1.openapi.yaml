@@ -483,7 +483,7 @@ components:
     SetupStatus:
       type: object
       additionalProperties: false
-      required: [setupRequired, phase]
+      required: [setupRequired, phase, registrationRequired]
       properties:
         setupRequired:
           type: boolean
@@ -491,6 +491,9 @@ components:
           type: string
           enum: [new, in_progress, ready]
           description: Coarse public installation phase; no owner identity or operation details
+        registrationRequired:
+          type: boolean
+          description: Whether the public first-account welcome is still needed; false once an enabled, email-verified identity exists or setup has advanced
     EmailDeliveryStatus:
       type: object
       additionalProperties: false

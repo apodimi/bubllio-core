@@ -38,7 +38,7 @@ const provisioning = {
 }
 const auth = { verify: vi.fn() }
 const emailDelivery = { isReady: vi.fn(), status: vi.fn() }
-const identityDirectory = { hasVerifiedEmail: vi.fn() }
+const identityDirectory = { hasVerifiedEmail: vi.fn(), hasVerifiedAccount: vi.fn() }
 
 function identity(overrides: Partial<VerifiedSubject> = {}): VerifiedSubject {
   return {
@@ -108,6 +108,7 @@ describe('first-run setup HTTP boundary', () => {
     emailDelivery.isReady.mockResolvedValue(true)
     emailDelivery.status.mockResolvedValue({ status: 'ready' })
     identityDirectory.hasVerifiedEmail.mockResolvedValue(false)
+    identityDirectory.hasVerifiedAccount.mockResolvedValue(false)
     provisioning.current.mockResolvedValue({ state: 'claimed' })
     provisioning.start.mockResolvedValue(operation)
     provisioning.read.mockResolvedValue(operation)
@@ -136,9 +137,60 @@ describe('first-run setup HTTP boundary', () => {
     })
 
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ setupRequired: false, phase: 'ready' })
+    expect(response.json()).toEqual({
+      setupRequired: false,
+      phase: 'ready',
+      registrationRequired: false,
+    })
     expect(response.headers['cache-control']).toBe('no-store, max-age=0')
     expect(auth.verify).not.toHaveBeenCalled()
+  })
+
+  it('closes public registration after a verified account exists while setup remains new', async () => {
+    identityDirectory.hasVerifiedAccount.mockResolvedValueOnce(true)
+    const response = await app.getHttpAdapter().getInstance().inject({
+      method: 'GET',
+      url: '/api/v1/setup/status',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({
+      setupRequired: true,
+      phase: 'new',
+      registrationRequired: false,
+    })
+    expect(identityDirectory.hasVerifiedAccount).toHaveBeenCalledOnce()
+  })
+
+  it('keeps registration available until the first account is verified', async () => {
+    const response = await app.getHttpAdapter().getInstance().inject({
+      method: 'GET',
+      url: '/api/v1/setup/status',
+    })
+
+    expect(response.json()).toEqual({
+      setupRequired: true,
+      phase: 'new',
+      registrationRequired: true,
+    })
+  })
+
+  it('does not query identity after setup is claimed', async () => {
+    repository.readPublicStatus.mockResolvedValueOnce({
+      setupRequired: true,
+      phase: 'in_progress',
+    })
+    const response = await app.getHttpAdapter().getInstance().inject({
+      method: 'GET',
+      url: '/api/v1/setup/status',
+    })
+
+    expect(response.json()).toEqual({
+      setupRequired: true,
+      phase: 'in_progress',
+      registrationRequired: false,
+    })
+    expect(identityDirectory.hasVerifiedAccount).not.toHaveBeenCalled()
   })
 
   it('claims an installation for the verified subject and supports replay', async () => {

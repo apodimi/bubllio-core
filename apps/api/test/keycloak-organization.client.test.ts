@@ -51,6 +51,20 @@ describe('Keycloak first-organization adapter', () => {
     expect(String(fetchMock.mock.calls[1][0])).toContain(`/users/${subject}`)
   })
 
+  it('detects whether an enabled verified account already exists', async () => {
+    fetchMock
+      .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
+      .mockResolvedValueOnce(response(200, 1))
+      .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
+      .mockResolvedValueOnce(response(200, 0))
+
+    await expect(client.hasVerifiedAccount()).resolves.toBe(true)
+    await expect(client.hasVerifiedAccount()).resolves.toBe(false)
+    expect(String(fetchMock.mock.calls[1][0])).toContain(
+      '/users/count?emailVerified=true&enabled=true',
+    )
+  })
+
   it('does not accept a disabled, unverified, or missing subject', async () => {
     fetchMock
       .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))

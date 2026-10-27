@@ -16,11 +16,11 @@ import "./styles.css";
 async function bootstrap(): Promise<void> {
   const status = await setupStatus();
   const keycloak = await initializeAuth({
-    allowAnonymous: status.setupRequired,
+    allowAnonymous: status.registrationRequired,
   });
 
   if (
-    status.setupRequired &&
+    status.registrationRequired &&
     !keycloak.authenticated &&
     window.location.pathname !== "/setup"
   ) {

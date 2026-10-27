@@ -69,6 +69,9 @@ to install a Node version manager.
    Mailpit again, follow the verification email, and create a password. Bubllio
    returns the signed-in administrator to the Core shell, not to a second setup
    wizard. The shell shows the remaining installation work as three tasks.
+   After this verified account exists, signing out and reopening `/` or `/setup`
+   leads to Identity login. The public welcome is closed even while the
+   installation still reports `setupRequired: true` for those remaining tasks.
 5. In **Confirm this installation**, enter the setup secret from the terminal.
    Then complete **Create your first organization**. Core records the operation
    before contacting Keycloak. Its status becomes **Awaiting owner** while
@@ -92,7 +95,7 @@ inviting members and managing additional organizations is not implemented yet;
 do not treat this manual test as evidence that team onboarding is complete.
 
 Verify `GET http://127.0.0.1:3200/api/v1/setup/status` now returns
-`{"setupRequired":false,"phase":"ready"}`. Reload and sign in again: the owner still sees the
+`{"setupRequired":false,"phase":"ready","registrationRequired":false}`. Reload and sign in again: the owner still sees the
 organization, and `/setup` no longer offers a new claim. A second account must
 not take over the installation. Check that the setup secret is absent from the
 browser URL and local/session storage. Restart the isolated API with the same

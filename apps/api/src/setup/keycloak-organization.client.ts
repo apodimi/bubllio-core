@@ -37,6 +37,20 @@ interface UserRepresentation {
 export class KeycloakOrganizationClient {
   constructor(@Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig) {}
 
+  /** Counts only enabled, email-verified identities; service accounts have no verified email. */
+  async hasVerifiedAccount(): Promise<boolean> {
+    const response = await this.request(
+      'GET',
+      '/admin/realms/bubllio/users/count?emailVerified=true&enabled=true',
+    )
+    if (response.status !== 200) throw providerError(response.status)
+    const count: unknown = await response.json().catch(() => undefined)
+    if (!Number.isSafeInteger(count) || (count as number) < 0) {
+      throw new ProvisioningError('SETUP_REPAIR_REQUIRED')
+    }
+    return (count as number) > 0
+  }
+
   /** Confirms setup identity assurance when a legacy access token omits email claims. */
   async hasVerifiedEmail(subject: string): Promise<boolean> {
     if (!UUID.test(subject)) return false

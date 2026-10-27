@@ -26,6 +26,7 @@ export type CurrentSetup =
 export interface SetupStatus {
   setupRequired: boolean;
   phase: "new" | "in_progress" | "ready";
+  registrationRequired: boolean;
 }
 
 export type EmailDeliverySecurity = "starttls" | "tls" | "none";
@@ -163,6 +164,10 @@ export async function setupStatus(signal?: AbortSignal): Promise<SetupStatus> {
   }
   const setupRequired = Reflect.get(value, "setupRequired");
   const reportedPhase = Reflect.get(value, "phase");
+  const reportedRegistrationRequired = Reflect.get(
+    value,
+    "registrationRequired",
+  );
   if (typeof setupRequired !== "boolean") {
     throw new Error("SETUP_STATUS_INVALID");
   }
@@ -170,11 +175,18 @@ export async function setupStatus(signal?: AbortSignal): Promise<SetupStatus> {
   const phase = reportedPhase ?? (setupRequired ? "new" : "ready");
   if (
     (phase !== "new" && phase !== "in_progress" && phase !== "ready") ||
-    (phase === "ready") !== !setupRequired
+    (phase === "ready") !== !setupRequired ||
+    (reportedRegistrationRequired !== undefined &&
+      typeof reportedRegistrationRequired !== "boolean")
   ) {
     throw new Error("SETUP_STATUS_INVALID");
   }
-  return { setupRequired, phase };
+  // Older APIs cannot distinguish first registration from unfinished setup.
+  const registrationRequired = reportedRegistrationRequired ?? phase === "new";
+  if (registrationRequired && phase !== "new") {
+    throw new Error("SETUP_STATUS_INVALID");
+  }
+  return { setupRequired, phase, registrationRequired };
 }
 
 export async function emailDeliveryStatus(
