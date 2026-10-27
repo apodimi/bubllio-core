@@ -206,7 +206,7 @@ services:
     restart: unless-stopped
 
   identity-setup-agent:
-    image: ghcr.io/apodimi/bubllio-core-identity-setup-agent@sha256:7bf00522660b950669d98f1fc2754ea955618081214fa7cac2222bfb0772b042
+    image: ghcr.io/apodimi/bubllio-core-identity-setup-agent@sha256:d68b42229f30042bc65b5d0076475a3d442fc551df25dfcd061fd2783153aba7
     pull_policy: always
     environment:
       NODE_ENV: production
@@ -275,7 +275,7 @@ services:
     restart: "no"
 
   core-api:
-    image: ghcr.io/apodimi/bubllio-core-api@sha256:5b46daf97fdea08242668af14e0df3035d52cf9293c764b77c1e5c38c0b82011
+    image: ghcr.io/apodimi/bubllio-core-api@sha256:739daafb5c30eda14b3fdfbc5465a69819f44391b73736646f831332eea4ee98
     pull_policy: always
     environment:
       NODE_ENV: production
@@ -335,7 +335,7 @@ services:
     restart: unless-stopped
 
   core-web:
-    image: ghcr.io/apodimi/bubllio-core-web@sha256:9132e826a008a4d7b56f8ff40815a8e825f1c879e9be84aa0092fdd8576c9439
+    image: ghcr.io/apodimi/bubllio-core-web@sha256:87475e988b7f676b289e672c0f4f66659809ea477f24493a6135f30f7c2a6dd7
     pull_policy: always
     environment:
       PORT: "8080"
