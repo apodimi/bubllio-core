@@ -1,5 +1,5 @@
 import type Keycloak from "keycloak-js";
-import { Alert, Button } from "@mui/material";
+import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 
 import type { setupCopy, SetupLocale } from "../setup-copy";
 import type { SetupStep } from "./setup-flow.reducer";
@@ -25,13 +25,6 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
       title={content.title}
       body={content.body}
       viewKey={`${state.step}:${state.operation?.status ?? ""}`}
-      activeStage={activeStage(state.step, copy.progressSteps.length)}
-      progress={{
-        label: copy.progressLabel,
-        steps: copy.progressSteps,
-        statuses: copy.stepStatus,
-        stepOf: copy.stepOf,
-      }}
       signOutLabel={copy.signOut}
     >
       {state.error && (
@@ -40,17 +33,32 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
         </Alert>
       )}
       {state.step === "preflight" && (
-        <PreflightStep
-          copy={copy}
-          preflight={preflightQuery.data}
-          loading={preflightQuery.isPending || preflightQuery.isFetching}
-          error={preflightQuery.isError}
-          onRetry={() => void preflightQuery.refetch()}
-          onContinue={flow.continueFromPreflight}
-        />
+        <Stack spacing={2}>
+          {(preflightQuery.isError ||
+            preflightQuery.data?.status === "attention") && (
+            <Typography variant="h5" component="h2">
+              {copy.preflightTitle}
+            </Typography>
+          )}
+          <PreflightStep
+            copy={copy}
+            preflight={preflightQuery.data}
+            loading={preflightQuery.isPending || preflightQuery.isFetching}
+            error={preflightQuery.isError}
+            onRetry={() => void preflightQuery.refetch()}
+          />
+        </Stack>
       )}
       {state.step === "email" && (
-        <EmailDeliveryStep copy={copy} onReady={flow.continueAfterEmail} />
+        <Box component="section" aria-labelledby="email-delivery-title">
+          <Typography id="email-delivery-title" variant="h5" component="h2">
+            {copy.emailTitle}
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+            {copy.emailBody}
+          </Typography>
+          <EmailDeliveryStep copy={copy} onReady={flow.continueAfterEmail} />
+        </Box>
       )}
       {state.step === "loading" && <LoadingStep label={copy.loading} />}
       {state.step === "reauthenticate" && (
@@ -75,15 +83,22 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
         state.step === "resume" ||
         state.step === "taken" ||
         state.step === "secret") && (
-        <AccountStep
-          step={state.step}
-          keycloak={keycloak}
-          copy={copy}
-          secret={state.secret}
-          busy={state.busy}
-          onSecretChange={flow.setSecret}
-          onClaim={flow.submitClaim}
-        />
+        <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
+          {(state.step === "intro" || state.step === "resume") && (
+            <Typography variant="h5" component="h2">
+              {state.step === "intro" ? copy.beginTitle : copy.resumeTitle}
+            </Typography>
+          )}
+          <AccountStep
+            step={state.step}
+            keycloak={keycloak}
+            copy={copy}
+            secret={state.secret}
+            busy={state.busy}
+            onSecretChange={flow.setSecret}
+            onClaim={flow.submitClaim}
+          />
+        </Stack>
       )}
       {state.step === "organization" && (
         <OrganizationStep
@@ -115,29 +130,18 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
   );
 }
 
-function activeStage(step: SetupStep, totalStages: number): number {
-  if (step === "preflight" || step === "loading" || step === "unavailable")
-    return 0;
-  if (step === "reauthenticate") return 3;
-  if (step === "email") return 1;
-  if (step === "intro" || step === "resume" || step === "taken") return 2;
-  if (step === "secret") return 3;
-  if (step === "organization") return 4;
-  if (step === "progress") return 5;
-  return totalStages;
-}
-
 function pageContent(
   step: SetupStep,
   operationStatus: string | undefined,
   copy: Copy,
 ): { title: string; body: string } {
-  if (step === "preflight")
-    return { title: copy.preflightTitle, body: copy.preflightBody };
-  if (step === "email") return { title: copy.emailTitle, body: copy.emailBody };
-  if (step === "intro") return { title: copy.beginTitle, body: copy.beginBody };
-  if (step === "resume")
-    return { title: copy.resumeTitle, body: copy.resumeBody };
+  if (
+    step === "preflight" ||
+    step === "email" ||
+    step === "intro" ||
+    step === "resume"
+  )
+    return { title: copy.welcomeTitle, body: copy.welcomeBody };
   if (step === "taken") return { title: copy.takenTitle, body: copy.takenBody };
   if (step === "secret")
     return { title: copy.authorityTitle, body: copy.authorityBody };
@@ -157,5 +161,5 @@ function pageContent(
     return { title: copy.closedTitle, body: copy.closedBody };
   if (step === "unavailable")
     return { title: copy.unavailableTitle, body: copy.unavailableHelp };
-  return { title: copy.title, body: copy.intro };
+  return { title: copy.welcomeTitle, body: copy.welcomeBody };
 }

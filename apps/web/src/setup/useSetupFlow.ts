@@ -48,7 +48,6 @@ export function useSetupFlow(keycloak: Keycloak) {
   useEffect(() => {
     if (
       state.step === "preflight" &&
-      keycloak.authenticated &&
       preflightQuery.data?.status === "ready" &&
       (emailDeliveryQuery.data || emailDeliveryQuery.isError)
     ) {
@@ -60,7 +59,6 @@ export function useSetupFlow(keycloak: Keycloak) {
   }, [
     emailDeliveryQuery.data,
     emailDeliveryQuery.isError,
-    keycloak.authenticated,
     preflightQuery.data?.status,
     state.step,
   ]);
@@ -213,11 +211,6 @@ export function useSetupFlow(keycloak: Keycloak) {
     copy,
     preflightQuery,
     emailDeliveryQuery,
-    continueFromPreflight: () =>
-      dispatch({
-        type: "set-step",
-        step: emailDeliveryQuery.data?.status === "ready" ? "loading" : "email",
-      }),
     continueAfterEmail,
     reauthenticate: () =>
       void keycloak.login({

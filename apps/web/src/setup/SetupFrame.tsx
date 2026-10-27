@@ -13,7 +13,6 @@ import {
 
 import { BrandLogo } from "../brand-logo";
 import type { SetupLocale } from "../setup-copy";
-import { SetupProgress } from "../setup-progress";
 
 interface SetupFrameProps {
   keycloak: Keycloak;
@@ -22,13 +21,6 @@ interface SetupFrameProps {
   title: string;
   body: string;
   viewKey: string;
-  activeStage: number;
-  progress: {
-    label: string;
-    steps: readonly string[];
-    statuses: { complete: string; current: string };
-    stepOf: (current: number, total: number) => string;
-  };
   signOutLabel: string;
   children: ReactNode;
 }
@@ -40,8 +32,6 @@ export function SetupFrame({
   title,
   body,
   viewKey,
-  activeStage,
-  progress,
   signOutLabel,
   children,
 }: SetupFrameProps) {
@@ -133,13 +123,6 @@ export function SetupFrame({
                 {body}
               </Typography>
             </Box>
-            <SetupProgress
-              activeStage={activeStage}
-              labels={progress.steps}
-              progressLabel={progress.label}
-              statusLabels={progress.statuses}
-              stepOf={progress.stepOf}
-            />
             {children}
           </Stack>
         </Paper>

@@ -2,6 +2,9 @@ export type SetupLocale = "en" | "el";
 
 export const setupCopy = {
   en: {
+    welcomeTitle: "Welcome to Bubllio",
+    welcomeBody:
+      "Create your administrator account to get started. If email delivery is not ready, configure it here first so we can verify your address.",
     tasksSection: "Setup",
     tasksTitle: "Finish setting up Bubllio",
     tasksBody:
@@ -16,33 +19,13 @@ export const setupCopy = {
       organization: "Create your first organization",
       activation: "Activate owner access",
     },
-    progressLabel: "Setup progress",
-    progressSteps: [
-      "System check",
-      "Email delivery",
-      "Administrator",
-      "Installation access",
-      "Organization",
-      "Activate workspace",
-    ],
-    stepOf: (current: number, total: number) => `Step ${current} of ${total}`,
-    stepStatus: {
-      complete: "Complete",
-      current: "Current step",
-    },
-    title: "Set up your Bubllio workspace",
-    intro: "Create the first organization for this installation.",
     loading: "Checking setup status…",
     preflightTitle: "Check that Bubllio is ready",
-    preflightBody:
-      "We will verify the essentials before you create the administrator account. Nothing is changed during this check.",
     preflightLoading: "Checking the installation…",
-    preflightReady: "Everything is ready for setup.",
     preflightAttention:
       "One or more checks need attention. Ask the installation operator to review them, then run the check again.",
     preflightUnavailable:
       "The system check could not finish. Confirm that Bubllio is available, then try again.",
-    preflightContinue: "Continue setup",
     preflightRetry: "Run check again",
     checkStatus: { ready: "Ready", attention: "Needs attention" },
     systemChecks: {
@@ -173,6 +156,9 @@ export const setupCopy = {
     },
   },
   el: {
+    welcomeTitle: "Καλώς ήρθες στο Bubllio",
+    welcomeBody:
+      "Δημιούργησε τον λογαριασμό διαχειριστή για να ξεκινήσεις. Αν δεν είναι έτοιμη η αποστολή email, ρύθμισέ την εδώ πρώτα ώστε να επιβεβαιώσουμε τη διεύθυνσή σου.",
     tasksSection: "Ρύθμιση",
     tasksTitle: "Ολοκλήρωσε τη ρύθμιση του Bubllio",
     tasksBody:
@@ -187,33 +173,13 @@ export const setupCopy = {
       organization: "Δημιούργησε τον πρώτο οργανισμό",
       activation: "Ενεργοποίησε την πρόσβαση ιδιοκτήτη",
     },
-    progressLabel: "Πρόοδος εγκατάστασης",
-    progressSteps: [
-      "Έλεγχος συστήματος",
-      "Αποστολή email",
-      "Διαχειριστής",
-      "Πρόσβαση εγκατάστασης",
-      "Οργανισμός",
-      "Ενεργοποίηση workspace",
-    ],
-    stepOf: (current: number, total: number) => `Βήμα ${current} από ${total}`,
-    stepStatus: {
-      complete: "Ολοκληρώθηκε",
-      current: "Τώρα",
-    },
-    title: "Ρύθμισε το Bubllio workspace",
-    intro: "Δημιούργησε τον πρώτο οργανισμό αυτής της εγκατάστασης.",
     loading: "Έλεγχος εγκατάστασης…",
     preflightTitle: "Έλεγξε ότι το Bubllio είναι έτοιμο",
-    preflightBody:
-      "Θα ελέγξουμε τα απαραίτητα πριν δημιουργήσεις τον λογαριασμό διαχειριστή. Δεν αλλάζει καμία ρύθμιση σε αυτό το βήμα.",
     preflightLoading: "Γίνεται έλεγχος της εγκατάστασης…",
-    preflightReady: "Όλα είναι έτοιμα για τη ρύθμιση.",
     preflightAttention:
       "Ένας ή περισσότεροι έλεγχοι χρειάζονται προσοχή. Ζήτησε από τον χειριστή της εγκατάστασης να τους ελέγξει και δοκίμασε ξανά.",
     preflightUnavailable:
       "Ο έλεγχος συστήματος δεν ολοκληρώθηκε. Επιβεβαίωσε ότι το Bubllio είναι διαθέσιμο και δοκίμασε ξανά.",
-    preflightContinue: "Συνέχεια ρύθμισης",
     preflightRetry: "Νέος έλεγχος",
     checkStatus: { ready: "Έτοιμο", attention: "Χρειάζεται προσοχή" },
     systemChecks: {

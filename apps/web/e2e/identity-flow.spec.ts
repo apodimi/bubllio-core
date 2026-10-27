@@ -87,7 +87,9 @@ test("email delivery is tested and confirmed before account creation", async ({
   });
 
   await page.goto("/setup");
-  await continuePastSystemCheck(page);
+  await expect(
+    page.getByRole("heading", { name: "Welcome to Bubllio" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Set up email delivery" }),
   ).toBeVisible();
@@ -168,10 +170,12 @@ test("setup validation is localized, focuses the first error, and exposes stable
   );
 
   await page.goto("/setup");
-  await continuePastSystemCheck(page);
+  await expect(
+    page.getByRole("heading", { name: "Welcome to Bubllio" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Set up email delivery" }),
-  ).toBeFocused();
+  ).toBeVisible();
   await page.getByRole("button", { name: "Ελληνικά" }).click();
   await page
     .getByRole("button", { name: "Αποστολή δοκιμαστικού email" })
@@ -201,7 +205,9 @@ test("setup validation is localized, focuses the first error, and exposes stable
   ).toBeVisible();
 });
 
-test("setup progress stays compact at every viewport", async ({ page }) => {
+test("welcome stays clear at every viewport without setup progress", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 700, height: 900 });
   await page.route("**/api/v1/setup/status", (route) =>
     route.fulfill({ json: { setupRequired: true, phase: "new" } }),
@@ -209,15 +215,17 @@ test("setup progress stays compact at every viewport", async ({ page }) => {
   await page.goto("/setup");
   await page.getByRole("button", { name: "Ελληνικά" }).click();
 
-  const progress = page.getByRole("navigation", {
-    name: "Πρόοδος εγκατάστασης",
-  });
-  await expect(progress.getByRole("progressbar")).toBeVisible();
-  await expect(progress.locator("ol")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Καλώς ήρθες στο Bubllio" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Πρόοδος εγκατάστασης" }),
+  ).toHaveCount(0);
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(progress.getByRole("progressbar")).toBeVisible();
-  await expect(progress.locator("ol")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Καλώς ήρθες στο Bubllio" }),
+  ).toBeVisible();
 });
 
 test("static field labels keep the outlined border continuous", async ({
@@ -232,7 +240,6 @@ test("static field labels keep the outlined border continuous", async ({
   );
 
   await page.goto("/setup");
-  await continuePastSystemCheck(page);
   await page.getByRole("button", { name: "Ελληνικά" }).click();
 
   const senderName = page.getByLabel("Όνομα αποστολέα");
@@ -267,7 +274,6 @@ test("email errors are safe and clear secrets without clearing settings", async 
   });
 
   await page.goto("/setup");
-  await continuePastSystemCheck(page);
   await page.getByLabel("Sender email").fill("hello@example.test");
   await page.getByLabel("SMTP host").fill("smtp.example.test");
   await page.getByLabel("Username").fill("mailer");
@@ -319,12 +325,13 @@ test("email confirmation recovery resumes safely after reload in Greek on mobile
   );
 
   await page.goto("/setup");
-  await continuePastSystemCheck(page);
   await page.getByRole("button", { name: "Ελληνικά" }).click();
   await expect(
     page.getByRole("heading", { name: "Βάλε τον κωδικό επιβεβαίωσης" }),
   ).toBeVisible();
-  await expect(page.getByText("Βήμα 2 από 6")).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Πρόοδος εγκατάστασης" }),
+  ).toHaveCount(0);
   await expect(page.getByText("τη διεύθυνση δοκιμής σου")).toBeVisible();
   const hasHorizontalOverflow = await page.evaluate(
     () =>
@@ -540,7 +547,6 @@ test("first-run screen opens browser registration for a new owner", async ({
 
   await page.goto("/");
   await expect(page).toHaveURL("http://127.0.0.1:5174/setup");
-  await continuePastSystemCheck(page);
   await expect(
     page.getByRole("button", { name: "I already have an account" }),
   ).toHaveCount(0);
@@ -609,7 +615,6 @@ test("a claimed installation offers continuation instead of another account", as
   );
   await page.goto("/");
   await expect(page).toHaveURL("http://127.0.0.1:5174/setup");
-  await continuePastSystemCheck(page);
   await expect(
     page.getByRole("heading", { name: "Continue installation setup" }),
   ).toBeVisible();
@@ -656,6 +661,9 @@ test("system check blocks setup until every product service is ready", async ({
 
   await page.goto("/setup");
   await expect(
+    page.getByRole("heading", { name: "Welcome to Bubllio" }),
+  ).toBeVisible();
+  await expect(
     page.getByRole("heading", { name: "Check that Bubllio is ready" }),
   ).toBeVisible();
   await expect(page.getByText("Account service")).toBeVisible();
@@ -666,8 +674,6 @@ test("system check blocks setup until every product service is ready", async ({
 
   ready = true;
   await page.getByRole("button", { name: "Run check again" }).click();
-  await expect(page.getByText("Everything is ready for setup.")).toBeVisible();
-  await page.getByRole("button", { name: "Continue setup" }).click();
   await expect(
     page.getByRole("heading", { name: "Create the administrator account" }),
   ).toBeVisible();
@@ -675,6 +681,17 @@ test("system check blocks setup until every product service is ready", async ({
 
 test("system check fits a narrow mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.unroute("**/api/v1/system/preflight");
+  await page.route("**/api/v1/system/preflight", (route) =>
+    route.fulfill({
+      json: {
+        status: "attention",
+        checks: readySystemChecks.map((check) =>
+          check.key === "identity" ? { ...check, status: "attention" } : check,
+        ),
+      },
+    }),
+  );
   await page.route("**/api/v1/setup/status", (route) =>
     route.fulfill({ json: { setupRequired: true, phase: "new" } }),
   );
@@ -869,21 +886,6 @@ async function openLogin(page: Page): Promise<void> {
   ).toBeVisible();
   await expect(page.locator("#username")).toBeVisible();
   await switchToEnglish(page);
-}
-
-async function continuePastSystemCheck(page: Page): Promise<void> {
-  const heading = page.getByRole("heading", {
-    name: "Check that Bubllio is ready",
-  });
-  const preflightVisible = await heading
-    .waitFor({ state: "visible", timeout: 5_000 })
-    .then(() => true)
-    .catch(() => false);
-  if (!preflightVisible) return;
-
-  const continueButton = page.getByRole("button", { name: "Continue setup" });
-  await expect(continueButton).toBeVisible();
-  await continueButton.click();
 }
 
 async function enterUsername(page: Page): Promise<void> {

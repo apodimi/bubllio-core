@@ -49,10 +49,11 @@ to install a Node version manager.
    browser registration closed, and prints a 30-minute one-time setup secret
    **once**. Keep it in the terminal. Do not paste it into chat or a file.
 2. Open <http://127.0.0.1:5274/>. While Core is unconfigured, every Core
-   entry route redirects to `/setup` before identity login. The first screen
+   entry route redirects to `/setup` before identity login. The welcome screen
    checks the database, identity service, migrations, and deployment application
-   manifest; setup cannot continue until all four are ready.
-3. Continue to **Email delivery** and use these disposable rehearsal values:
+   manifest automatically; if a check fails, correct the service and retry.
+3. If email delivery is not ready, the welcome screen shows its required settings.
+   Use these disposable rehearsal values:
    sender name `Bubllio`, sender email `hello@example.test`, SMTP host
    `mailpit`, port `1025`, security **No encryption**, authentication off, and
    test recipient `owner@example.test`. Enter the terminal's one-time setup
@@ -159,15 +160,15 @@ restricted rehearsal before upgrading; never edit the setup rows manually.
 
 ### Troubleshooting
 
-| Symptom | Check and recovery |
-| --- | --- |
-| `docker info` fails | Start Docker Desktop or the Docker daemon. If local setup configuration already exists, rerun with `--resume`. |
-| The bootstrap reports a bound port | Free port `8280`, `3200`, `5274`, or `8125`, then rerun with `--resume`. |
-| The setup test email is missing | Check isolated Mailpit at `127.0.0.1:8125`, the `identity-setup-agent` health, and that the form uses host `mailpit`, port `1025`, no encryption, and no authentication. |
-| An identity verification email is missing | Confirm Email delivery is ready, then check Mailpit and the `keycloak` service health. |
-| Setup is unavailable | Check service health and the one-time secret. An expired secret can currently be reset only by destroying this disposable rehearsal. |
+| Symptom                                                         | Check and recovery                                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `docker info` fails                                             | Start Docker Desktop or the Docker daemon. If local setup configuration already exists, rerun with `--resume`.                                                                                                                                                           |
+| The bootstrap reports a bound port                              | Free port `8280`, `3200`, `5274`, or `8125`, then rerun with `--resume`.                                                                                                                                                                                                 |
+| The setup test email is missing                                 | Check isolated Mailpit at `127.0.0.1:8125`, the `identity-setup-agent` health, and that the form uses host `mailpit`, port `1025`, no encryption, and no authentication.                                                                                                 |
+| An identity verification email is missing                       | Confirm Email delivery is ready, then check Mailpit and the `keycloak` service health.                                                                                                                                                                                   |
+| Setup is unavailable                                            | Check service health and the one-time secret. An expired secret can currently be reset only by destroying this disposable rehearsal.                                                                                                                                     |
 | Setup returns `UNAUTHENTICATED` after the first password is set | Sign in again with the same verified account; never create a second owner. If it repeats, confirm the active web/API/Keycloak images come from one promoted manifest and inspect the API's sanitized rejected-token reason. Do not weaken issuer or audience validation. |
-| No applications appear after `READY` | Check the deployment application manifest, then enable the app and grant the member access in Core. |
+| No applications appear after `READY`                            | Check the deployment application manifest, then enable the app and grant the member access in Core.                                                                                                                                                                      |
 
 To inspect service health, run:
 

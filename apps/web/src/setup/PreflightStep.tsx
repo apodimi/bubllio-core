@@ -18,14 +18,12 @@ export function PreflightStep({
   loading,
   error,
   onRetry,
-  onContinue,
 }: {
   copy: Copy;
   preflight?: SystemPreflight;
   loading: boolean;
   error: boolean;
   onRetry: () => void;
-  onContinue: () => void;
 }) {
   const ready = preflight?.status === "ready";
   return (
@@ -110,18 +108,13 @@ export function PreflightStep({
           {error ? copy.preflightUnavailable : copy.preflightAttention}
         </Alert>
       )}
-      {!loading && ready && (
-        <Alert severity="success" role="status">
-          {copy.preflightReady}
-        </Alert>
-      )}
-      {!loading && (
+      {!loading && !ready && (
         <Button
           variant="contained"
-          onClick={ready ? onContinue : onRetry}
+          onClick={onRetry}
           sx={{ alignSelf: { xs: "stretch", sm: "flex-end" } }}
         >
-          {ready ? copy.preflightContinue : copy.preflightRetry}
+          {copy.preflightRetry}
         </Button>
       )}
     </Stack>
