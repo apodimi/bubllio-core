@@ -769,16 +769,17 @@ async function openLogin(page: Page): Promise<void> {
 }
 
 async function continuePastSystemCheck(page: Page): Promise<void> {
-  const continueButton = page.getByRole("button", { name: "Continue setup" });
-  const visible = await continueButton
+  const heading = page.getByRole("heading", {
+    name: "Check that Bubllio is ready",
+  });
+  const preflightVisible = await heading
     .waitFor({ state: "visible", timeout: 5_000 })
     .then(() => true)
     .catch(() => false);
-  if (!visible) return;
+  if (!preflightVisible) return;
 
-  await expect(
-    page.getByRole("heading", { name: "Check that Bubllio is ready" }),
-  ).toBeVisible();
+  const continueButton = page.getByRole("button", { name: "Continue setup" });
+  await expect(continueButton).toBeVisible();
   await continueButton.click();
 }
 
