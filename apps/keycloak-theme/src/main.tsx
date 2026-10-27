@@ -8,8 +8,15 @@ async function render() {
   // Vite has no Keycloak server context, so development gets a realistic login fixture.
   if (import.meta.env.DEV && !kcContext) {
     const { getKcContextMock } = await import("./login/getKcContextMock");
+    const requestedPage = new URLSearchParams(window.location.search).get(
+      "page",
+    );
+    const pageId =
+      requestedPage === "login-update-password.ftl"
+        ? "login-update-password.ftl"
+        : "login.ftl";
     kcContext = getKcContextMock({
-      pageId: "login.ftl",
+      pageId,
       overrides: {
         realm: {
           internationalizationEnabled: true,

@@ -3,6 +3,7 @@ import type { ClassKey } from "keycloakify/login";
 import DefaultPage from "keycloakify/login/DefaultPage";
 import type { KcContext } from "./KcContext";
 import Login from "./Login";
+import LoginUpdatePassword from "./LoginUpdatePassword";
 import Template from "./Template";
 import { useI18n } from "./i18n";
 
@@ -24,6 +25,8 @@ export default function KcPage(props: { kcContext: KcContext }) {
     <Suspense>
       {props.kcContext.pageId === "login.ftl" ? (
         <Login {...pageProps} kcContext={props.kcContext} />
+      ) : props.kcContext.pageId === "login-update-password.ftl" ? (
+        <LoginUpdatePassword {...pageProps} kcContext={props.kcContext} />
       ) : (
         <DefaultPage
           {...pageProps}

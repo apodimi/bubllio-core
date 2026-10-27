@@ -53,6 +53,15 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
         <EmailDeliveryStep copy={copy} onReady={flow.continueAfterEmail} />
       )}
       {state.step === "loading" && <LoadingStep label={copy.loading} />}
+      {state.step === "reauthenticate" && (
+        <Button
+          variant="contained"
+          onClick={flow.reauthenticate}
+          sx={{ alignSelf: "flex-start" }}
+        >
+          {copy.signInAgain}
+        </Button>
+      )}
       {state.step === "unavailable" && (
         <Button
           variant="contained"
@@ -109,6 +118,7 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
 function activeStage(step: SetupStep, totalStages: number): number {
   if (step === "preflight" || step === "loading" || step === "unavailable")
     return 0;
+  if (step === "reauthenticate") return 3;
   if (step === "email") return 1;
   if (step === "intro" || step === "resume" || step === "taken") return 2;
   if (step === "secret") return 3;
@@ -131,6 +141,8 @@ function pageContent(
   if (step === "taken") return { title: copy.takenTitle, body: copy.takenBody };
   if (step === "secret")
     return { title: copy.authorityTitle, body: copy.authorityBody };
+  if (step === "reauthenticate")
+    return { title: copy.sessionTitle, body: copy.sessionHelp };
   if (step === "organization")
     return { title: copy.organizationTitle, body: copy.organizationBody };
   if (step === "progress") {

@@ -4,6 +4,7 @@ export type SetupStep =
   | "preflight"
   | "email"
   | "loading"
+  | "reauthenticate"
   | "unavailable"
   | "intro"
   | "resume"

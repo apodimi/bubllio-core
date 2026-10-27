@@ -67,6 +67,11 @@ export function useSetupFlow(keycloak: Keycloak) {
 
   useEffect(() => {
     if (state.step !== "loading") return;
+    if (isAuthenticationError(currentQuery.error)) {
+      dispatch({ type: "show-error", message: copy.sessionExpired });
+      dispatch({ type: "set-step", step: "reauthenticate" });
+      return;
+    }
     if (statusQuery.isError || currentQuery.isError) {
       dispatch({ type: "show-error", message: copy.unavailable });
       dispatch({ type: "set-step", step: "unavailable" });
@@ -214,6 +219,11 @@ export function useSetupFlow(keycloak: Keycloak) {
         step: emailDeliveryQuery.data?.status === "ready" ? "loading" : "email",
       }),
     continueAfterEmail,
+    reauthenticate: () =>
+      void keycloak.login({
+        redirectUri: `${window.location.origin}/setup`,
+        prompt: "login",
+      }),
     setStep: (step: SetupStep) => dispatch({ type: "set-step", step }),
     setSecret: (value: string) => dispatch({ type: "set-secret", value }),
     setOrganizationName: (value: string) =>
@@ -222,6 +232,13 @@ export function useSetupFlow(keycloak: Keycloak) {
     submitOrganization,
     submitRetry,
   };
+}
+
+function isAuthenticationError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message === "UNAUTHENTICATED" || error.message === "SESSION_EXPIRED"
+  );
 }
 
 function messageFor(

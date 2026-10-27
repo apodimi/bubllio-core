@@ -59,6 +59,13 @@ export function parseOrganizationClaim(value: unknown): OrganizationClaim {
     return {}
   }
 
+  // Keycloak releases have represented the requested zero-membership context
+  // as both an omitted claim and an empty JSON collection. Normalize only the
+  // empty collection; populated arrays remain invalid tenant context.
+  if (Array.isArray(value) && value.length === 0) {
+    return {}
+  }
+
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new Error("Token claim 'organization' must be an object")
   }

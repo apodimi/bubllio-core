@@ -140,6 +140,10 @@ export const setupCopy = {
     unavailable:
       "Setup is unavailable. Check the local services or ask the installation operator.",
     sessionExpired: "Your session expired. Sign in again.",
+    sessionTitle: "Sign in again to continue",
+    sessionHelp:
+      "Your administrator account is ready, but Core could not verify this session. Sign in again with the same account to continue setup.",
+    signInAgain: "Sign in again",
     working: "Working…",
     stage: {
       core_organization: "Core organization",
@@ -297,6 +301,10 @@ export const setupCopy = {
     unavailable:
       "Η εγκατάσταση δεν είναι διαθέσιμη. Έλεγξε τις τοπικές υπηρεσίες ή μίλησε με τον χειριστή.",
     sessionExpired: "Η σύνδεσή σου έληξε. Συνδέσου ξανά.",
+    sessionTitle: "Συνδέσου ξανά για να συνεχίσεις",
+    sessionHelp:
+      "Ο λογαριασμός διαχειριστή είναι έτοιμος, αλλά το Core δεν μπόρεσε να επιβεβαιώσει αυτή τη σύνδεση. Συνδέσου ξανά με τον ίδιο λογαριασμό για να συνεχίσεις την εγκατάσταση.",
+    signInAgain: "Σύνδεση ξανά",
     working: "Γίνεται επεξεργασία…",
     stage: {
       core_organization: "Οργανισμός Core",

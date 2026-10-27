@@ -267,6 +267,17 @@ a {
   cursor: pointer;
 }
 
+.password-field button:hover {
+  color: var(--ink);
+  background: var(--blue-soft);
+}
+
+.password-field button:focus-visible {
+  position: relative;
+  outline: 3px solid rgb(0 91 239 / 30%);
+  outline-offset: -3px;
+}
+
 .field-group > input:focus,
 .text-input:focus,
 .password-field:focus-within {
@@ -321,6 +332,11 @@ a {
   font-family: Manrope, Inter, sans-serif;
   font-weight: 700;
   cursor: pointer;
+}
+
+.form-buttons {
+  display: grid;
+  gap: 12px;
 }
 
 .primary-button {

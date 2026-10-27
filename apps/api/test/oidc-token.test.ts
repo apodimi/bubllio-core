@@ -94,11 +94,30 @@ describe('verifyAccessToken', () => {
     })
   })
 
+  it('normalizes an empty organization list during first-run setup', async () => {
+    const { publicKey, token } = await createToken({ organization: [] })
+
+    await expect(verifyAccessToken(token, config, async () => publicKey)).resolves.toMatchObject({
+      organization: {},
+      subject: '00000000-0000-0000-0000-000000000002',
+    })
+  })
+
   it('rejects malformed organization entries', async () => {
     const { publicKey, token } = await createToken({ organization: { demo: 'not-an-object' } })
 
     await expect(verifyAccessToken(token, config, async () => publicKey)).rejects.toThrow(
       "Token claim 'organization' contains an invalid entry",
+    )
+  })
+
+  it('rejects populated organization lists', async () => {
+    const { publicKey, token } = await createToken({
+      organization: [{ id: '00000000-0000-0000-0000-000000000001' }],
+    })
+
+    await expect(verifyAccessToken(token, config, async () => publicKey)).rejects.toThrow(
+      "Token claim 'organization' must be an object",
     )
   })
 

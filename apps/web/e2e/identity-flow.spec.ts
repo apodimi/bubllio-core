@@ -526,6 +526,43 @@ test("first-run screen opens browser registration for a new owner", async ({
   await expect(page).toHaveURL(/\/protocol\/openid-connect\/registrations\?/);
 });
 
+test("first-run setup asks the same administrator to sign in again after token rejection", async ({
+  page,
+}) => {
+  await openLogin(page);
+  await enterUsername(page);
+  await page.locator("#password").fill(password);
+  await page.locator("button.primary-button").click({ noWaitAfter: true });
+  await expect(page).toHaveURL("http://127.0.0.1:5174/");
+
+  await page.unroute("**/api/v1/setup/status");
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({ json: { setupRequired: true, phase: "new" } }),
+  );
+  await page.route("**/api/v1/setup/current", (route) =>
+    route.fulfill({
+      status: 401,
+      json: {
+        code: "UNAUTHENTICATED",
+        status: 401,
+        title: "Authentication required",
+        type: "about:blank",
+      },
+    }),
+  );
+
+  await page.goto("/setup");
+  await continuePastSystemCheck(page);
+  await expect(
+    page.getByRole("heading", { name: "Sign in again to continue" }),
+  ).toBeVisible();
+  await expect(page.getByText("same account", { exact: false })).toBeVisible();
+  await expect(page.getByText("Step 4 of 6")).toBeVisible();
+
+  await page.getByRole("button", { name: "Sign in again" }).click();
+  await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
+});
+
 test("a claimed installation offers continuation instead of another account", async ({
   page,
 }) => {
@@ -696,6 +733,37 @@ test("password reset delivers an email to the local inbox", async ({
   expect(content.HTML).toContain("15 minutes");
   expect(content.Text).toContain("Bubllio Identity");
   expect(content.Text).toContain("15 minutes");
+
+  const actionUrl = content.HTML.match(
+    /href="([^"]*\/login-actions\/action-token[^"]*)"/u,
+  )?.[1]?.replaceAll("&amp;", "&");
+  expect(actionUrl).toBeTruthy();
+  await page.goto(actionUrl!);
+
+  const newPassword = page.locator("#password-new");
+  const confirmation = page.locator("#password-confirm");
+  await expect(
+    page.getByRole("heading", { name: "Update password" }),
+  ).toBeVisible();
+  await expect(newPassword).toHaveAttribute("type", "password");
+  await expect(confirmation).toHaveAttribute("type", "password");
+  await expect(newPassword).toHaveAttribute("autocomplete", "new-password");
+  await expect(confirmation).toHaveAttribute("autocomplete", "new-password");
+
+  await newPassword.fill("new-password-value");
+  await confirmation.fill("confirmation-value");
+  const visibilityButtons = page.getByRole("button", {
+    name: "Show password",
+  });
+  await expect(visibilityButtons).toHaveCount(2);
+  await visibilityButtons.first().click();
+  await expect(newPassword).toHaveAttribute("type", "text");
+  await expect(confirmation).toHaveAttribute("type", "password");
+  await expect(newPassword).toHaveValue("new-password-value");
+  await expect(confirmation).toHaveValue("confirmation-value");
+  await expect(
+    page.getByRole("button", { name: "Hide password" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 
 test("password reset fits a narrow mobile viewport without horizontal overflow", async ({
