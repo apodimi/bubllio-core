@@ -21,6 +21,7 @@ interface SetupFrameProps {
   title: string;
   body: string;
   viewKey: string;
+  welcome: boolean;
   signOutLabel: string;
   children: ReactNode;
 }
@@ -32,6 +33,7 @@ export function SetupFrame({
   title,
   body,
   viewKey,
+  welcome,
   signOutLabel,
   children,
 }: SetupFrameProps) {
@@ -69,7 +71,9 @@ export function SetupFrame({
               spacing={2}
               sx={{ alignItems: "center", justifyContent: "space-between" }}
             >
-              <BrandLogo />
+              <Box className={welcome ? "setup-welcome-logo" : undefined}>
+                <BrandLogo />
+              </Box>
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                 <ToggleButtonGroup
                   exclusive
@@ -105,6 +109,7 @@ export function SetupFrame({
             <Box sx={{ pt: { xs: 1, sm: 2 } }}>
               <Typography
                 ref={headingRef}
+                className={welcome ? "setup-welcome-title" : undefined}
                 tabIndex={-1}
                 variant="h3"
                 component="h1"
@@ -117,6 +122,7 @@ export function SetupFrame({
                 {title}
               </Typography>
               <Typography
+                className={welcome ? "setup-welcome-body" : undefined}
                 color="text.secondary"
                 sx={{ mt: 1.5, lineHeight: 1.65, maxWidth: "70ch" }}
               >

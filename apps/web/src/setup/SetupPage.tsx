@@ -25,6 +25,13 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
       title={content.title}
       body={content.body}
       viewKey={`${state.step}:${state.operation?.status ?? ""}`}
+      welcome={
+        state.step === "preflight" ||
+        state.step === "email" ||
+        state.step === "intro" ||
+        state.step === "resume" ||
+        state.step === "loading"
+      }
       signOutLabel={copy.signOut}
     >
       {state.error && (
