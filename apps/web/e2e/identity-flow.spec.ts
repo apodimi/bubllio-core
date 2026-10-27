@@ -518,7 +518,7 @@ test("signed-in owner finishes setup from a workspace task list", async ({
   await expect(
     page.getByText("Owner membership", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("In progress", { exact: true })).toBeVisible();
+  await expect(page.getByText("in progress", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Enter the setup secret again")).toHaveValue("");
   expect(
     await page.evaluate(() => localStorage.length + sessionStorage.length),
