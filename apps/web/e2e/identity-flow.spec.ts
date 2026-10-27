@@ -512,12 +512,7 @@ test("signed-in owner finishes setup from a workspace task list", async ({
     .fill("test-only-setup-secret-with-sufficient-length");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Completed").first()).toBeVisible();
-  await expect(
-    page.getByText(
-      "Member and application administration is not available in this technical alpha.",
-      { exact: false },
-    ),
-  ).toBeVisible();
+  await expect(page.getByLabel("Organization name")).toBeVisible();
   await page.getByLabel("Organization name").fill("Example Team");
   await page.getByRole("button", { name: "Create organization" }).click();
   await expect(
