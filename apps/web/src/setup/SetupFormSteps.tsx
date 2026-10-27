@@ -32,7 +32,7 @@ export function AccountStep({
         variant="contained"
         onClick={() =>
           void keycloak.register({
-            redirectUri: `${window.location.origin}/setup`,
+            redirectUri: window.location.origin,
           })
         }
         sx={{ alignSelf: "flex-start" }}
@@ -47,7 +47,7 @@ export function AccountStep({
         sx={{ alignSelf: "flex-start" }}
         onClick={() =>
           void keycloak.login({
-            redirectUri: `${window.location.origin}/setup`,
+            redirectUri: window.location.origin,
           })
         }
       >

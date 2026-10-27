@@ -304,6 +304,15 @@ test("email confirmation recovery resumes safely after reload in Greek on mobile
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  const workspaceRequests: string[] = [];
+  page.on("request", (request) => {
+    if (
+      request.url().includes("/api/v1/me/organizations") ||
+      request.url().includes("/applications")
+    ) {
+      workspaceRequests.push(request.url());
+    }
+  });
   await page.unroute("**/api/v1/setup/email/status");
   await page.route("**/api/v1/setup/email/status", (route) =>
     route.fulfill({
@@ -432,9 +441,10 @@ test("workspace switches organizations and shows only their granted apps", async
   ).toHaveCount(0);
 });
 
-test("first-run screen claims setup and resumes the owner operation", async ({
+test("signed-in owner finishes setup from a workspace task list", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.route("**/api/v1/setup/current", (route) =>
     route.fulfill({ json: { state: "unclaimed" } }),
   );
@@ -471,13 +481,37 @@ test("first-run screen claims setup and resumes the owner operation", async ({
   );
   await page.goto("/setup");
 
-  await continuePastSystemCheck(page);
+  await expect(page).toHaveURL("http://127.0.0.1:5174/");
+  await expect(
+    page.getByRole("heading", { name: "Finish setting up Bubllio" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Setup progress" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Confirm this installation" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Create your first organization" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Activate owner access" }),
+  ).toBeVisible();
+  expect(workspaceRequests).toEqual([]);
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
 
   await expect(page.getByLabel("One-time setup secret")).toBeVisible();
   await page
     .getByLabel("One-time setup secret")
     .fill("test-only-setup-secret-with-sufficient-length");
   await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Completed").first()).toBeVisible();
   await expect(
     page.getByText(
       "Member and application administration is not available in this technical alpha.",
@@ -524,9 +558,12 @@ test("first-run screen opens browser registration for a new owner", async ({
     page.getByRole("heading", { name: "Owner registration" }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/protocol\/openid-connect\/registrations\?/);
+  expect(new URL(page.url()).searchParams.get("redirect_uri")).toBe(
+    "http://127.0.0.1:5174/",
+  );
 });
 
-test("first-run setup asks the same administrator to sign in again after token rejection", async ({
+test("workspace setup asks the same administrator to sign in again after token rejection", async ({
   page,
 }) => {
   await openLogin(page);
@@ -552,12 +589,14 @@ test("first-run setup asks the same administrator to sign in again after token r
   );
 
   await page.goto("/setup");
-  await continuePastSystemCheck(page);
+  await expect(page).toHaveURL("http://127.0.0.1:5174/");
   await expect(
-    page.getByRole("heading", { name: "Sign in again to continue" }),
+    page.getByRole("heading", { name: "Finish setting up Bubllio" }),
   ).toBeVisible();
   await expect(page.getByText("same account", { exact: false })).toBeVisible();
-  await expect(page.getByText("Step 4 of 6")).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Setup progress" }),
+  ).toHaveCount(0);
 
   await page.getByRole("button", { name: "Sign in again" }).click();
   await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);

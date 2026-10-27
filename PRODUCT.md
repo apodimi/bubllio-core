@@ -23,10 +23,13 @@ bundle: with Docker, a base domain, and a reverse-proxy network, the operator
 prepares generated state, checks it, and starts the suite without a source
 checkout, Node, Keycloak administration, or manual migrations. The operator
 securely hands the one-time setup secret to the named IT administrator. Once
-the HTTPS endpoint is reachable, ordinary product setup happens in the browser:
-system preflight, email delivery, first verified administrator, first
-organization, and final readiness. An unconfigured Core opens this setup before
-any ordinary sign-in route.
+the HTTPS endpoint is reachable, ordinary product setup happens in the browser.
+Before sign-in, the operator checks the system, configures email delivery, and
+creates the first verified administrator. After sign-in, that administrator
+enters the Core shell and completes a short, server-driven task list: prove
+installation authority, create the first organization, and activate owner
+access. The normal application workspace remains unavailable until final
+readiness.
 
 The applications present in an installation come from its reviewed deployment
 manifest. Core does not install containers or execute deployment commands. It

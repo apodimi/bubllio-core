@@ -14,12 +14,15 @@ const keycloak = new Keycloak({
  * Initializes OIDC before React mounts because Keycloak consumes callback values
  * from the URL. Tokens intentionally remain only in the adapter's memory.
  */
-export async function initializeAuth(): Promise<Keycloak> {
+export async function initializeAuth({
+  allowAnonymous,
+}: {
+  allowAnonymous: boolean;
+}): Promise<Keycloak> {
   await keycloak.init({
-    // Core is an authenticated workspace. Existing suite sessions return
-    // immediately; anonymous visitors continue straight to the login page.
-    onLoad:
-      window.location.pathname === "/setup" ? "check-sso" : "login-required",
+    // An incomplete installation keeps its public operator steps reachable.
+    // Existing sessions still resume inside the authenticated Core shell.
+    onLoad: allowAnonymous ? "check-sso" : "login-required",
     flow: "standard",
     pkceMethod: "S256",
     // TODO(release): Restore organization:* after existing realms can be

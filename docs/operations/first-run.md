@@ -65,16 +65,17 @@ to install a Node version manager.
 4. Choose **Create administrator account**. Registration is available only
    after the email confirmation and bootstrap-client retirement. Enter the
    first IT administrator's email in the branded Bubllio Identity form. Open
-   Mailpit again, follow the verification email, create a password, and return
-   to `/setup` signed in. The installation secret is still required to claim
-   Core ownership. If setup has already been claimed and the browser is closed,
-   reopen Core and choose **Continue setup** with the same administrator account.
-5. Enter the setup secret from the terminal, name the first organization, and
-   create it. Core records the operation before contacting Keycloak. Its status
-   becomes **Awaiting owner** while Keycloak sends a membership invitation.
-6. Accept the second email invitation. Return to `/setup`, enter the same
-   secret again, and choose **Retry setup**. The same operation must finish;
-   it must not create a second organization.
+   Mailpit again, follow the verification email, and create a password. Bubllio
+   returns the signed-in administrator to the Core shell, not to a second setup
+   wizard. The shell shows the remaining installation work as three tasks.
+5. In **Confirm this installation**, enter the setup secret from the terminal.
+   Then complete **Create your first organization**. Core records the operation
+   before contacting Keycloak. Its status becomes **Awaiting owner** while
+   Keycloak sends a membership invitation.
+6. Accept the second email invitation. Return to Core, enter the same secret in
+   **Activate owner access**, and retry the same operation. It must not create a
+   second organization. An authenticated `/setup` deep link resolves to this
+   same Core task list rather than maintaining a separate setup experience.
 7. Choose **Sign in to workspace** to obtain a fresh organization-bearing
    token. The workspace should list the named organization. Its app list is
    empty until a deployment-manifest app is enabled and granted.

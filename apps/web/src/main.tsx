@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import { App } from "./app";
 import { SetupApp } from "./setup-app";
+import { SetupTasksPage } from "./setup/SetupTasksPage";
 import { initializeAuth } from "./auth";
 import { queryClient } from "./query-client";
 import { setupStatus } from "./setup-api";
@@ -13,14 +14,23 @@ import "./styles/fonts";
 import "./styles.css";
 
 async function bootstrap(): Promise<void> {
-  // The installation state decides the entry route before OIDC can redirect to login.
   const status = await setupStatus();
-  if (status.setupRequired && window.location.pathname !== "/setup") {
+  const keycloak = await initializeAuth({
+    allowAnonymous: status.setupRequired,
+  });
+
+  if (
+    status.setupRequired &&
+    !keycloak.authenticated &&
+    window.location.pathname !== "/setup"
+  ) {
     window.location.replace("/setup");
     return;
   }
 
-  const keycloak = await initializeAuth();
+  if (keycloak.authenticated && window.location.pathname === "/setup") {
+    window.history.replaceState(null, "", "/");
+  }
   const root = document.getElementById("root");
 
   if (!root) {
@@ -32,7 +42,9 @@ async function bootstrap(): Promise<void> {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <QueryClientProvider client={queryClient}>
-          {window.location.pathname === "/setup" ? (
+          {status.setupRequired && keycloak.authenticated ? (
+            <SetupTasksPage keycloak={keycloak} />
+          ) : status.setupRequired ? (
             <SetupApp keycloak={keycloak} />
           ) : (
             <App keycloak={keycloak} />

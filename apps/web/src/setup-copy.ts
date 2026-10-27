@@ -2,6 +2,20 @@ export type SetupLocale = "en" | "el";
 
 export const setupCopy = {
   en: {
+    tasksSection: "Setup",
+    tasksTitle: "Finish setting up Bubllio",
+    tasksBody:
+      "Your administrator account is ready. Complete the remaining tasks to open the workspace.",
+    taskStatus: {
+      complete: "Completed",
+      current: "Current task",
+      pending: "Next",
+    },
+    tasks: {
+      authority: "Confirm this installation",
+      organization: "Create your first organization",
+      activation: "Activate owner access",
+    },
     progressLabel: "Setup progress",
     progressSteps: [
       "System check",
@@ -159,6 +173,20 @@ export const setupCopy = {
     },
   },
   el: {
+    tasksSection: "Ρύθμιση",
+    tasksTitle: "Ολοκλήρωσε τη ρύθμιση του Bubllio",
+    tasksBody:
+      "Ο λογαριασμός διαχειριστή είναι έτοιμος. Ολοκλήρωσε τις παρακάτω εργασίες για να ανοίξει το workspace.",
+    taskStatus: {
+      complete: "Ολοκληρώθηκε",
+      current: "Τρέχουσα εργασία",
+      pending: "Ακολουθεί",
+    },
+    tasks: {
+      authority: "Επιβεβαίωσε αυτή την εγκατάσταση",
+      organization: "Δημιούργησε τον πρώτο οργανισμό",
+      activation: "Ενεργοποίησε την πρόσβαση ιδιοκτήτη",
+    },
     progressLabel: "Πρόοδος εγκατάστασης",
     progressSteps: [
       "Έλεγχος συστήματος",

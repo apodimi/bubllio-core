@@ -53,6 +53,13 @@ system preflight
   -> Core workspace
 ```
 
+The public setup surface owns the pre-account work. After the administrator
+signs in, the Core shell presents the remaining organization and activation
+steps as a compact, server-driven task list. This shell is not an active
+organization workspace: tenant routes, application queries, and app launchers
+remain unavailable until final readiness and a fresh organization-bearing
+session.
+
 The setup is durable, idempotent, and resumable. A failed dependency is fixed
 and retried without rebuilding the installation or creating another
 organization. The happy path does not require the Keycloak console, source

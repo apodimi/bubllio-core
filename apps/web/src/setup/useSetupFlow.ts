@@ -221,7 +221,7 @@ export function useSetupFlow(keycloak: Keycloak) {
     continueAfterEmail,
     reauthenticate: () =>
       void keycloak.login({
-        redirectUri: `${window.location.origin}/setup`,
+        redirectUri: window.location.origin,
         prompt: "login",
       }),
     setStep: (step: SetupStep) => dispatch({ type: "set-step", step }),
