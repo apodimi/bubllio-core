@@ -35,6 +35,40 @@ describe('Keycloak first-organization adapter', () => {
     vi.unstubAllGlobals()
   })
 
+  it('confirms the exact enabled subject has a verified non-empty email', async () => {
+    fetchMock
+      .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
+      .mockResolvedValueOnce(
+        response(200, {
+          id: subject,
+          enabled: true,
+          email: 'owner@example.test',
+          emailVerified: true,
+        }),
+      )
+
+    await expect(client.hasVerifiedEmail(subject)).resolves.toBe(true)
+    expect(String(fetchMock.mock.calls[1][0])).toContain(`/users/${subject}`)
+  })
+
+  it('does not accept a disabled, unverified, or missing subject', async () => {
+    fetchMock
+      .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
+      .mockResolvedValueOnce(
+        response(200, {
+          id: subject,
+          enabled: false,
+          email: 'owner@example.test',
+          emailVerified: true,
+        }),
+      )
+      .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
+      .mockResolvedValueOnce(response(404))
+
+    await expect(client.hasVerifiedEmail(subject)).resolves.toBe(false)
+    await expect(client.hasVerifiedEmail(subject)).resolves.toBe(false)
+  })
+
   it('adopts only an exact immutable marker and does not create a duplicate', async () => {
     fetchMock
       .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))

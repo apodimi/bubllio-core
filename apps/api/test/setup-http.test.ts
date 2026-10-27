@@ -9,6 +9,7 @@ import { AuthService } from '../src/auth/auth.service.js'
 import type { VerifiedSubject } from '../src/auth/identity.types.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { EmailDeliveryRepository } from '../src/email-delivery/email-delivery.repository.js'
+import { KeycloakOrganizationClient } from '../src/setup/keycloak-organization.client.js'
 import { SetupRepository } from '../src/setup/setup.repository.js'
 import { SetupProvisioningService } from '../src/setup/setup-provisioning.service.js'
 
@@ -37,6 +38,7 @@ const provisioning = {
 }
 const auth = { verify: vi.fn() }
 const emailDelivery = { isReady: vi.fn(), status: vi.fn() }
+const identityDirectory = { hasVerifiedEmail: vi.fn() }
 
 function identity(overrides: Partial<VerifiedSubject> = {}): VerifiedSubject {
   return {
@@ -86,6 +88,8 @@ describe('first-run setup HTTP boundary', () => {
       .useValue(repository)
       .overrideProvider(EmailDeliveryRepository)
       .useValue(emailDelivery)
+      .overrideProvider(KeycloakOrganizationClient)
+      .useValue(identityDirectory)
       .overrideProvider(SetupProvisioningService)
       .useValue(provisioning)
       .overrideProvider(AuthService)
@@ -103,6 +107,7 @@ describe('first-run setup HTTP boundary', () => {
     repository.readPublicStatus.mockResolvedValue({ setupRequired: true, phase: 'new' })
     emailDelivery.isReady.mockResolvedValue(true)
     emailDelivery.status.mockResolvedValue({ status: 'ready' })
+    identityDirectory.hasVerifiedEmail.mockResolvedValue(false)
     provisioning.current.mockResolvedValue({ state: 'claimed' })
     provisioning.start.mockResolvedValue(operation)
     provisioning.read.mockResolvedValue(operation)
@@ -161,6 +166,24 @@ describe('first-run setup HTTP boundary', () => {
     })
     expect(replay.statusCode).toBe(200)
     expect(replay.json()).toEqual({ status: 'claimed' })
+  })
+
+  it('claims with a recent legacy token after directory email verification', async () => {
+    auth.verify.mockResolvedValueOnce(
+      identity({ email: undefined, emailVerified: undefined, organization: {} }),
+    )
+    identityDirectory.hasVerifiedEmail.mockResolvedValueOnce(true)
+
+    const response = await app.getHttpAdapter().getInstance().inject({
+      method: 'POST',
+      url: '/api/v1/setup/claim',
+      headers: claimHeaders(),
+      payload: {},
+    })
+
+    expect(response.statusCode).toBe(201)
+    expect(identityDirectory.hasVerifiedEmail).toHaveBeenCalledWith(subject)
+    expect(repository.claim).toHaveBeenCalledWith(expect.objectContaining({ subject }))
   })
 
   it('denies account claim until email delivery is ready', async () => {

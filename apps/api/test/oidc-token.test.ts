@@ -85,6 +85,15 @@ describe('verifyAccessToken', () => {
     })
   })
 
+  it('accepts an empty organization claim during first-run setup', async () => {
+    const { publicKey, token } = await createToken({ organization: {} })
+
+    await expect(verifyAccessToken(token, config, async () => publicKey)).resolves.toMatchObject({
+      organization: {},
+      subject: '00000000-0000-0000-0000-000000000002',
+    })
+  })
+
   it('rejects malformed organization entries', async () => {
     const { publicKey, token } = await createToken({ organization: { demo: 'not-an-object' } })
 

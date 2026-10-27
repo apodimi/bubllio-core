@@ -25,10 +25,40 @@ interface OrganizationRepresentation {
   attributes?: Record<string, unknown>
 }
 
-/** Only the organization and membership Admin REST operations needed by first-run. */
+interface UserRepresentation {
+  id?: unknown
+  email?: unknown
+  emailVerified?: unknown
+  enabled?: unknown
+}
+
+/** Narrow read/provisioning operations used by the first-run identity boundary. */
 @Injectable()
 export class KeycloakOrganizationClient {
   constructor(@Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig) {}
+
+  /** Confirms setup identity assurance when a legacy access token omits email claims. */
+  async hasVerifiedEmail(subject: string): Promise<boolean> {
+    if (!UUID.test(subject)) return false
+    const response = await this.request(
+      'GET',
+      `/admin/realms/bubllio/users/${encodeURIComponent(subject)}`,
+    )
+    if (response.status === 404) return false
+    if (response.status !== 200) throw providerError(response.status)
+    const user: unknown = await response.json().catch(() => undefined)
+    if (!user || typeof user !== 'object' || Array.isArray(user)) {
+      throw new ProvisioningError('SETUP_REPAIR_REQUIRED')
+    }
+    const representation = user as UserRepresentation
+    return (
+      representation.id === subject &&
+      representation.enabled === true &&
+      representation.emailVerified === true &&
+      typeof representation.email === 'string' &&
+      representation.email.trim().length > 0
+    )
+  }
 
   async ensureOrganization(coreId: string, slug: string, displayName: string): Promise<string> {
     const existing = await this.findByMarker(coreId)

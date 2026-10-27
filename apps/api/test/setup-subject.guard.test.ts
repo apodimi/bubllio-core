@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SetupSubjectGuard } from '../src/setup/guards/setup-subject.guard.js'
 import type { AuthenticatedRequest, VerifiedSubject } from '../src/auth/identity.types.js'
+import type { KeycloakOrganizationClient } from '../src/setup/keycloak-organization.client.js'
 
 const nowSeconds = 1_798_800_000
 
@@ -31,26 +32,49 @@ function createContext(identity?: VerifiedSubject): ExecutionContext {
 }
 
 describe('SetupSubjectGuard', () => {
+  const identityDirectory = {
+    hasVerifiedEmail: vi.fn(),
+  } as unknown as KeycloakOrganizationClient
+
   afterEach(() => {
     vi.useRealTimers()
+    vi.clearAllMocks()
   })
 
-  it('allows a recently authenticated subject with a verified email', () => {
+  it('allows a recently authenticated subject with a verified email', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(nowSeconds * 1000)
-    const guard = new SetupSubjectGuard()
+    const guard = new SetupSubjectGuard(identityDirectory)
 
-    expect(guard.canActivate(createContext(createSubject()))).toBe(true)
+    await expect(guard.canActivate(createContext(createSubject()))).resolves.toBe(true)
+    expect(identityDirectory.hasVerifiedEmail).not.toHaveBeenCalled()
   })
 
-  it('rejects an unverified email', () => {
+  it('accepts directory-verified email when legacy tokens omit email claims', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(nowSeconds * 1000)
-    const guard = new SetupSubjectGuard()
+    vi.mocked(identityDirectory.hasVerifiedEmail).mockResolvedValueOnce(true)
+    const guard = new SetupSubjectGuard(identityDirectory)
 
-    expect(() => guard.canActivate(createContext(createSubject({ emailVerified: false })))).toThrow(
-      UnauthorizedException,
+    await expect(
+      guard.canActivate(
+        createContext(createSubject({ email: undefined, emailVerified: undefined })),
+      ),
+    ).resolves.toBe(true)
+    expect(identityDirectory.hasVerifiedEmail).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000002',
     )
+  })
+
+  it('rejects an unverified email', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(nowSeconds * 1000)
+    vi.mocked(identityDirectory.hasVerifiedEmail).mockResolvedValueOnce(false)
+    const guard = new SetupSubjectGuard(identityDirectory)
+
+    await expect(
+      guard.canActivate(createContext(createSubject({ emailVerified: false }))),
+    ).rejects.toThrow(UnauthorizedException)
   })
 
   it.each([
@@ -59,21 +83,21 @@ describe('SetupSubjectGuard', () => {
     ['missing authentication time', { authenticatedAt: undefined }],
     ['authentication older than ten minutes', { authenticatedAt: nowSeconds - 601 }],
     ['authentication time in the future', { authenticatedAt: nowSeconds + 1 }],
-  ] satisfies Array<[string, Partial<VerifiedSubject>]>)('rejects %s', (_name, overrides) => {
+  ] satisfies Array<[string, Partial<VerifiedSubject>]>)('rejects %s', async (_name, overrides) => {
     vi.useFakeTimers()
     vi.setSystemTime(nowSeconds * 1000)
-    const guard = new SetupSubjectGuard()
+    const guard = new SetupSubjectGuard(identityDirectory)
 
-    expect(() => guard.canActivate(createContext(createSubject(overrides)))).toThrow(
+    await expect(guard.canActivate(createContext(createSubject(overrides)))).rejects.toThrow(
       UnauthorizedException,
     )
   })
 
-  it('rejects a request without an authenticated subject', () => {
+  it('rejects a request without an authenticated subject', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(nowSeconds * 1000)
-    const guard = new SetupSubjectGuard()
+    const guard = new SetupSubjectGuard(identityDirectory)
 
-    expect(() => guard.canActivate(createContext())).toThrow(UnauthorizedException)
+    await expect(guard.canActivate(createContext())).rejects.toThrow(UnauthorizedException)
   })
 })

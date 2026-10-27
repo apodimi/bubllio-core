@@ -64,9 +64,9 @@ export function parseOrganizationClaim(value: unknown): OrganizationClaim {
   }
 
   const entries = Object.entries(value)
-  if (entries.length === 0) {
-    throw new Error("Token claim 'organization' must not be empty")
-  }
+  // Keycloak may serialize a requested organization scope as an empty object
+  // until first-run creates the subject's initial membership.
+  if (entries.length === 0) return {}
 
   for (const [alias, attributes] of entries) {
     validateOrganizationEntry(alias, attributes)

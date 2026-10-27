@@ -41,6 +41,13 @@ validated identity to the request.
   decode tokens or reach into raw request headers.
 - Keep signature, issuer, audience, expiry, subject, and organization validation
   in the authentication service.
+- Treat an absent or empty organization claim as valid only for an authenticated
+  subject that has not joined an organization yet. Tenant guards still reject
+  that empty context.
+- First-run requires a recent verified email. Prefer validated token claims;
+  when an existing realm omits those optional claims, Core confirms the same
+  immutable subject through its private, read-only Keycloak user lookup rather
+  than weakening the requirement or trusting browser input.
 - Add organization and domain-permission guards separately. Authentication alone
   does not authorize access to a tenant resource.
 - Never expose token-validation internals or the raw token in client errors or
