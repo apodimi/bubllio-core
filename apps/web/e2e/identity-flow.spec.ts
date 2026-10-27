@@ -474,11 +474,11 @@ test("signed-in owner finishes setup from a workspace task list", async ({
   await openLogin(page);
   await enterUsername(page);
   await page.locator("#password").fill(password);
-  await page.locator("button.primary-button").click({ noWaitAfter: true });
-  await expect(page).toHaveURL("http://127.0.0.1:5174/");
   await page.route("**/api/v1/setup/status", (route) =>
     route.fulfill({ json: { setupRequired: true, phase: "new" } }),
   );
+  await page.locator("button.primary-button").click({ noWaitAfter: true });
+  await expect(page).toHaveURL("http://127.0.0.1:5174/");
   await page.goto("/setup");
 
   await expect(page).toHaveURL("http://127.0.0.1:5174/");
@@ -558,9 +558,11 @@ test("first-run screen opens browser registration for a new owner", async ({
     page.getByRole("heading", { name: "Owner registration" }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/protocol\/openid-connect\/registrations\?/);
-  expect(new URL(page.url()).searchParams.get("redirect_uri")).toBe(
-    "http://127.0.0.1:5174/",
+  const redirectUri = new URL(
+    new URL(page.url()).searchParams.get("redirect_uri") ?? "",
   );
+  expect(redirectUri.origin).toBe("http://127.0.0.1:5174");
+  expect(redirectUri.pathname).toBe("/");
 });
 
 test("workspace setup asks the same administrator to sign in again after token rejection", async ({
