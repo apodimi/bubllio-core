@@ -297,8 +297,12 @@ post-setup secret lifecycle; do not silently recreate the client on restart.
 7. Keep the status page open or return to it later. The durable operation shows
    Core organization, identity organization, owner membership, and token refresh
    stages without raw provider errors.
-8. If the operation needs attention, record the correlation ID and use the safe
-   retry only after correcting the named operator condition.
+8. If owner membership is pending, accept the invitation sent by Keycloak to
+   the verified account before checking the same operation again. If another
+   stage needs attention, record the correlation ID and retry only after
+   correcting the named operator condition. The setup secret proves authority
+   at claim; the same authenticated subject may retry its bound operation
+   without entering it again.
 9. On success, allow Core to perform a fresh authorization flow. Do not enter a
    tenant route until the new token contains the exact immutable organization ID.
 10. Verify the owner route, reload, sign out, and sign in again. Setup must never

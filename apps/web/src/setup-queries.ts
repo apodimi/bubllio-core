@@ -151,8 +151,7 @@ export function useCreateFirstOrganization(keycloak: Keycloak) {
 export function useRetrySetupOperation(keycloak: Keycloak) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, secret }: { id: string; secret: string }) =>
-      retrySetupOperation(keycloak, id, secret),
+    mutationFn: ({ id }: { id: string }) => retrySetupOperation(keycloak, id),
     onSuccess: async (operation: SetupOperation) => {
       queryClient.setQueryData(
         setupKeys.operation(keycloak.subject, operation.id),

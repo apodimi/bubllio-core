@@ -1,4 +1,3 @@
-import { useRef, useState, type FormEvent } from "react";
 import type Keycloak from "keycloak-js";
 import {
   Alert,
@@ -7,7 +6,6 @@ import {
   CircularProgress,
   Paper,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 
@@ -33,32 +31,16 @@ export function LoadingStep({ label }: { label: string }) {
 export function OperationStep({
   copy,
   operation,
-  secret,
   busy,
-  onSecretChange,
+  retryFeedback,
   onRetry,
 }: {
   copy: Copy;
   operation: SetupOperation;
-  secret: string;
   busy: boolean;
-  onSecretChange: (value: string) => void;
-  onRetry: (event: FormEvent<HTMLFormElement>) => void;
+  retryFeedback: string;
+  onRetry: () => void;
 }) {
-  const [fieldError, setFieldError] = useState("");
-  const secretInput = useRef<HTMLInputElement>(null);
-
-  function submitRetry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (secret.length < 32) {
-      setFieldError(copy.validSetupSecret);
-      secretInput.current?.focus();
-      return;
-    }
-    setFieldError("");
-    onRetry(event);
-  }
-
   return (
     <Stack spacing={2} aria-live="polite">
       <Paper variant="outlined" sx={{ p: 2 }}>
@@ -115,35 +97,15 @@ export function OperationStep({
               {copy.errorCode}: {operation.safeErrorCode ?? copy.unknown}
             </Alert>
           )}
-          <Stack
-            component="form"
-            spacing={2}
-            onSubmit={submitRetry}
-            aria-busy={busy}
-            noValidate
-          >
-            <TextField
-              id="retry-secret"
-              name="setupSecret"
-              label={copy.retrySecret}
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={secret}
-              onChange={(event) => {
-                onSecretChange(event.target.value);
-                setFieldError("");
-              }}
-              inputRef={secretInput}
-              required
-              error={Boolean(fieldError)}
-              helperText={fieldError}
-              slotProps={{ htmlInput: { minLength: 32 } }}
-              fullWidth
-            />
+          <Stack spacing={2} aria-busy={busy}>
+            {operation.status === "awaiting_owner" && (
+              <Alert severity="info">{copy.invitationActionHint}</Alert>
+            )}
+            {retryFeedback && <Alert severity="info">{retryFeedback}</Alert>}
             <Button
-              type="submit"
+              type="button"
               variant="contained"
+              onClick={onRetry}
               disabled={busy}
               startIcon={
                 busy ? (
@@ -152,7 +114,11 @@ export function OperationStep({
               }
               sx={{ alignSelf: { xs: "stretch", sm: "flex-end" } }}
             >
-              {busy ? copy.working : copy.retry}
+              {busy
+                ? copy.working
+                : operation.status === "awaiting_owner"
+                  ? copy.checkInvitation
+                  : copy.retry}
             </Button>
           </Stack>
         </>

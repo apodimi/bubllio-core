@@ -368,14 +368,16 @@ describe('first-run setup HTTP boundary', () => {
     )
   })
 
-  it('protects operation retry with the setup secret and exact browser origin', async () => {
+  it('lets the bound owner retry without repeating the setup secret', async () => {
+    const headers = claimHeaders()
+    delete headers['x-bubllio-setup-secret']
     const denied = await app
       .getHttpAdapter()
       .getInstance()
       .inject({
         method: 'POST',
         url: `/api/v1/setup/operations/${operationId}/retry`,
-        headers: claimHeaders({ 'x-bubllio-setup-secret': 'wrong' }),
+        headers: { ...headers, origin: 'https://elsewhere.example.test' },
         payload: {},
       })
     expect(denied.statusCode).toBe(404)
@@ -387,7 +389,7 @@ describe('first-run setup HTTP boundary', () => {
       .inject({
         method: 'POST',
         url: `/api/v1/setup/operations/${operationId}/retry`,
-        headers: claimHeaders(),
+        headers,
         payload: {},
       })
     expect(allowed.statusCode).toBe(202)

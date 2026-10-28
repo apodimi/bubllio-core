@@ -358,7 +358,6 @@ export async function readSetupOperation(
 export async function retrySetupOperation(
   keycloak: Keycloak,
   id: string,
-  secret: string,
 ): Promise<SetupOperation> {
   return request(
     `/api/v1/setup/operations/${encodeURIComponent(id)}/retry`,
@@ -367,7 +366,6 @@ export async function retrySetupOperation(
       method: "POST",
       headers: {
         "Idempotency-Key": crypto.randomUUID(),
-        "X-Bubllio-Setup-Secret": secret,
       },
       body: "{}",
     },

@@ -253,9 +253,8 @@ function taskContent(
       <OperationStep
         copy={flow.copy}
         operation={flow.state.operation}
-        secret={flow.state.secret}
         busy={flow.state.busy}
-        onSecretChange={flow.setSecret}
+        retryFeedback={flow.state.retryFeedback}
         onRetry={flow.submitRetry}
       />
     );

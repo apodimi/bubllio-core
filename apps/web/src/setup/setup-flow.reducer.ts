@@ -21,6 +21,7 @@ export interface SetupFlowState {
   organizationName: string;
   operation?: SetupOperation;
   error: string;
+  retryFeedback: string;
   busy: boolean;
 }
 
@@ -31,6 +32,7 @@ export type SetupFlowAction =
   | { type: "start-action" }
   | { type: "finish-action" }
   | { type: "show-error"; message: string }
+  | { type: "show-retry-feedback"; message: string }
   | { type: "set-operation"; operation: SetupOperation; step?: SetupStep }
   | { type: "clear-secret" };
 
@@ -39,6 +41,7 @@ export const initialSetupFlowState: SetupFlowState = {
   secret: "",
   organizationName: "",
   error: "",
+  retryFeedback: "",
   busy: false,
 };
 
@@ -54,11 +57,13 @@ export function setupFlowReducer(
     case "set-organization-name":
       return { ...state, organizationName: action.value };
     case "start-action":
-      return { ...state, busy: true, error: "" };
+      return { ...state, busy: true, error: "", retryFeedback: "" };
     case "finish-action":
       return { ...state, busy: false };
     case "show-error":
       return { ...state, busy: false, error: action.message };
+    case "show-retry-feedback":
+      return { ...state, retryFeedback: action.message };
     case "set-operation":
       return {
         ...state,

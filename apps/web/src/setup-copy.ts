@@ -119,11 +119,17 @@ export const setupCopy = {
     reference: "Reference",
     errorCode: "Code",
     unknown: "Unknown",
-    retrySecret: "Enter the setup secret again",
     retry: "Retry setup",
+    retryStillNeedsAttention:
+      "The setup still needs attention. Check the code above before trying again.",
     invitationTitle: "Accept your owner invitation",
     invitationBody:
-      "A membership invitation was sent to your email. Accept it, return here, enter the setup secret again, and continue the same operation.",
+      "A membership invitation was sent to your email. Accept it, then return here to continue the same operation.",
+    invitationActionHint:
+      "Open the invitation email and accept it before checking again. Check spam if it is missing.",
+    checkInvitation: "I accepted the invitation — check again",
+    invitationStillPending:
+      "The invitation has not been accepted yet. Check your inbox or spam, accept it, then try again.",
     doneTitle: "Your organization is ready",
     doneBody:
       "Sign in again to refresh your organization access and enter the workspace.",
@@ -277,11 +283,17 @@ export const setupCopy = {
     reference: "Αναφορά",
     errorCode: "Κωδικός",
     unknown: "Άγνωστο",
-    retrySecret: "Βάλε ξανά το μυστικό εγκατάστασης",
     retry: "Επανάληψη",
+    retryStillNeedsAttention:
+      "Η εγκατάσταση χρειάζεται ακόμη έλεγχο. Δες τον κωδικό παραπάνω πριν ξαναδοκιμάσεις.",
     invitationTitle: "Αποδέξου την πρόσκληση ιδιοκτήτη",
     invitationBody:
-      "Στάλθηκε πρόσκληση στο email σου. Αποδέξου την, γύρνα εδώ, βάλε ξανά το μυστικό εγκατάστασης και συνέχισε την ίδια εργασία.",
+      "Στάλθηκε πρόσκληση στο email σου. Αποδέξου την και γύρνα εδώ για να συνεχίσεις την ίδια εργασία.",
+    invitationActionHint:
+      "Άνοιξε το email της πρόσκλησης και αποδέξου την πριν ελέγξεις ξανά. Αν δεν το βρίσκεις, δες και τα ανεπιθύμητα.",
+    checkInvitation: "Αποδέχτηκα την πρόσκληση — έλεγχος ξανά",
+    invitationStillPending:
+      "Η πρόσκληση δεν έχει γίνει ακόμη αποδεκτή. Έλεγξε τα εισερχόμενα ή τα ανεπιθύμητα, αποδέξου την και ξαναδοκίμασε.",
     doneTitle: "Ο οργανισμός είναι έτοιμος",
     doneBody:
       "Συνδέσου ξανά για να ανανεωθεί η πρόσβασή σου και να μπεις στο workspace.",

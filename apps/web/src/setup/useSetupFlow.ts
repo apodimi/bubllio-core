@@ -176,23 +176,30 @@ export function useSetupFlow(keycloak: Keycloak) {
     }
   }
 
-  async function submitRetry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitRetry() {
     if (!state.operation) return;
     dispatch({ type: "start-action" });
     try {
       const result = await retryMutation.mutateAsync({
         id: state.operation.id,
-        secret: state.secret,
       });
-      dispatch({ type: "clear-secret" });
       dispatch({
         type: "set-operation",
         operation: result,
         step: result.status === "succeeded" ? "done" : "progress",
       });
+      if (result.status === "awaiting_owner") {
+        dispatch({
+          type: "show-retry-feedback",
+          message: copy.invitationStillPending,
+        });
+      } else if (result.status === "needs_attention") {
+        dispatch({
+          type: "show-retry-feedback",
+          message: copy.retryStillNeedsAttention,
+        });
+      }
     } catch (cause) {
-      dispatch({ type: "clear-secret" });
       dispatch({ type: "show-error", message: messageFor(cause, copy) });
     } finally {
       dispatch({ type: "finish-action" });

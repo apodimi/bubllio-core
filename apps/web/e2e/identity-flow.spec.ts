@@ -444,6 +444,21 @@ test("signed-in owner finishes setup from a workspace task list", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const workspaceRequests: string[] = [];
+  let retryRequests = 0;
+  const awaitingOwnerOperation = {
+    id: "00000000-0000-0000-0000-000000000021",
+    status: "awaiting_owner",
+    organizationId: "00000000-0000-0000-0000-000000000022",
+    correlationId: "00000000-0000-0000-0000-000000000021",
+    safeErrorCode: "OWNER_INVITATION_PENDING",
+    reauthenticationRequired: false,
+    stages: [
+      { name: "core_organization", status: "complete" },
+      { name: "identity_organization", status: "complete" },
+      { name: "owner_membership", status: "in_progress" },
+      { name: "token_refresh", status: "queued" },
+    ],
+  };
   page.on("request", (request) => {
     if (
       request.url().includes("/api/v1/me/organizations") ||
@@ -461,22 +476,30 @@ test("signed-in owner finishes setup from a workspace task list", async ({
   await page.route("**/api/v1/setup/organization", (route) =>
     route.fulfill({
       status: 202,
-      json: {
-        id: "00000000-0000-0000-0000-000000000021",
-        status: "awaiting_owner",
-        organizationId: "00000000-0000-0000-0000-000000000022",
-        correlationId: "00000000-0000-0000-0000-000000000021",
-        safeErrorCode: "OWNER_INVITATION_PENDING",
-        reauthenticationRequired: false,
-        stages: [
-          { name: "core_organization", status: "complete" },
-          { name: "identity_organization", status: "complete" },
-          { name: "owner_membership", status: "in_progress" },
-          { name: "token_refresh", status: "queued" },
-        ],
-      },
+      json: awaitingOwnerOperation,
     }),
   );
+  await page.route("**/api/v1/setup/operations/*/retry", (route) => {
+    retryRequests += 1;
+    expect(route.request().headers()["x-bubllio-setup-secret"]).toBeUndefined();
+    return route.fulfill({
+      status: 202,
+      json:
+        retryRequests === 1
+          ? awaitingOwnerOperation
+          : {
+              ...awaitingOwnerOperation,
+              status: "succeeded",
+              safeErrorCode: null,
+              reauthenticationRequired: true,
+              stages: awaitingOwnerOperation.stages.map((stage) => ({
+                ...stage,
+                status:
+                  stage.name === "token_refresh" ? "in_progress" : "complete",
+              })),
+            },
+    });
+  });
 
   await openLogin(page);
   await enterUsername(page);
@@ -526,7 +549,26 @@ test("signed-in owner finishes setup from a workspace task list", async ({
     page.getByText("Owner membership", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("in progress", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Enter the setup secret again")).toHaveValue("");
+  await expect(page.getByLabel("Enter the setup secret again")).toHaveCount(0);
+  await expect(
+    page.getByText("Open the invitation email", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "I accepted the invitation — check again" })
+    .click();
+  await expect(
+    page.getByText("The invitation has not been accepted yet", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(retryRequests).toBe(1);
+  await page
+    .getByRole("button", { name: "I accepted the invitation — check again" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Sign in to workspace" }),
+  ).toBeVisible();
+  expect(retryRequests).toBe(2);
   expect(
     await page.evaluate(() => localStorage.length + sessionStorage.length),
   ).toBe(0);

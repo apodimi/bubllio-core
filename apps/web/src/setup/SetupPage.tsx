@@ -120,9 +120,8 @@ export function SetupPage({ keycloak }: { keycloak: Keycloak }) {
         <OperationStep
           copy={copy}
           operation={state.operation}
-          secret={state.secret}
           busy={state.busy}
-          onSecretChange={flow.setSecret}
+          retryFeedback={state.retryFeedback}
           onRetry={flow.submitRetry}
         />
       )}

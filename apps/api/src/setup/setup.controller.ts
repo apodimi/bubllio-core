@@ -179,7 +179,8 @@ export class SetupController {
 
   @Post('operations/:operationId/retry')
   @HttpCode(202)
-  @UseGuards(SetupAvailabilityGuard, SetupSecretGuard)
+  // The claim already proved the secret; provisioning.read binds retry to that subject.
+  @UseGuards(SetupAvailabilityGuard)
   @Header('Cache-Control', 'no-store, max-age=0')
   @Header('Referrer-Policy', 'no-referrer')
   retryOperation(
