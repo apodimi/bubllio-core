@@ -178,8 +178,10 @@ If the API logs `InvalidClaim:sub` after a successful Identity login, check the
 `auth_time` through its built-in `basic` scope. A new realm imports this scope
 automatically from the release definition. For an existing realm, the
 `identity-bootstrap` import uses `--override=false` and cannot modify the
-persisted client. An identity administrator must add the existing `basic`
-client scope to `bubllio-core-web` using the narrow Keycloak Admin REST operation
+persisted client. An identity administrator must ensure the `basic` scope exists
+with the `sub` and `auth_time` mappers in
+[`deploy/keycloak/bubllio-realm.json`](../../deploy/keycloak/bubllio-realm.json),
+then assign it to `bubllio-core-web` using the narrow Keycloak Admin REST operation
 `PUT /admin/realms/bubllio/clients/{client-id}/default-client-scopes/{scope-id}`,
 then obtain a fresh browser session. Do not delete the Keycloak volume or
 overwrite the realm. If no administrator credential remains, use Keycloak's

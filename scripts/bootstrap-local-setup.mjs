@@ -17,7 +17,7 @@ const bootstrapSecretPath = resolve(local, 'keycloak-bootstrap-client-secret')
 const setupAgentTokenPath = resolve(local, 'identity-setup-agent-token')
 const project = 'bubllio-core-setup-rehearsal'
 const ports = { keycloak: '8280', api: '3200', web: '5274', mail: '8125' }
-const identityScopes = JSON.parse(await readFile(resolve(root, 'infrastructure/keycloak/realm-bubllio.local.json'), 'utf8')).clientScopes.filter((scope) => ['profile', 'email'].includes(scope.name))
+const identityScopes = JSON.parse(await readFile(resolve(root, 'infrastructure/keycloak/realm-bubllio.local.json'), 'utf8')).clientScopes.filter((scope) => ['basic', 'profile', 'email'].includes(scope.name))
 const resume = process.argv.includes('--resume')
 const prepareOnly = process.argv.includes('--prepare-only')
 if (process.argv.slice(2).some((value) => !['--resume', '--prepare-only'].includes(value))) {
