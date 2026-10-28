@@ -1,6 +1,6 @@
 # ADR 0012: Isolate email bootstrap authority
 
-- Status: Accepted
+- Status: Accepted; amended 2026-10-28 for invite-only enrollment
 - Date: 2026-10-24
 
 ## Context
@@ -35,11 +35,12 @@ The agent:
 3. writes an authenticated SMTP password atomically to Keycloak's file-vault
    slot and configures the realm to reference that slot;
 4. keeps browser registration closed while confirmation is pending;
-5. after Core proves the confirmation code, opens registration, writes a
-   non-secret configuration fingerprint and readiness marker, and disables its
-   own bootstrap client; and
-6. proves that the retired bootstrap client can no longer obtain a token before
-   Core records email delivery as ready.
+5. after Core proves the confirmation code, opens registration for the first
+   verified administrator and writes a non-secret configuration fingerprint and
+   readiness marker;
+6. when that administrator also proves the one-time installation secret, closes
+   public realm registration before Core records the claim, then disables its
+   own bootstrap client and proves that it can no longer obtain a token.
 
 The bootstrap client has only the exact realm-management roles needed for this
 ceremony. The permanent Core runtime does not receive mutation authority. It
@@ -68,9 +69,10 @@ Any recoverable failure -> NEEDS_ATTENTION -> AWAITING_CONFIRMATION
 ```
 
 Account registration and the existing dual-proof installation claim remain
-unavailable until email reaches `READY`. Setup retries are idempotent and a
-restart reconciles non-secret Keycloak markers instead of asking the operator
-to reinstall.
+unavailable until email reaches `READY`. The temporary open-registration period
+ends at claim, and future account creation requires an organization invitation.
+Setup retries are idempotent and a restart reconciles non-secret Keycloak
+markers instead of asking the operator to reinstall.
 
 Authenticated SMTP without transport encryption is rejected. An
 unauthenticated plaintext relay, if enabled by deployment policy, is limited to
@@ -102,6 +104,10 @@ an explicitly trusted private network and is not an external-alpha default.
 - The setup agent may remain process-healthy for deployment orchestration, but
   its Keycloak mutation authority is unavailable after successful retirement;
   normal product requests never depend on it.
+- The bootstrap client remains active between email confirmation and the first
+  verified secret claim. Keep the agent private and its token isolated. A
+  failed registration closure blocks that claim; an installation completed by
+  an older release needs an explicit realm-setting migration.
 - SMTP credential rotation remains a deliberate recovery or later owner-admin
   capability and must use a fresh bounded authority rather than reactivating the
   original bootstrap client invisibly.

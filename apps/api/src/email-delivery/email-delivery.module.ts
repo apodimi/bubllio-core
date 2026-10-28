@@ -12,7 +12,7 @@ import { SetupRateLimitGuard } from './setup-rate-limit.guard.js'
 
 @Module({
   controllers: [EmailDeliveryController],
-  exports: [EmailDeliveryRepository],
+  exports: [EmailDeliveryRepository, IdentitySetupAgentClient],
   imports: [PrismaModule],
   providers: [
     EmailDeliveryRepository,

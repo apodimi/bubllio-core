@@ -24,6 +24,10 @@ export class IdentitySetupAgentClient {
     return this.request('/internal/v1/email/finalize', { fingerprint }, FINALIZE_TIMEOUT_MS)
   }
 
+  closeRegistration(): Promise<void> {
+    return this.request('/internal/v1/email/close-registration', {}, FINALIZE_TIMEOUT_MS)
+  }
+
   private async request(path: string, body: unknown, timeoutMs: number): Promise<void> {
     const { url, token } = this.config.identitySetupAgent
     if (!url || !token) throw new IdentitySetupAgentError('EMAIL_DELIVERY_UNAVAILABLE')

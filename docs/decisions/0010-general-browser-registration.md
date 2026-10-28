@@ -1,6 +1,6 @@
 # ADR 0010: General browser registration for suite identity
 
-- Status: Proposed; implemented for local evaluation, production approval pending
+- Status: Withdrawn on 2026-10-28; invite-only enrollment replaces this proposal
 - Date: 2026-10-24
 
 ## Context
@@ -39,3 +39,13 @@ journey, and approval from the human product, design, and engineering owners.
 Existing CRM registration remains invite-only until its additive identity
 migration; the public website must not claim shared registration is available
 to CRM users before that migration ships.
+
+## Disposition
+
+The installation owner requested invite-only enrollment after the first
+administrator. Public self-registration now closes when that verified
+administrator proves the one-time installation secret. This page preserves the
+earlier proposal; it is no longer the target behavior. New-member invitation
+administration remains a separate product increment. Product decision owner:
+installation owner (accepted direction, 2026-10-28). Human engineering and
+privacy/legal release reviewers: pending.

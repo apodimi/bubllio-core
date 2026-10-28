@@ -21,6 +21,7 @@ import { Public } from '../auth/decorators/public.decorator.js'
 import type { VerifiedSubject } from '../auth/identity.types.js'
 import { RUNTIME_CONFIG, type RuntimeConfig } from '../config/runtime-config.js'
 import { EmailDeliveryRepository } from '../email-delivery/email-delivery.repository.js'
+import { IdentitySetupAgentClient } from '../email-delivery/identity-setup-agent.client.js'
 import { SetupAvailabilityGuard } from './guards/setup-availability.guard.js'
 import { SetupSecretGuard } from './guards/setup-secret.guard.js'
 import { SetupSubjectGuard } from './guards/setup-subject.guard.js'
@@ -44,6 +45,7 @@ export class SetupController {
     private readonly setupRepository: SetupRepository,
     private readonly provisioning: SetupProvisioningService,
     private readonly emailDeliveryRepository: EmailDeliveryRepository,
+    private readonly identitySetupAgent: IdentitySetupAgentClient,
     private readonly identityDirectory: KeycloakOrganizationClient,
     @Inject(RUNTIME_CONFIG) private readonly config: RuntimeConfig,
   ) {}
@@ -113,6 +115,15 @@ export class SetupController {
 
     if (!(await this.emailDeliveryRepository.isReady())) {
       throw new NotFoundException('Setup is unavailable')
+    }
+
+    // The verified first administrator has proved the setup secret. Close public
+    // Keycloak registration before recording the claim; invitation tokens still
+    // allow later member enrollment.
+    try {
+      await this.identitySetupAgent.closeRegistration()
+    } catch {
+      throw new ConflictException('IDENTITY_ACTIVATION_FAILED')
     }
 
     const claimedAt = new Date()

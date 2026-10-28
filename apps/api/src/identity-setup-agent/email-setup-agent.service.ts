@@ -12,6 +12,7 @@ import {
   type IdentitySetupAgentConfig,
 } from './identity-setup-agent.config.js'
 import { KeycloakEmailSetupClient } from './keycloak-email-setup.client.js'
+import { setupConfirmationEmail } from './setup-confirmation-email.js'
 
 export const SMTP_PASSWORD_VAULT_FILENAME = 'bubllio_smtp__password'
 
@@ -44,12 +45,12 @@ export class EmailSetupAgentService {
       tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
     })
     try {
+      const message = setupConfirmationEmail(confirmationCode)
       await transport.sendMail({
         from: { name: input.senderName, address: input.senderEmail },
         to: input.testRecipient,
         ...(input.replyToEmail ? { replyTo: input.replyToEmail } : {}),
-        subject: 'Bubllio email setup confirmation',
-        text: `Your Bubllio email setup confirmation code is ${confirmationCode}. It expires in 10 minutes.`,
+        ...message,
         headers: { 'X-Auto-Response-Suppress': 'All' },
       })
     } catch (error) {
@@ -68,6 +69,14 @@ export class EmailSetupAgentService {
   async finalize(fingerprint: string): Promise<void> {
     try {
       await this.keycloak.finalize(fingerprint)
+    } catch {
+      throw new AgentOperationError('IDENTITY_ACTIVATION_FAILED')
+    }
+  }
+
+  async closeRegistration(): Promise<void> {
+    try {
+      await this.keycloak.closeRegistration()
     } catch {
       throw new AgentOperationError('IDENTITY_ACTIVATION_FAILED')
     }

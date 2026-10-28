@@ -18,7 +18,7 @@ Decision status meanings:
 | [0007](0007-use-prisma-for-core-persistence.md)        | Accepted | Use Prisma with PostgreSQL for Core persistence   |
 | [0008](0008-secure-first-run-setup.md)                 | Accepted | Require dual-proof, durable first-run setup       |
 | [0009](0009-central-application-access.md)             | Accepted | Centralize per-member application access in Core  |
-| [0010](0010-general-browser-registration.md)           | Proposed | Allow permanent verified browser identity signup  |
+| [0010](0010-general-browser-registration.md)           | Withdrawn | Allow permanent verified browser identity signup  |
 | [0011](0011-portable-delivery-and-ui-first-setup.md)   | Accepted | Keep delivery portable and setup UI-first         |
 | [0012](0012-isolate-email-bootstrap-authority.md)      | Accepted | Isolate temporary email bootstrap authority       |
 | [0013](0013-managed-deployment-bootstrap.md)           | Accepted | Bootstrap managed platforms from two inputs       |

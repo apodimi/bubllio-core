@@ -64,7 +64,7 @@ to install a Node version manager.
    Keycloak's private vault; this unauthenticated Mailpit rehearsal has no
    password to retain.
 4. Choose **Create administrator account**. Registration is available only
-   after the email confirmation and bootstrap-client retirement. Enter the
+   after the email confirmation and closes when the setup secret is proven. Enter the
    first IT administrator's email in the branded Bubllio Identity form. Open
    Mailpit again, follow the verification email, and create a password. Bubllio
    returns the signed-in administrator to the Core shell, not to a second setup
@@ -219,8 +219,10 @@ local success.
 - **Temporary Keycloak bootstrap administrator** exists only long enough to
   establish named administrators and automation identities.
 - **Identity setup agent** receives a separate internal token and temporary
-  least-privilege Keycloak client. It writes the Keycloak SMTP vault slot and
-  retires its own client before account registration begins.
+  Keycloak realm-management client. It writes the Keycloak SMTP vault slot,
+  permits first-administrator registration after the test email is confirmed,
+  then closes public registration and retires that client when the verified
+  administrator proves the one-time setup secret.
 - **Named Keycloak operator** manages the identity platform, uses an individual
   account and MFA, and is not automatically a Core product owner.
 - **Installation operator** controls the deployment and receives the one-time
@@ -272,10 +274,11 @@ The raw secret must be transferred out of band. Do not email it, paste it into a
 ticket/chat, place it in a URL, or add it to an environment example.
 
 After the named Keycloak operator signs in, enable MFA and verify recovery
-access. The email ceremony must already have disabled the temporary
-identity-bootstrap client and proved that its credentials fail. Remove its
-secret from the active deployment specification only through the documented
-post-setup secret lifecycle; do not silently recreate the client on restart.
+access. The first administrator's successful setup claim must have closed
+public registration, disabled the temporary identity-bootstrap client, and
+proved that its credentials fail. Remove its secret from the active deployment
+specification only through the documented post-setup secret lifecycle; do not
+silently recreate the client on restart.
 
 ## Product setup
 
@@ -286,11 +289,13 @@ post-setup secret lifecycle; do not silently recreate the client on restart.
    the real test message. Core retains no delivery input or recipient.
 3. Only after email reaches `READY`, choose **Create administrator account** and
    complete verification and required actions on the branded Keycloak pages.
-   External registration remains blocked until provider, privacy/terms,
-   recovery, and abuse gates in
-   [ADR 0010](../decisions/0010-general-browser-registration.md) are met.
+   Public registration is temporary for this first account only. The test
+   message has HTML and plain-text versions, with a six-digit code valid for
+   ten minutes.
 4. Return to `/setup`, enter the one-time setup secret, and review the immutable
-   subject and verified email shown by the application.
+   subject and verified email shown by the application. Core closes Keycloak
+   public registration before recording the claim. If that closure cannot be
+   confirmed, the claim fails and can be retried without recreating the account.
 5. Enter the first organization display name. Core derives and reserves the
    initial slug; SMTP is already a completed, separate setup stage.
 6. Review the consequence and choose **Create organization** once.
@@ -312,6 +317,24 @@ post-setup secret lifecycle; do not silently recreate the client on restart.
 10. Verify the owner route, reload, sign out, and sign in again. Setup must never
     be offered again.
 
+### Existing installations completed before invite-only enrollment
+
+The new claim-time closure cannot run for an installation already at `READY`:
+its temporary identity-bootstrap client was retired by the older release.
+For those installations, a named Keycloak operator must use the Keycloak Admin
+Console to open **Realm settings → Login**, turn **User registration** off, and
+save. Verify a fresh login page has no registration link and that the direct
+registration URL rejects public account creation. Keep the realm's email
+verification setting enabled. Do not reset volumes, import the realm over
+existing data, or re-enable the retired bootstrap client. Existing accounts
+remain intact; accounts created during the earlier open-registration period
+need a separate identity review.
+
+Keycloak 26.8.1 allows a token-bearing organization invitation to start new
+member registration while public realm registration is disabled. Core's admin
+UI for sending those invitations is not shipped yet, so this verification is
+about the identity behavior, not a claim that member onboarding is complete.
+
 ## Secret removal and completion evidence
 
 After Core reports `READY`:
@@ -319,11 +342,13 @@ After Core reports `READY`:
 1. remove the raw setup secret from the secret manager or mounted file;
 2. remove any bootstrap-administrator variables and credentials;
 3. verify `POST /api/v1/setup/claim` remains unavailable;
-4. verify an organization-less user receives a neutral no-access state rather
+4. verify public registration is off in the Keycloak realm, including the
+   direct registration route;
+5. verify an organization-less user receives a neutral no-access state rather
    than the setup wizard;
-5. verify the runtime Keycloak identity cannot manage realms, clients,
+6. verify the runtime Keycloak identity cannot manage realms, clients,
    passwords, identity providers, impersonation, or Core roles; and
-6. attach sanitized test, backup, restore, alert, and credential-removal evidence
+7. attach sanitized test, backup, restore, alert, and credential-removal evidence
    to the environment release record.
 
 Never include the setup secret, its digest, access tokens, passwords, cookies,

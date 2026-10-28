@@ -53,9 +53,10 @@ with the same identity session. Owners and admins use Core to invite members,
 enable apps for the organization, and grant or revoke each member's app access.
 An ungranted app remains inaccessible through its direct URL and API.
 
-Browser registration creates a verified suite identity. It does not create an
-organization, establish membership, or grant applications. A new user waits for
-an organization invitation and explicit access decisions from an administrator.
+Public browser registration is open only while creating the first verified
+administrator during installation. Proving the installation secret closes it in
+Keycloak. Later members create accounts through administrator invitations;
+membership and application grants remain separate decisions.
 
 ## New application experience
 

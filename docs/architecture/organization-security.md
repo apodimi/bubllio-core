@@ -41,7 +41,9 @@ setup secret and delegates the privileged Keycloak work to the isolated,
 temporary identity setup agent defined in
 [ADR 0012](../decisions/0012-isolate-email-bootstrap-authority.md). A real test
 message carries a short-lived confirmation code. Registration opens only after
-the code is confirmed and the agent has retired its own bootstrap client.
+the code is confirmed. When the first verified administrator proves the setup
+secret, the agent closes public registration and retires its bootstrap client
+before Core records the claim. A later member must use an invitation.
 
 The permanent Core runtime cannot mutate realm settings or clients. Core never
 persists SMTP connection fields, credentials, the test recipient, or provider

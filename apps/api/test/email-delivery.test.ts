@@ -19,6 +19,7 @@ import {
 } from '../src/identity-setup-agent/email-setup-agent.service.js'
 import { parseIdentitySetupAgentConfig } from '../src/identity-setup-agent/identity-setup-agent.config.js'
 import { KeycloakEmailSetupClient } from '../src/identity-setup-agent/keycloak-email-setup.client.js'
+import { setupConfirmationEmail } from '../src/identity-setup-agent/setup-confirmation-email.js'
 import type { RuntimeConfig } from '../src/config/runtime-config.js'
 import { SetupProblemFilter } from '../src/setup/setup-problem.filter.js'
 
@@ -317,7 +318,7 @@ describe('Keycloak email bootstrap', () => {
     expect(String(update.body)).not.toContain(input.password)
   })
 
-  it('disables the exact bootstrap client, proves invalid_client, and reconciles READY', async () => {
+  it('opens registration for first enrollment, then closes it and retires bootstrap', async () => {
     const fingerprint = 'a'.repeat(64)
     const responses = [
       new Response(JSON.stringify({ access_token: 'bootstrap-token' }), { status: 200 }),
@@ -325,6 +326,26 @@ describe('Keycloak email bootstrap', () => {
         JSON.stringify({
           registrationAllowed: false,
           attributes: { 'bubllio.email_delivery_fingerprint': fingerprint },
+        }),
+        { status: 200 },
+      ),
+      new Response(null, { status: 204 }),
+      new Response(JSON.stringify({ access_token: 'runtime-token' }), { status: 200 }),
+      new Response(
+        JSON.stringify({
+          registrationAllowed: true,
+          attributes: {
+            'bubllio.email_delivery_fingerprint': fingerprint,
+            'bubllio.email_delivery_stage': 'READY',
+          },
+        }),
+        { status: 200 },
+      ),
+      new Response(JSON.stringify({ access_token: 'bootstrap-token' }), { status: 200 }),
+      new Response(
+        JSON.stringify({
+          registrationAllowed: true,
+          attributes: { 'bubllio.email_delivery_stage': 'READY' },
         }),
         { status: 200 },
       ),
@@ -338,7 +359,7 @@ describe('Keycloak email bootstrap', () => {
       new Response(JSON.stringify({ access_token: 'runtime-token' }), { status: 200 }),
       new Response(
         JSON.stringify({
-          registrationAllowed: true,
+          registrationAllowed: false,
           attributes: {
             'bubllio.email_delivery_fingerprint': fingerprint,
             'bubllio.email_delivery_stage': 'READY',
@@ -355,9 +376,16 @@ describe('Keycloak email bootstrap', () => {
       runtimeClientSecret: 'runtime-secret',
     } as never)
     await expect(client.finalize(fingerprint)).resolves.toBeUndefined()
-    expect(String(fetchMock.mock.calls[3]![0])).toContain('clientId=bubllio-identity-bootstrap')
-    expect(String(fetchMock.mock.calls[4]![0])).toContain('/clients/bootstrap-id')
-    expect(JSON.parse(String((fetchMock.mock.calls[4]![1] as RequestInit).body))).toMatchObject({
+    expect(JSON.parse(String((fetchMock.mock.calls[2]![1] as RequestInit).body))).toMatchObject({
+      registrationAllowed: true,
+    })
+    await expect(client.closeRegistration()).resolves.toBeUndefined()
+    expect(JSON.parse(String((fetchMock.mock.calls[7]![1] as RequestInit).body))).toMatchObject({
+      registrationAllowed: false,
+    })
+    expect(String(fetchMock.mock.calls[8]![0])).toContain('clientId=bubllio-identity-bootstrap')
+    expect(String(fetchMock.mock.calls[9]![0])).toContain('/clients/bootstrap-id')
+    expect(JSON.parse(String((fetchMock.mock.calls[9]![1] as RequestInit).body))).toMatchObject({
       enabled: false,
       serviceAccountsEnabled: false,
     })
@@ -366,8 +394,45 @@ describe('Keycloak email bootstrap', () => {
       .map((call) => String((call[1] as RequestInit).body))
     expect(tokenBodies).toEqual([
       expect.stringContaining('client_id=bubllio-identity-bootstrap'),
+      expect.stringContaining('client_id=bubllio-core-runtime'),
+      expect.stringContaining('client_id=bubllio-identity-bootstrap'),
       expect.stringContaining('client_id=bubllio-identity-bootstrap'),
       expect.stringContaining('client_id=bubllio-core-runtime'),
     ])
+  })
+
+  it('accepts a repeated closure only if Keycloak still reports registration closed', async () => {
+    const responses = [
+      new Response(JSON.stringify({ error: 'invalid_client' }), { status: 401 }),
+      new Response(JSON.stringify({ access_token: 'runtime-token' }), { status: 200 }),
+      new Response(
+        JSON.stringify({
+          registrationAllowed: false,
+          attributes: { 'bubllio.email_delivery_stage': 'READY' },
+        }),
+        { status: 200 },
+      ),
+    ]
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(responses.shift()))
+    vi.stubGlobal('fetch', fetchMock)
+    const client = new KeycloakEmailSetupClient({
+      keycloakAdminUrl: 'http://keycloak:8080',
+      bootstrapClientSecret: 'bootstrap-secret',
+      runtimeClientSecret: 'runtime-secret',
+    } as never)
+    await expect(client.closeRegistration()).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('setup confirmation message', () => {
+  it('renders the code and expiry in HTML and plain text', () => {
+    const message = setupConfirmationEmail('031127')
+    expect(message.subject).toContain('Bubllio')
+    expect(message.text).toContain('031127')
+    expect(message.text).toContain('10 λεπτά')
+    expect(message.html).toContain('031127')
+    expect(message.html).toContain('10 λεπτά')
+    expect(() => setupConfirmationEmail('<script>')).toThrow('Invalid setup confirmation code')
   })
 })

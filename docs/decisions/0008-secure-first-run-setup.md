@@ -63,17 +63,19 @@ completed installation.
   lifecycles.
 - Put the setup secret in a URL: rejected because URLs leak through browser
   history, referrers, proxies, screenshots, and support tooling.
-- Enable unrestricted self-registration until setup completes: rejected for
-  version 1 because closing registration atomically across Core and Keycloak is
-  unnecessary risk. Bootstrap automation enrolls a named operator instead.
+- Enable unrestricted self-registration until setup completes: initially
+  rejected because closing registration across Core and Keycloak is risky.
+  [ADR 0012](0012-isolate-email-bootstrap-authority.md) later introduced a
+  temporary private setup agent; its amended flow opens registration only after
+  email verification and closes it before recording the first verified claim.
 - Add a queue or workflow engine: rejected because PostgreSQL durable operations
   and leases meet the first version's reliability needs.
 
 ## Consequences
 
-[ADR 0010](0010-general-browser-registration.md) later proposes permanent
-verified identity registration. It does not change this ADR's two-proof setup
-claim or its rejection of a temporary registration switch.
+[ADR 0010](0010-general-browser-registration.md) proposed permanent verified
+identity registration but was withdrawn in favor of invite-only enrollment
+after the first administrator. This does not change the two-proof setup claim.
 
 - OIDC parsing must represent a valid subject independently from organization
   context, followed by a separate tenant authorization guard.

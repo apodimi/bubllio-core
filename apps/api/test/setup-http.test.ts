@@ -9,6 +9,7 @@ import { AuthService } from '../src/auth/auth.service.js'
 import type { VerifiedSubject } from '../src/auth/identity.types.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { EmailDeliveryRepository } from '../src/email-delivery/email-delivery.repository.js'
+import { IdentitySetupAgentClient } from '../src/email-delivery/identity-setup-agent.client.js'
 import { KeycloakOrganizationClient } from '../src/setup/keycloak-organization.client.js'
 import { SetupRepository } from '../src/setup/setup.repository.js'
 import { SetupProvisioningService } from '../src/setup/setup-provisioning.service.js'
@@ -38,6 +39,7 @@ const provisioning = {
 }
 const auth = { verify: vi.fn() }
 const emailDelivery = { isReady: vi.fn(), status: vi.fn() }
+const identitySetupAgent = { closeRegistration: vi.fn() }
 const identityDirectory = { hasVerifiedEmail: vi.fn(), hasVerifiedAccount: vi.fn() }
 
 function identity(overrides: Partial<VerifiedSubject> = {}): VerifiedSubject {
@@ -88,6 +90,8 @@ describe('first-run setup HTTP boundary', () => {
       .useValue(repository)
       .overrideProvider(EmailDeliveryRepository)
       .useValue(emailDelivery)
+      .overrideProvider(IdentitySetupAgentClient)
+      .useValue(identitySetupAgent)
       .overrideProvider(KeycloakOrganizationClient)
       .useValue(identityDirectory)
       .overrideProvider(SetupProvisioningService)
@@ -106,6 +110,7 @@ describe('first-run setup HTTP boundary', () => {
     repository.claim.mockResolvedValue({ outcome: 'claimed', version: 2 })
     repository.readPublicStatus.mockResolvedValue({ setupRequired: true, phase: 'new' })
     emailDelivery.isReady.mockResolvedValue(true)
+    identitySetupAgent.closeRegistration.mockResolvedValue(undefined)
     emailDelivery.status.mockResolvedValue({ status: 'ready' })
     identityDirectory.hasVerifiedEmail.mockResolvedValue(false)
     identityDirectory.hasVerifiedAccount.mockResolvedValue(false)
@@ -208,6 +213,7 @@ describe('first-run setup HTTP boundary', () => {
     expect(repository.claim).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: key, subject }),
     )
+    expect(identitySetupAgent.closeRegistration).toHaveBeenCalledOnce()
 
     repository.claim.mockResolvedValueOnce({ outcome: 'replayed', version: 2 })
     const replay = await app.getHttpAdapter().getInstance().inject({
@@ -247,6 +253,18 @@ describe('first-run setup HTTP boundary', () => {
       payload: {},
     })
     expect(response.statusCode).toBe(404)
+    expect(repository.claim).not.toHaveBeenCalled()
+  })
+
+  it('does not claim setup while public registration cannot be closed', async () => {
+    identitySetupAgent.closeRegistration.mockRejectedValueOnce(new Error('agent unavailable'))
+    const response = await app.getHttpAdapter().getInstance().inject({
+      method: 'POST',
+      url: '/api/v1/setup/claim',
+      headers: claimHeaders(),
+      payload: {},
+    })
+    expect(response.statusCode).toBe(409)
     expect(repository.claim).not.toHaveBeenCalled()
   })
 

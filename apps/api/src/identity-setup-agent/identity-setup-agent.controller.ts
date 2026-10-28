@@ -53,6 +53,18 @@ export class IdentitySetupAgentController {
       throw new UnprocessableEntityException({ code: 'IDENTITY_ACTIVATION_FAILED' })
     }
   }
+
+  @Post('close-registration')
+  @HttpCode(204)
+  async closeRegistration(@Body() body: unknown): Promise<void> {
+    if (!record(body) || Object.keys(body).length !== 0)
+      throw new UnprocessableEntityException({ code: 'IDENTITY_ACTIVATION_FAILED' })
+    try {
+      await this.service.closeRegistration()
+    } catch {
+      throw new UnprocessableEntityException({ code: 'IDENTITY_ACTIVATION_FAILED' })
+    }
+  }
 }
 
 function record(value: unknown): value is Record<string, unknown> {

@@ -49,13 +49,33 @@ export class KeycloakEmailSetupClient {
       realm.registrationAllowed = true
       realm.attributes = { ...(realm.attributes ?? {}), [FP]: fingerprint, [STAGE]: 'READY' }
       await this.updateRealm(bootstrap, realm)
-      await this.disableBootstrapClient(bootstrap)
-      await this.requireBootstrapRetired()
     }
     const runtime = await this.token(RUNTIME, this.config.runtimeClientSecret)
     const realm = await this.realm(runtime)
     requireFingerprint(realm, fingerprint)
     if (realm.attributes?.[STAGE] !== 'READY' || realm.registrationAllowed !== true)
+      throw new KeycloakAgentError('RECONCILIATION_FAILED')
+  }
+
+  async closeRegistration(): Promise<void> {
+    let bootstrap: string | undefined
+    try {
+      bootstrap = await this.token(BOOTSTRAP, this.config.bootstrapClientSecret)
+    } catch (error) {
+      if (!(error instanceof KeycloakAgentError && error.message === 'INVALID_CLIENT')) throw error
+    }
+    if (bootstrap) {
+      const realm = await this.realm(bootstrap)
+      if (realm.attributes?.[STAGE] !== 'READY')
+        throw new KeycloakAgentError('RECONCILIATION_FAILED')
+      realm.registrationAllowed = false
+      await this.updateRealm(bootstrap, realm)
+      await this.disableBootstrapClient(bootstrap)
+      await this.requireBootstrapRetired()
+    }
+    const runtime = await this.token(RUNTIME, this.config.runtimeClientSecret)
+    const realm = await this.realm(runtime)
+    if (realm.attributes?.[STAGE] !== 'READY' || realm.registrationAllowed !== false)
       throw new KeycloakAgentError('RECONCILIATION_FAILED')
   }
 

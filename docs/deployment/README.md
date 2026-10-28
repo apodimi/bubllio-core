@@ -214,14 +214,16 @@ use the bootstrap client. Keycloak mounts the vault read-only; the agent is the
 only long-running service with write access. The agent and Keycloak share a
 restricted SMTP egress network so the setup test and later identity messages use
 the same network policy. Browser registration starts closed and opens only after
-the real test email's confirmation code is accepted and the agent proves that
-its bootstrap client can no longer obtain a token. See [ADR 0012](../decisions/0012-isolate-email-bootstrap-authority.md).
+the real test email's confirmation code is accepted. It closes again when the
+first verified administrator proves the installation secret, before the agent
+retires its bootstrap client. See [ADR 0012](../decisions/0012-isolate-email-bootstrap-authority.md).
 
 Do not use this reference adapter for real users yet. The UI-managed technical
 path does not select or approve an SMTP processor, configure sender-domain
 deliverability, supply shared abuse controls, establish controller/processor
-roles, or approve a privacy notice. Open browser registration therefore remains
-behind the privacy, abuse, recovery, and human approval gates in ADR 0010.
+roles, or approve a privacy notice. Member invitation administration and any
+wider release remain behind privacy, abuse, recovery, and human approval gates;
+ADR 0010's open-registration proposal was withdrawn.
 
 ## Environment model
 
