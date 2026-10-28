@@ -2,6 +2,9 @@
 
 The Core documentation is organized by purpose:
 
+- [Suite architecture](architecture/suite-architecture.md) explains the current
+  Core, CRM, identity, Web, and deployment boundaries versus the target model.
+
 - [`architecture/`](architecture/) describes the proposed system boundaries and
   contracts.
 - [`decisions/`](decisions/) records choices and their consequences.

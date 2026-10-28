@@ -34,10 +34,12 @@ technical alpha until the documented Production gates pass. Follow the
 [first-run manual test](docs/operations/first-run.md) instead of enabling setup
 in the ordinary development stack.
 
-The normal local Keycloak realm also allows browser account registration with
-email verification. A new account has no organization or app access until an
-administrator invites it and grants applications. Production enrollment and
-CRM's separate invite-only flow are not changed by this local capability.
+The disposable local Keycloak realm allows browser registration for development
+fixtures. It does not define the product policy: a portable first run closes
+public realm registration when the verified first administrator proves the
+installation secret. Later accounts require an organization invitation; Core's
+member invitation UI is not shipped yet. CRM's Django invitation flow is
+separate.
 
 ## Current outcome
 
@@ -62,6 +64,7 @@ for existing users. Board is not a prerequisite for the Core access model.
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | What product are we building?         | [`PRODUCT.md`](PRODUCT.md)                                                                             |
 | How is the suite divided?             | [`docs/architecture/system-context.md`](docs/architecture/system-context.md)                           |
+| What runs today versus the target suite? | [`docs/architecture/suite-architecture.md`](docs/architecture/suite-architecture.md) |
 | Who owns identity and organizations?  | [`docs/architecture/identity-and-organizations.md`](docs/architecture/identity-and-organizations.md)   |
 | How will applications communicate?    | [`docs/architecture/cross-app-contracts.md`](docs/architecture/cross-app-contracts.md)                 |
 | What must the first experiment prove? | [`docs/spikes/keycloak-sso.md`](docs/spikes/keycloak-sso.md)                                           |
@@ -172,12 +175,13 @@ docker compose --env-file .env.example build keycloak
 docker compose --env-file .env.example up -d --force-recreate keycloak
 ```
 
-Open <http://127.0.0.1:5174>. Anonymous visitors are redirected directly to the
-Bubllio-branded Keycloak login, which offers **Create account**. Registration
-uses Mailpit email verification. An existing suite session returns without a
-second login. If the local realm volume predates general browser registration,
-run `node scripts/configure-local-registration.mjs` after Compose is healthy;
-the command updates only the localhost realm without deleting its users.
+Open <http://127.0.0.1:5174>. The disposable development realm's branded
+Keycloak login offers **Create account** for local fixtures and uses Mailpit
+email verification. An existing suite session returns without a second login.
+If an older local development realm lacks this fixture capability, run
+`node scripts/configure-local-registration.mjs` after Compose is healthy; it
+updates only that localhost realm without deleting its users. Never use it on a
+portable or deployed installation.
 Sign in with the disposable user and call the protected `/me`
 endpoint directly when debugging identity. The workspace lists only active
 Core organizations linked to the user's Keycloak membership; the disposable

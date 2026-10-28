@@ -1,7 +1,8 @@
 # System context
 
-This page defines how Bubllio Core fits into the suite and where authoritative
-data lives.
+This page defines Core's target suite context and where authoritative data
+should live. For what runs today, including CRM's separate Django identity,
+read the [suite architecture](suite-architecture.md).
 
 ## Context
 

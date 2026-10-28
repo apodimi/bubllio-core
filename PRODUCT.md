@@ -49,14 +49,18 @@ takeover.
 
 Core is the suite home after sign-in, similar to an application workspace. A
 member chooses an organization, sees only the apps granted there, and opens one
-with the same identity session. Owners and admins use Core to invite members,
-enable apps for the organization, and grant or revoke each member's app access.
+with the same identity session. In the target workspace, owners and admins use
+Core to invite members, enable apps for the organization, and grant or revoke
+each member's app access.
 An ungranted app remains inaccessible through its direct URL and API.
 
 Public browser registration is open only while creating the first verified
 administrator during installation. Proving the installation secret closes it in
 Keycloak. Later members create accounts through administrator invitations;
 membership and application grants remain separate decisions.
+
+The current technical alpha implements the first owner and the access-decision
+API, but the member invitation and grant-administration screens are unfinished.
 
 ## New application experience
 

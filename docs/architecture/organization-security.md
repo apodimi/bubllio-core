@@ -78,12 +78,14 @@ or inspect detailed progress. `READY` is terminal and disables setup even if a
 secret remains configured. Recovery never deletes the row or reopens an HTTP
 setup endpoint; it is an explicit host-side operation with audit evidence.
 
-The local Keycloak realm supports browser registration with verified email for
-both the first owner and later suite users. Registration creates an identity,
-not membership, a Core role, or an app grant. A registered account alone cannot
-claim Core without the independent setup secret. Production enrollment remains
-gated by [ADR 0010](../decisions/0010-general-browser-registration.md) and
-the deployment controls in the first-run runbook.
+The disposable local development realm permits browser registration for test
+accounts. In a portable installation, public registration opens only after
+email delivery is confirmed and closes when the verified first administrator
+proves the setup secret. A registered identity alone never gains membership,
+a Core role, or an app grant. Later accounts require organization invitations;
+Core's member invitation UI is not yet shipped. The former permanent
+registration proposal in [ADR 0010](../decisions/0010-general-browser-registration.md)
+was withdrawn.
 
 Completion requires all of the following:
 

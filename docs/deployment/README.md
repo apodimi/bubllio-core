@@ -6,12 +6,14 @@ deployment contract for UAT and Production.
 > **Current status:** the local foundation and isolated first-run rehearsal are
 > runnable. A canonical installation contract, Docker-only release bundle,
 > digest-only reference Compose adapter, production images, runtime secret
-> adapters, system readiness, and a GHCR release workflow are implemented. The first-run UI now configures and
-> proves SMTP delivery through a temporary identity setup agent before opening
-> registration. This is still an internal technical-alpha delivery slice, not
-> an approved external or Production release: a reviewed real SMTP provider,
-> privacy/registration and abuse gates, shared rate limits, backup/restore
-> proof, and a clean public-host rehearsal remain blocking. Never deploy the
+> adapters, system readiness, and a GHCR release workflow are implemented. The
+> first-run UI configures and proves SMTP delivery through a temporary identity
+> setup agent before opening registration for the first administrator. Public
+> registration closes at the verified setup claim; later users require an
+> invitation. This is still an internal technical-alpha delivery slice, not an
+> approved external or Production release: a reviewed real SMTP provider,
+> privacy and abuse gates, shared rate limits, backup/restore proof, and a clean
+> public-host rehearsal remain blocking. Never deploy the
 > development Compose file or its demo realm outside a developer machine.
 
 Pull requests and manual checks use the
