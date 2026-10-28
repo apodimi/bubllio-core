@@ -22,6 +22,7 @@ export class ProvisioningError extends Error {
 
 interface OrganizationRepresentation {
   id?: unknown
+  redirectUrl?: unknown
   attributes?: Record<string, unknown>
 }
 
@@ -76,12 +77,16 @@ export class KeycloakOrganizationClient {
 
   async ensureOrganization(coreId: string, slug: string, displayName: string): Promise<string> {
     const existing = await this.findByMarker(coreId)
-    if (existing) return existing
+    if (existing) {
+      await this.ensureRedirectUrl(existing)
+      return existing.id as string
+    }
 
     const response = await this.request('POST', '/admin/realms/bubllio/organizations', {
       alias: slug,
       name: displayName,
       enabled: true,
+      redirectUrl: `${this.config.webOrigin}/setup`,
       attributes: { [MARKER]: [coreId] },
     })
     if (response.status !== 201 && response.status !== 409) {
@@ -92,7 +97,8 @@ export class KeycloakOrganizationClient {
     // immutable marker may be adopted on retry, never a matching display name.
     const created = await this.findByMarker(coreId)
     if (!created) throw new ProvisioningError('KEYCLOAK_ORGANIZATION_CONFLICT')
-    return created
+    await this.ensureRedirectUrl(created)
+    return created.id as string
   }
 
   async ensureMember(organizationId: string, subject: string): Promise<void> {
@@ -115,7 +121,18 @@ export class KeycloakOrganizationClient {
     throw providerError(invited.status)
   }
 
-  private async findByMarker(coreId: string): Promise<string | undefined> {
+  private async ensureRedirectUrl(organization: OrganizationRepresentation): Promise<void> {
+    const redirectUrl = `${this.config.webOrigin}/setup`
+    if (organization.redirectUrl === redirectUrl) return
+    const response = await this.request(
+      'PUT',
+      `/admin/realms/bubllio/organizations/${organization.id}`,
+      { ...organization, redirectUrl },
+    )
+    if (response.status !== 204) throw providerError(response.status)
+  }
+
+  private async findByMarker(coreId: string): Promise<OrganizationRepresentation | undefined> {
     const query = new URLSearchParams({
       q: `${MARKER}:${coreId}`,
       max: '2',
@@ -134,7 +151,7 @@ export class KeycloakOrganizationClient {
     if (id === undefined) return undefined
     if (typeof id !== 'string' || !UUID.test(id))
       throw new ProvisioningError('SETUP_REPAIR_REQUIRED')
-    return id
+    return matches[0]
   }
 
   private async request(method: string, path: string, body?: unknown): Promise<Response> {

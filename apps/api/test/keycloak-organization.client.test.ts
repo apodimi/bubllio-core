@@ -9,7 +9,11 @@ import { runtimeConfig } from './runtime-config.fixture.js'
 const coreId = '00000000-0000-0000-0000-000000000001'
 const identityId = '00000000-0000-0000-0000-000000000011'
 const subject = '00000000-0000-0000-0000-000000000002'
-const marker = { id: identityId, attributes: { 'bubllio.core.organization_id': [coreId] } }
+const marker = {
+  id: identityId,
+  redirectUrl: 'http://127.0.0.1:5174/setup',
+  attributes: { 'bubllio.core.organization_id': [coreId] },
+}
 
 function response(status: number, body?: unknown): Response {
   return { status, json: async () => body } as Response
@@ -93,6 +97,23 @@ describe('Keycloak first-organization adapter', () => {
     expect(String(fetchMock.mock.calls[1][0])).toContain('q=bubllio.core.organization_id%3A')
   })
 
+  it('repairs an existing first organization redirect before another invitation', async () => {
+    fetchMock
+      .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
+      .mockResolvedValueOnce(response(200, [{ ...marker, redirectUrl: undefined }]))
+      .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
+      .mockResolvedValueOnce(response(204))
+
+    expect(await client.ensureOrganization(coreId, 'org-one', 'Example')).toBe(identityId)
+    expect(String(fetchMock.mock.calls[3][0])).toContain(`/organizations/${identityId}`)
+    expect(fetchMock.mock.calls[3][1].method).toBe('PUT')
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toMatchObject({
+      id: identityId,
+      redirectUrl: 'http://127.0.0.1:5174/setup',
+      attributes: { 'bubllio.core.organization_id': [coreId] },
+    })
+  })
+
   it('creates then resolves the organization by marker', async () => {
     fetchMock
       .mockResolvedValueOnce(response(200, { access_token: 'machine-token' }))
@@ -104,6 +125,9 @@ describe('Keycloak first-organization adapter', () => {
 
     expect(await client.ensureOrganization(coreId, 'org-one', 'Example')).toBe(identityId)
     expect(fetchMock.mock.calls[3][1].body).toContain(coreId)
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body).redirectUrl).toBe(
+      'http://127.0.0.1:5174/setup',
+    )
   })
 
   it('invites the existing exact subject without a user-management write permission', async () => {

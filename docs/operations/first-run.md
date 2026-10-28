@@ -298,7 +298,11 @@ post-setup secret lifecycle; do not silently recreate the client on restart.
    Core organization, identity organization, owner membership, and token refresh
    stages without raw provider errors.
 8. If owner membership is pending, accept the invitation sent by Keycloak to
-   the verified account before checking the same operation again. If another
+   the verified account before checking the same operation again. New invitations
+   return to Core `/setup` because the identity organization has that exact
+   redirect URL. Older invitation links keep their original destination; if
+   Keycloak shows an error after acceptance, reopen Core with the same account
+   and retry the existing operation before requesting another invitation. If another
    stage needs attention, record the correlation ID and retry only after
    correcting the named operator condition. The setup secret proves authority
    at claim; the same authenticated subject may retry its bound operation

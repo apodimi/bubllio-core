@@ -36,6 +36,28 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+test("shows progress while the first auth check is waiting", async ({
+  page,
+}) => {
+  let releaseStatus!: () => void;
+  const waitForRelease = new Promise<void>((resolve) => {
+    releaseStatus = resolve;
+  });
+  await page.route("**/api/v1/setup/status", async (route) => {
+    await waitForRelease;
+    await route.fulfill({ json: { setupRequired: true, phase: "new" } });
+  });
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.getByRole("status", { name: "Loading Bubllio…" }),
+  ).toBeVisible();
+  releaseStatus();
+  await expect(
+    page.getByRole("heading", { name: "Create the administrator account" }),
+  ).toBeVisible();
+});
+
 test("email delivery is tested and confirmed before account creation", async ({
   page,
 }) => {
