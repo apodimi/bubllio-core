@@ -9,6 +9,11 @@ The repository is in foundation development. Documents under `docs/decisions/`
 are proposals until their status is `Accepted`. Do not present an accepted
 technology choice as production-ready behavior until its deployment gates pass.
 
+For recurring Core work, use the project skills under `.agents/skills/` when
+they match the task: `bubllio-first-run` for setup and identity,
+`bubllio-onboarding-ux` for the first-run interface, and
+`bubllio-release-check` for tracing a change to the live deployment.
+
 Before production implementation:
 
 1. Read `PRODUCT.md`.
