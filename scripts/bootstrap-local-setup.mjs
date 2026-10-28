@@ -148,7 +148,7 @@ for (const definition of identityScopes) {
 const webClient = (await (await admin('GET', '/clients?clientId=bubllio-core-web')).json())[0]
 if (!webClient?.id) throw new Error('Core web client lookup failed')
 const assignedScopes = await (await admin('GET', `/clients/${webClient.id}/default-client-scopes`)).json()
-for (const name of ['profile', 'email', 'organization']) {
+for (const name of ['basic', 'profile', 'email', 'organization']) {
   const scope = availableScopes.find((candidate) => candidate.name === name)
   if (!scope?.id) throw new Error(`Required local identity scope missing: ${name}`)
   if (!assignedScopes.some((assigned) => assigned.id === scope.id)) {

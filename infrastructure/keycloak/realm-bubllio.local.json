@@ -169,7 +169,7 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
-      "defaultClientScopes": ["profile", "email", "organization"],
+      "defaultClientScopes": ["basic", "profile", "email", "organization"],
       "redirectUris": ["http://127.0.0.1:5174/*"],
       "webOrigins": ["http://127.0.0.1:5174"],
       "attributes": {

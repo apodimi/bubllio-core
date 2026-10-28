@@ -65,7 +65,7 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
-      "defaultClientScopes": ["profile", "email", "organization"],
+      "defaultClientScopes": ["basic", "profile", "email", "organization"],
       "redirectUris": ["${CORE_WEB_URL}/*"],
       "webOrigins": ["${CORE_WEB_URL}"],
       "attributes": {

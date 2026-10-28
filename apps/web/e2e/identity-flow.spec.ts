@@ -750,6 +750,44 @@ test("registered administrator returns to login while installation tasks remain"
   await expect(page.locator("#username")).toBeVisible();
 });
 
+test("Core web receives a stable subject and authentication time after login", async ({
+  page,
+}) => {
+  let subject: unknown;
+  let authenticatedAt: unknown;
+  await page.route("**/api/v1/setup/status", (route) =>
+    route.fulfill({
+      json: {
+        setupRequired: true,
+        phase: "new",
+        registrationRequired: false,
+      },
+    }),
+  );
+  await page.route("**/api/v1/setup/current", (route) => {
+    const authorization = route.request().headers().authorization;
+    const token = authorization?.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length)
+      : "";
+    const payload = token
+      ? JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString())
+      : {};
+    subject = payload.sub;
+    authenticatedAt = payload.auth_time;
+    return route.fulfill({ json: { state: "unclaimed" } });
+  });
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/127\.0\.0\.1:8180\/realms\/bubllio/);
+  await switchToEnglish(page);
+  await enterUsername(page);
+  await page.locator("#password").fill(password);
+  await page.locator("button.primary-button").click({ noWaitAfter: true });
+  await expect.poll(() => subject).toEqual(expect.any(String));
+  expect(subject).not.toBe("");
+  expect(authenticatedAt).toEqual(expect.any(Number));
+});
+
 test("password reset keeps its value and switches between English and Greek", async ({
   page,
 }) => {

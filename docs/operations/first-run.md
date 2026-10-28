@@ -173,6 +173,20 @@ restricted rehearsal before upgrading; never edit the setup rows manually.
 | Setup returns `UNAUTHENTICATED` after the first password is set | Sign in again with the same verified account; never create a second owner. If it repeats, match the response time to the Core API log line `Rejected bearer token (...)`. `InvalidClaim:<name>` identifies the rejected claim without logging its value. Check the active identity mapper and promoted image versions; do not weaken issuer or audience validation or share the token. |
 | No applications appear after `READY`                            | Check the deployment application manifest, then enable the app and grant the member access in Core.                                                                                                                                                                      |
 
+If the API logs `InvalidClaim:sub` after a successful Identity login, check the
+`bubllio-core-web` client's default scopes. Keycloak 26.8.1 supplies `sub` and
+`auth_time` through its built-in `basic` scope. A new realm imports this scope
+automatically from the release definition. For an existing realm, the
+`identity-bootstrap` import uses `--override=false` and cannot modify the
+persisted client. An identity administrator must add the existing `basic`
+client scope to `bubllio-core-web` using the narrow Keycloak Admin REST operation
+`PUT /admin/realms/bubllio/clients/{client-id}/default-client-scopes/{scope-id}`,
+then obtain a fresh browser session. Do not delete the Keycloak volume or
+overwrite the realm. If no administrator credential remains, use Keycloak's
+[temporary admin recovery procedure](https://www.keycloak.org/server/bootstrap-admin-recovery)
+with all Keycloak nodes stopped, perform only this assignment, and remove the
+temporary administrator afterward.
+
 To inspect service health, run:
 
 ```bash

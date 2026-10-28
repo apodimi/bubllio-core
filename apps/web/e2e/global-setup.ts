@@ -53,7 +53,7 @@ async function ensureCoreWebClientScopes(
     authorization,
   );
   const assigned = new Set(scopes.map((scope) => scope.name));
-  for (const required of ["profile", "email", "organization"]) {
+  for (const required of ["basic", "profile", "email", "organization"]) {
     if (assigned.has(required)) continue;
 
     const scope = await findOne<KeycloakResource>(
