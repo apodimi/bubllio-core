@@ -2,7 +2,7 @@ name: bubllio-core
 
 services:
   installation-init:
-    image: ghcr.io/apodimi/bubllio-core-installer@sha256:1228231292109e2c46773622b360beaa8224162831904a9e49f77b4be305f51f
+    image: ghcr.io/apodimi/bubllio-core-installer@sha256:c7b09773455171c3f9a351accb55a7842d36f0f58eb41759daf9291cfe27d5bc
     pull_policy: always
     command: ["initialize-managed-compose"]
     environment:
@@ -69,7 +69,7 @@ services:
     restart: unless-stopped
 
   identity-vault-init:
-    image: ghcr.io/apodimi/bubllio-core-keycloak@sha256:b2e98b526cfd1ec8d004f99816e9d5c26487956b19303665027f96860f9d0179
+    image: ghcr.io/apodimi/bubllio-core-keycloak@sha256:2a2b4b8762dad4156f862626832c091691a3b99fc339998788e59878ac613665
     pull_policy: always
     user: "0:0"
     entrypoint: ["/bin/bash", "-ec"]
@@ -93,7 +93,7 @@ services:
     restart: "no"
 
   identity-bootstrap:
-    image: ghcr.io/apodimi/bubllio-core-keycloak@sha256:b2e98b526cfd1ec8d004f99816e9d5c26487956b19303665027f96860f9d0179
+    image: ghcr.io/apodimi/bubllio-core-keycloak@sha256:2a2b4b8762dad4156f862626832c091691a3b99fc339998788e59878ac613665
     pull_policy: always
     command:
       [
@@ -127,7 +127,7 @@ services:
     restart: "no"
 
   keycloak:
-    image: ghcr.io/apodimi/bubllio-core-keycloak@sha256:b2e98b526cfd1ec8d004f99816e9d5c26487956b19303665027f96860f9d0179
+    image: ghcr.io/apodimi/bubllio-core-keycloak@sha256:2a2b4b8762dad4156f862626832c091691a3b99fc339998788e59878ac613665
     pull_policy: always
     command: ["start", "--optimized"]
     environment:
@@ -206,7 +206,7 @@ services:
     restart: unless-stopped
 
   identity-setup-agent:
-    image: ghcr.io/apodimi/bubllio-core-identity-setup-agent@sha256:5622cd54161dd0bb082f9e57322a528d0770af8c519958813640a48bc5601a33
+    image: ghcr.io/apodimi/bubllio-core-identity-setup-agent@sha256:b7962120fd4841608f3c53f0a1317c06960c8aea4bd9bad6677122bbff5d52d4
     pull_policy: always
     environment:
       NODE_ENV: production
@@ -251,7 +251,7 @@ services:
     restart: unless-stopped
 
   core-migrate:
-    image: ghcr.io/apodimi/bubllio-core-migrate@sha256:26e0c00bc52ad6354ab859b080fcc92382119de0495df3974ac7438e87c2c357
+    image: ghcr.io/apodimi/bubllio-core-migrate@sha256:a2e6e5012119ad99dedd820368bf96d577fd90399d2264e2f81c8e879da66f62
     pull_policy: always
     environment:
       CORE_DB_HOST: core-db
@@ -275,7 +275,7 @@ services:
     restart: "no"
 
   core-api:
-    image: ghcr.io/apodimi/bubllio-core-api@sha256:6cc9a2dfcd6d455819fa9c23c4936a0ecc92465ee233969bf57c95dc15103f9e
+    image: ghcr.io/apodimi/bubllio-core-api@sha256:aa29799553e1ff0ed6139c745796d2e12eb1ce543aab122bf73b4be5c53e6699
     pull_policy: always
     environment:
       NODE_ENV: production
@@ -335,7 +335,7 @@ services:
     restart: unless-stopped
 
   core-web:
-    image: ghcr.io/apodimi/bubllio-core-web@sha256:200e940fb5c9571ea0fd5f16227578f402366774fac6f898e91bb810d46d1dd0
+    image: ghcr.io/apodimi/bubllio-core-web@sha256:03f9ca2dcc105ecaf99fce3b851ef8a71c4c2bc8eaccc4e18de2ddda8fc78812
     pull_policy: always
     environment:
       PORT: "8080"
