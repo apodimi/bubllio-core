@@ -43,9 +43,18 @@ export class AuthenticationGuard implements CanActivate {
       return true
     } catch (error: unknown) {
       // Preserve useful security telemetry without logging the token or its claims.
-      const reason = error instanceof Error ? error.name : 'UnknownError'
+      const reason = tokenRejectionReason(error)
       this.logger.warn(`Rejected bearer token (${reason})`)
       throw new UnauthorizedException('Bearer token is invalid')
     }
   }
+}
+
+function tokenRejectionReason(error: unknown): string {
+  if (!(error instanceof Error)) return 'UnknownError'
+  // The claim parsers use fixed messages. Record only the claim name, never a
+  // claim value or a third-party error message that might contain token data.
+  const invalidClaim =
+    /^Token claim '(aud|iss|sub|auth_time|email|email_verified|organization)'/u.exec(error.message)
+  return invalidClaim ? `InvalidClaim:${invalidClaim[1]}` : error.name
 }
