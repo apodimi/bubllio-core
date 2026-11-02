@@ -41,6 +41,7 @@ jobs:
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run format:check
+      - run: npm run test:unit
       - run: npm run build
 
   identity-theme:
@@ -93,6 +94,8 @@ jobs:
       - run: npm ci
         working-directory: apps/web
       - run: npx playwright install --with-deps chrome
+        working-directory: apps/web
+      - run: npm run test:env
         working-directory: apps/web
       - run: docker compose --env-file .env.example up -d --build --wait keycloak core-api
       - run: npm run test:e2e

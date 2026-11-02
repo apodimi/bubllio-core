@@ -388,6 +388,10 @@ Implemented release artifacts:
    `apps/api/Dockerfile.production`.
 2. A non-root static Core web image whose public endpoints are injected through
    `/runtime-config.js` when the container starts.
+   The client ignores build-time `VITE_CORE_API_URL` and `VITE_KEYCLOAK_URL` in
+   production. Missing runtime endpoints fail startup; the same validated
+   origins also define the web server's CSP. `apps/web` verifies this boundary
+   with `npm run test:env`.
 3. A non-root, internal-only identity setup agent image built from the API
    package but started through its own Nest entrypoint.
 4. An optimized Keycloak image pinned by digest, containing the versioned

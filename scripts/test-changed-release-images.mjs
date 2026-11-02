@@ -58,11 +58,11 @@ assert.equal(
   false,
 );
 assert.equal(
-  classifyReleaseImages(["apps/web/e2e/identity-flow.spec.ts"]).releaseNeeded,
+  classifyReleaseImages(["apps/web/e2e/identityFlow.spec.ts"]).releaseNeeded,
   false,
 );
 assert.equal(
-  classifyReleaseImages(["apps/web/e2e/identity-flow.spec.ts"]).verifyNeeded,
+  classifyReleaseImages(["apps/web/e2e/identityFlow.spec.ts"]).verifyNeeded,
   true,
 );
 assert.equal(

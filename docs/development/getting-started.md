@@ -174,11 +174,48 @@ npm run dev
 ```
 
 Use the shared Bubllio Material UI tokens and TanStack Query for Core server
-state. When adding product icons, use Iconify Keyline icons through a small
+state. Keep page UI state local until it needs to be shared. When adding product
+icons, use Iconify Keyline icons through a small
 project-local `AppIcon` wrapper; do not introduce a second component, icon, or
 server-state library without an architectural reason. Tokens must stay in
 memory; never persist access tokens, refresh tokens, setup secrets, or SMTP
 credentials in browser storage.
+
+The client groups domain code in `src/features/auth/`, `src/features/setup/`,
+and `src/features/workspace/`. Each feature owns its API fetchers, hooks,
+components, pages, schemas, local state, and an `index.ts` public API. Code
+outside a feature imports only from that public API. Shared presentation stays
+in `src/components/` and `src/layouts/`; global configuration, HTTP and identity
+clients, providers, route mapping, and the MUI theme live in `src/config/`,
+`src/lib/`, `src/providers/`, `src/routes/`, and `src/theme/`.
+The `@/*` alias maps to `src/`; imports within a feature stay relative, and
+other features use only its root `index.ts`. Vite 8 resolves the alias from
+`tsconfig.json` with its built-in `resolve.tsconfigPaths` option.
+English and Greek text stays in `apps/web/locales/en.json` and
+`apps/web/locales/el.json`. Keep the same keys in both files;
+`apps/web/locales/i18n.ts` initializes bundled translations before React mounts.
+Workspace components read messages with `useTranslation().t`; the setup flow
+derives its existing child-component copy contract from
+`t("setup", { returnObjects: true })`. The i18next language is the single source of truth for
+both screens. Dynamic messages use i18next placeholders such as `{{field}}`.
+
+`src/config/env.ts` validates the browser's public endpoints with Zod. Core
+HTTP calls use `src/lib/axios.ts`, which preserves safe API error codes and
+attaches a refreshed bearer token only to authenticated requests. Setup
+secrets and idempotency keys remain on their exact mutation requests. Each
+feature API fetcher validates inbound responses with its Zod schema and infers
+API model types from that schema. TanStack Query owns server state; page UI
+state and setup navigation stay local to their features.
+UI components use the `useAuth()` API for identity actions; only bootstrap,
+providers, and the HTTP client touch the Keycloak adapter.
+Production reads the public Core API and Keycloak origins only from the
+container-generated `/runtime-config.js`; `VITE_CORE_API_URL` and
+`VITE_KEYCLOAK_URL` are local development overrides. A missing or malformed
+production runtime config stops startup instead of falling back to localhost.
+The entry point remains `src/main.tsx`. Use the MUI `sx` prop for local
+presentation and `src/theme/` for brand and global defaults. The boot status
+in `index.html` needs inline styling before React mounts. Create a `utils/` or
+`helpers/` folder only when a concrete cross-cutting helper needs one.
 
 Before handing off a UI change:
 

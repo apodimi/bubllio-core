@@ -503,6 +503,7 @@ components:
           type: string
           enum: [required, awaiting_confirmation, ready, attention]
         safeErrorCode:
+          description: Present for attention; may also be present while awaiting confirmation after an invalid or expired code
           $ref: "#/components/schemas/EmailDeliveryErrorCode"
         confirmationRetryable:
           type: boolean

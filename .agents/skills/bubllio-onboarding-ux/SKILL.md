@@ -6,7 +6,9 @@ description: Design or revise Bubllio Core welcome, first administrator enrollme
 # Bubllio onboarding UX
 
 Use this for Core first-run interface work. Read `PRODUCT.md`, the current
-`apps/web/src/setup/` implementation, and the workspace's `docs/design-system.md` before
+`apps/web/src/features/setup/pages/SetupPage.tsx`, `apps/web/src/layouts/MainLayout.tsx`,
+`apps/web/src/features/setup/flows/`, and `apps/web/src/features/setup/steps/`
+implementation, and the workspace's `docs/design-system.md` before
 proposing a different journey. Product decisions belong in Core docs; do not
 let UI copy claim unfinished admin or member features are available.
 

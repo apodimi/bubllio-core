@@ -11,7 +11,8 @@ technology choice as production-ready behavior until its deployment gates pass.
 
 For recurring Core work, use the project skills under `.agents/skills/` when
 they match the task: `bubllio-first-run` for setup and identity,
-`bubllio-onboarding-ux` for the first-run interface, and
+`bubllio-onboarding-ux` for the first-run interface,
+`bubllio-core-web` for the React client structure and development setup, and
 `bubllio-release-check` for tracing a change to the live deployment.
 
 Before production implementation:
@@ -76,8 +77,28 @@ Before production implementation:
   guidance and the established community convention. Prefer the vendor's
   recommended path when it fits Bubllio; document the concrete reason for any
   deviation instead of inventing a project-local default.
-- Organize source code by product feature first, then by technical responsibility
-  only when that split makes navigation clearer.
+- Organize frontend source by product feature under `src/features/<feature>/`.
+  Keep each feature's API calls, hooks, components, schemas, and local state
+  together; reserve top-level `components/`, `config/`, `layouts/`, `lib/`,
+  `providers/`, `routes/`, and `theme/` for genuinely application-wide code.
+- Validate untrusted API responses and browser environment values with Zod at
+  their boundaries. Infer API model types from the co-located schemas instead
+  of maintaining parallel interfaces. Keep versioned OpenAPI as the public
+  HTTP contract and preserve compatibility behavior when changing a parser.
+- Expose each frontend feature through its `index.ts` public API. Cross-feature
+  imports must use that barrel; imports inside one feature may address sibling
+  files directly to avoid cycles. Use the configured `@/*` alias for cross-module
+  `src` imports. Add a global utility only for a real shared
+  pure operation, not as a dumping ground.
+- Avoid global domain `api/`, `services/`, `hooks/`, `state/`, and `types/`
+  folders, duplicate interfaces for Zod API models, and unvalidated response
+  casts. Keep API URLs, auth handling, query keys, and cache policy out of UI
+  components; keep server state in TanStack Query rather than a client store.
+- Keep raw Keycloak instances out of UI components; expose session and login
+  actions through the auth feature. Refresh and attach bearer tokens only for
+  authenticated Axios requests, and stop the request if refresh fails.
+- In `apps/web`, keep translations in `apps/web/locales/` and follow the
+  `bubllio-core-web` skill for the actual feature map and setup boundaries.
 - Prefer small, cohesive files with names that reveal their single responsibility.
   Treat growth beyond roughly 150 lines as a review signal, not an automatic split.
 - Avoid generic `utils`, `helpers`, `common`, and `shared` dumping grounds. Keep a

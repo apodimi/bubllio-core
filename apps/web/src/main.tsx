@@ -1,20 +1,26 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { CssBaseline, ThemeProvider } from "@mui/material";
-import { QueryClientProvider } from "@tanstack/react-query";
 
-import { App } from "./app";
-import { SetupApp } from "./setup-app";
-import { SetupTasksPage } from "./setup/SetupTasksPage";
-import { initializeAuth } from "./auth";
-import { queryClient } from "./query-client";
-import { setupStatus } from "./setup-api";
-import { theme } from "./styles/theme";
-import "./styles/fonts";
-import "./styles.css";
+import "@/theme/fonts";
 
 async function bootstrap(): Promise<void> {
-  const status = await setupStatus();
+  // Validate public configuration inside the bootstrap error boundary.
+  await import("@/config/env");
+  const [
+    { initializeI18n },
+    { initializeAuth },
+    { getSetupStatus },
+    { AppProvider },
+    { AppRoutes, paths },
+  ] = await Promise.all([
+    import("../locales"),
+    import("@/features/auth"),
+    import("@/features/setup"),
+    import("@/providers"),
+    import("@/routes"),
+  ]);
+  await initializeI18n();
+  const status = await getSetupStatus();
   const keycloak = await initializeAuth({
     allowAnonymous: status.registrationRequired,
   });
@@ -22,14 +28,15 @@ async function bootstrap(): Promise<void> {
   if (
     status.registrationRequired &&
     !keycloak.authenticated &&
-    window.location.pathname !== "/setup"
+    window.location.pathname !== paths.setup
   ) {
-    window.location.replace("/setup");
+    window.location.replace(paths.setup);
+
     return;
   }
 
-  if (keycloak.authenticated && window.location.pathname === "/setup") {
-    window.history.replaceState(null, "", "/");
+  if (keycloak.authenticated && window.location.pathname === paths.setup) {
+    window.history.replaceState(null, "", paths.home);
   }
   const root = document.getElementById("root");
 
@@ -39,18 +46,9 @@ async function bootstrap(): Promise<void> {
 
   createRoot(root).render(
     <StrictMode>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <QueryClientProvider client={queryClient}>
-          {status.setupRequired && keycloak.authenticated ? (
-            <SetupTasksPage keycloak={keycloak} />
-          ) : status.setupRequired ? (
-            <SetupApp keycloak={keycloak} />
-          ) : (
-            <App keycloak={keycloak} />
-          )}
-        </QueryClientProvider>
-      </ThemeProvider>
+      <AppProvider keycloak={keycloak}>
+        <AppRoutes status={status} />
+      </AppProvider>
     </StrictMode>,
   );
 }

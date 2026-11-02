@@ -13,18 +13,27 @@
     "dev": "vite --host 127.0.0.1",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:e2e": "playwright test"
+    "test:unit": "node --test tests/resolveSetupStep.test.mjs tests/buildApplicationLaunchUrl.test.mjs",
+    "test:e2e": "playwright test",
+    "test:env": "VITE_CORE_API_URL=https://build-only.example.test VITE_KEYCLOAK_URL=https://build-auth.example.test npm run build && playwright test --config playwright.productionEnv.config.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/manrope": "^5.3.0",
+    "@hookform/resolvers": "^6.0.2",
     "@mui/material": "^9.4.0",
     "@tanstack/react-query": "^5.103.1",
+    "axios": "^1.21.0",
+    "i18next": "^26.5.11",
     "keycloak-js": "26.2.4",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "react-hook-form": "^7.91.0",
+    "react-i18next": "^17.1.9",
+    "react-router": "^8.5.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "1.58.0",

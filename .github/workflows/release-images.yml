@@ -116,6 +116,7 @@ jobs:
           npm ci
           npm audit --omit=dev --audit-level=high
           npm run format:check
+          npm run test:unit
           npm run build
       - name: Verify identity theme
         working-directory: apps/keycloak-theme
@@ -137,6 +138,9 @@ jobs:
       - name: Install browser test runtime
         working-directory: apps/web
         run: npx playwright install --with-deps chrome
+      - name: Verify production web configuration boundary
+        working-directory: apps/web
+        run: npm run test:env
       - name: Start local identity and API fixture
         run: docker compose --env-file .env.example up -d --build --wait keycloak core-api
       - name: Verify browser identity and setup journeys
