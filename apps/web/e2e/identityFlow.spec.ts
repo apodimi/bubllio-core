@@ -819,7 +819,7 @@ test("registered administrator returns to login while installation tasks remain"
     route.fulfill({
       json: {
         setupRequired: true,
-        phase: "new",
+        phase: "in_progress",
         registrationRequired: false,
       },
     }),
@@ -843,7 +843,7 @@ test("Core web receives a stable subject and authentication time after login", a
     route.fulfill({
       json: {
         setupRequired: true,
-        phase: "new",
+        phase: "in_progress",
         registrationRequired: false,
       },
     }),
