@@ -45,7 +45,13 @@ test("shows progress while the first auth check is waiting", async ({
   });
   await page.route("**/api/v1/setup/status", async (route) => {
     await waitForRelease;
-    await route.fulfill({ json: { setupRequired: true, phase: "new" } });
+    await route.fulfill({
+      json: {
+        setupRequired: true,
+        phase: "new",
+        registrationRequired: false,
+      },
+    });
   });
 
   await page.goto("/", { waitUntil: "domcontentloaded" });

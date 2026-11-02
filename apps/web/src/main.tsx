@@ -22,11 +22,11 @@ async function bootstrap(): Promise<void> {
   await initializeI18n();
   const status = await getSetupStatus();
   const keycloak = await initializeAuth({
-    allowAnonymous: status.registrationRequired,
+    allowAnonymous: status.phase === "new",
   });
 
   if (
-    status.registrationRequired &&
+    status.phase === "new" &&
     !keycloak.authenticated &&
     window.location.pathname !== paths.setup
   ) {
