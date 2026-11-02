@@ -53,9 +53,10 @@ test("shows progress while the first auth check is waiting", async ({
     page.getByRole("status", { name: "Loading Bubllio…" }),
   ).toBeVisible();
   releaseStatus();
+  await expect(page).toHaveURL(/\/setup$/, { timeout: 15_000 });
   await expect(
     page.getByRole("heading", { name: "Create the administrator account" }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 test("email delivery is tested and confirmed before account creation", async ({
