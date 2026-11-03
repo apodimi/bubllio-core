@@ -102,7 +102,13 @@ export class SetupProvisioningService {
         })
         if (changed.count !== 1) throw new ConflictException('Setup already started')
         await transaction.organizationRoleAssignment.create({
-          data: { organizationId, subject: identity.subject, role: 'OWNER' },
+          data: {
+            organizationId,
+            subject: identity.subject,
+            role: 'OWNER',
+            email:
+              identity.emailVerified && identity.email ? identity.email.trim().toLowerCase() : null,
+          },
         })
         await transaction.provisioningOperation.create({
           data: {

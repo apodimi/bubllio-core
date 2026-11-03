@@ -1,6 +1,6 @@
 # Next session
 
-Last updated: 2026-10-29. This is a short handoff, not a release approval.
+Last updated: 2026-11-04. This is a short handoff, not a release approval.
 
 ## Start here
 
@@ -22,9 +22,11 @@ Last updated: 2026-10-29. This is a short handoff, not a release approval.
 
 - Core has a Keycloak-backed first-run flow, durable first-organization
   operation, workspace app catalog, explicit member grants, and a versioned
-  access-decision API. Its current UI does not yet administer member
-  invitations or grants. CRM still uses its own Django identity, membership,
-  invitations, and SimpleJWT.
+  access-decision API. The owner/admin UI now manages member invitations and
+  app grants; Keycloak sends the invitation email. The native invitation-link
+  choice remains [proposed](decisions/0014-keycloak-organization-invitation-links.md)
+  and is for technical-alpha testing only. CRM still uses its own Django
+  identity, membership, invitations, and SimpleJWT.
 - The first-run email test sends a bilingual HTML and plain-text code message.
   The isolated identity setup agent holds temporary realm authority; the Core
   runtime does not gain `manage-realm`.
@@ -39,8 +41,9 @@ Last updated: 2026-10-29. This is a short handoff, not a release approval.
 
 - Reconcile the dev host's Core/Keycloak durable state and verify the live
   registration setting without resetting data.
-- Build owner/admin member invitation and grant-management UI, with tests for
-  denied direct API access and the Keycloak invitation journey.
+- Complete provider-backed invitation, wrong-session, concurrency, and
+  least-privilege runtime-client tests. Approve invitation data retention and
+  email abuse controls before use with real people.
 - Add a standard backend access adapter and migrate CRM additively, preserving
   the shipped Django auth path until its compatibility and rollback gates pass.
 - Complete external release requirements: SMTP provider and deliverability,

@@ -20,6 +20,15 @@ enum OrganizationRole {
   MEMBER
 }
 
+enum MemberInvitationStatus {
+  PENDING
+  ACCEPTED
+  DELIVERY_FAILED
+  RESENDING
+  REVOCATION_PENDING
+  REVOKED
+}
+
 enum InstallationSetupStatus {
   NOT_STARTED
   CLAIMED
@@ -64,6 +73,7 @@ model Organization {
   provisioningOperations ProvisioningOperation[]
   roleAssignments        OrganizationRoleAssignment[]
   applications           OrganizationApplication[]
+  invitations            MemberInvitation[]
 
   @@map("organizations")
 }
@@ -110,6 +120,7 @@ model OrganizationRoleAssignment {
   organizationId    String                   @map("organization_id") @db.Uuid
   subject           String                   @db.VarChar(255)
   role              OrganizationRole
+  email             String?                  @db.VarChar(320)
   createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
   organization      Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -118,6 +129,27 @@ model OrganizationRoleAssignment {
   @@unique([organizationId, subject])
   @@index([subject])
   @@map("organization_role_assignments")
+}
+
+model MemberInvitation {
+  id              String                 @id @default(uuid()) @db.Uuid
+  organizationId  String                 @map("organization_id") @db.Uuid
+  email           String                 @db.VarChar(320)
+  role            OrganizationRole
+  applicationKeys String[]               @map("application_keys")
+  status          MemberInvitationStatus @default(PENDING)
+  invitedBy       String                 @map("invited_by") @db.VarChar(255)
+  acceptedSubject String?                @map("accepted_subject") @db.VarChar(255)
+  keycloakInvitationId String?           @map("keycloak_invitation_id") @db.Uuid
+  expiresAt       DateTime               @map("expires_at") @db.Timestamptz(3)
+  acceptedAt      DateTime?              @map("accepted_at") @db.Timestamptz(3)
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, email])
+  @@index([email, status])
+  @@map("member_invitations")
 }
 
 model Application {

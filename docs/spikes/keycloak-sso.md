@@ -110,6 +110,38 @@ Evidence path:
 Decision impact:
 ```
 
+### 2026-11-04 — isolated organization invitation contract
+
+- **Keycloak image:** pinned 26.8.1 image below, rebuilt with the local Bubllio
+  email theme. The `bubllio-core-invite-spike` Compose project used separate
+  PostgreSQL, Keycloak, and Mailpit volumes and ports `8380`/`8225`.
+- **Scenario:** Disable public registration, create a disposable organization,
+  invite a new email through `members/invite-user`, inspect invitation status,
+  resend, revoke, and inspect the captured email without recording its link.
+- **Observed:** Invitation returned 204 with registration disabled. The provider
+  listed one `PENDING` invitation with a 12-hour expiry and no `inviteLink` in
+  its API representation. A duplicate invite returned 409. Resend returned 204,
+  replaced the invitation ID, and made the prior link return 400. Deleting the
+  new invitation returned 204; subsequent lookup returned 404. Both HTML and
+  plain-text messages rendered the new Bubllio `org-invite` template. For a new
+  email, the browser displayed registration despite public registration being
+  off, sent verification email, required a password, and finished with a
+  verified identity in the invited organization. For an existing verified
+  account, the link reached the required account-information step and then
+  created membership for the invited subject; another subject remained outside
+  the organization. A consumed link returned 400 on replay.
+- **Client behavior:** Passing `client_id=bubllio-core-web` to the provider
+  invitation endpoint produced `invalid_request` because the browser client
+  requires PKCE and the provider action link supplied no code challenge. The
+  working native path omits `client_id`; Core must retain PKCE for ordinary
+  browser sign-in.
+- **Decision impact:** Keycloak can own the emailed link while Core retains a
+  separate invitation intent and activates role/grants only after verified
+  acceptance. The spike does **not** yet prove behavior when a different
+  account is already signed in, concurrent single use, or least-privilege
+  service permission. [ADR 0014](../decisions/0014-keycloak-organization-invitation-links.md)
+  records the proposed replacement for the Core-owned-secret invariant.
+
 ### 2026-10-21 — reproducible baseline
 
 - **Keycloak image:** `quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244`

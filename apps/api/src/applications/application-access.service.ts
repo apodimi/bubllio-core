@@ -10,12 +10,14 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export interface WorkspaceOrganization {
   id: string
   displayName: string
+  role: 'OWNER' | 'ADMIN' | 'MEMBER'
 }
 
 export interface WorkspaceApplication {
   key: string
   displayName: string
   launchUrl: string
+  selectable?: boolean
 }
 
 /** Resolves Core organizations before evaluating app grants; route IDs alone prove nothing. */
@@ -29,15 +31,26 @@ export class ApplicationAccessService {
       return []
     }
 
-    return this.prisma.organization.findMany({
-      orderBy: { displayName: 'asc' },
-      select: { id: true, displayName: true },
-      where: {
-        keycloakOrganizationId: { in: identityOrganizationIds },
-        roleAssignments: { some: { subject: identity.subject } },
-        status: OrganizationStatus.ACTIVE,
-      },
-    })
+    return this.prisma.organization
+      .findMany({
+        orderBy: { displayName: 'asc' },
+        select: {
+          id: true,
+          displayName: true,
+          roleAssignments: { select: { role: true }, where: { subject: identity.subject } },
+        },
+        where: {
+          keycloakOrganizationId: { in: identityOrganizationIds },
+          roleAssignments: { some: { subject: identity.subject } },
+          status: OrganizationStatus.ACTIVE,
+        },
+      })
+      .then((organizations) =>
+        organizations.map(({ roleAssignments, ...organization }) => ({
+          ...organization,
+          role: roleAssignments[0]!.role,
+        })),
+      )
   }
 
   async requireMember(
@@ -87,11 +100,23 @@ export class ApplicationAccessService {
     organizationId: string,
   ): Promise<WorkspaceApplication[]> {
     await this.requireAdministrator(identity, organizationId)
-    return this.prisma.application.findMany({
+    const applications = await this.prisma.application.findMany({
       orderBy: { displayName: 'asc' },
-      select: { key: true, displayName: true, launchUrl: true },
+      select: {
+        key: true,
+        displayName: true,
+        launchUrl: true,
+        organizationApplications: {
+          select: { enabled: true, entitled: true },
+          where: { organizationId },
+        },
+      },
       where: { available: true },
     })
+    return applications.map(({ organizationApplications, ...application }) => ({
+      ...application,
+      selectable: organizationApplications.some(({ enabled, entitled }) => enabled && entitled),
+    }))
   }
 
   async listApplications(

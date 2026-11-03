@@ -8,6 +8,7 @@ import { ApplicationManagementService } from './application-management.service.j
 
 @Module({
   controllers: [ApplicationAccessController, ApplicationManagementController],
+  exports: [ApplicationAccessService],
   imports: [PrismaModule],
   providers: [ApplicationAccessService, ApplicationManagementService],
 })

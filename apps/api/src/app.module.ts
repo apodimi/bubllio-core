@@ -6,6 +6,7 @@ import { RuntimeConfigModule } from './config/runtime-config.module.js'
 import { EmailDeliveryModule } from './email-delivery/email-delivery.module.js'
 import { HealthModule } from './health/health.module.js'
 import { InstallationManifestModule } from './installation-manifest/installation-manifest.module.js'
+import { MembersModule } from './members/members.module.js'
 import { SetupModule } from './setup/setup.module.js'
 
 @Module({
@@ -16,6 +17,7 @@ import { SetupModule } from './setup/setup.module.js'
     SetupModule,
     InstallationManifestModule,
     ApplicationsModule,
+    MembersModule,
     HealthModule,
   ],
 })

@@ -1,8 +1,9 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useSearchParams } from "react-router";
 import {
   Alert,
   Box,
+  Button,
   FormControl,
   InputLabel,
   NativeSelect,
@@ -13,13 +14,16 @@ import { LoadingStatus, RetryAlert } from "@/components";
 import { DashboardLayout } from "@/layouts";
 import { useAuth } from "@/features/auth";
 import { CoreHttpError } from "@/lib";
+import { paths } from "@/routes";
+import { PendingInvitations } from "@/features/people";
 import { WorkspaceApplicationCard } from "../components/WorkspaceApplicationCard";
 import { useWorkspaceApplications, useWorkspaceOrganizations } from "../hooks";
 
 export function WorkspacePage() {
   const auth = useAuth();
   const { t } = useTranslation("translation", { keyPrefix: "workspace" });
-  const [selectedOrganizationId, setOrganizationId] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedOrganizationId = searchParams.get("organization") ?? "";
   const {
     data: organizations,
     error: organizationsError,
@@ -32,6 +36,9 @@ export function WorkspacePage() {
     organizations?.find(({ id }) => id === selectedOrganizationId)?.id ??
     organizations?.[0]?.id ??
     "";
+  const selectedOrganization = organizations?.find(
+    (organization) => organization.id === organizationId,
+  );
   const {
     data: applications,
     error: applicationsError,
@@ -54,6 +61,17 @@ export function WorkspacePage() {
       <Typography color="text.secondary" sx={{ mt: 1 }}>
         {t("subtitle")}
       </Typography>
+      {(selectedOrganization?.role === "OWNER" ||
+        selectedOrganization?.role === "ADMIN") && (
+        <Button
+          component={Link}
+          to={paths.people.replace(":organizationId", organizationId)}
+          variant="outlined"
+          sx={{ mt: 3 }}
+        >
+          {t("peopleAccess")}
+        </Button>
+      )}
       {organizations && organizations.length > 0 && (
         <FormControl
           size="small"
@@ -66,7 +84,9 @@ export function WorkspacePage() {
             id="organization-select"
             value={organizationId}
             inputProps={{ "aria-labelledby": "organization-label" }}
-            onChange={(event) => setOrganizationId(event.target.value)}
+            onChange={(event) =>
+              setSearchParams({ organization: event.target.value })
+            }
           >
             {organizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
@@ -123,6 +143,7 @@ export function WorkspacePage() {
           </Box>
         )}
       </Box>
+      <PendingInvitations />
     </DashboardLayout>
   );
 }

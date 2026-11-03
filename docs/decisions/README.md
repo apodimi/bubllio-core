@@ -22,3 +22,4 @@ Decision status meanings:
 | [0011](0011-portable-delivery-and-ui-first-setup.md)   | Accepted | Keep delivery portable and setup UI-first         |
 | [0012](0012-isolate-email-bootstrap-authority.md)      | Accepted | Isolate temporary email bootstrap authority       |
 | [0013](0013-managed-deployment-bootstrap.md)           | Accepted | Bootstrap managed platforms from two inputs       |
+| [0014](0014-keycloak-organization-invitation-links.md) | Proposed | Let Keycloak deliver organization invitation links |

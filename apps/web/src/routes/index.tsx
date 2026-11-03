@@ -3,16 +3,17 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import { useAuth } from "@/features/auth";
 import { SetupPage, SetupTasksPage, type SetupStatus } from "@/features/setup";
 import { WorkspacePage } from "@/features/workspace";
+import { PeoplePage } from "@/features/people";
 import { paths } from "./paths";
 
 export { paths } from "./paths";
 
-function ActivePage(props: { status: SetupStatus }) {
-  const { status } = props;
+function ActivePage(props: { status: SetupStatus; people?: boolean }) {
+  const { status, people = false } = props;
   const { authenticated } = useAuth();
 
   if (!status.setupRequired) {
-    return <WorkspacePage />;
+    return people ? <PeoplePage /> : <WorkspacePage />;
   }
 
   if (authenticated) {
@@ -31,6 +32,10 @@ export function AppRoutes(props: { status: SetupStatus }) {
       <Routes>
         <Route path={paths.home} element={page} />
         <Route path={paths.setup} element={page} />
+        <Route
+          path={paths.people}
+          element={<ActivePage status={status} people />}
+        />
         <Route path="*" element={page} />
       </Routes>
     </BrowserRouter>

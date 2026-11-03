@@ -3,6 +3,7 @@ import { z } from "zod";
 export const WorkspaceOrganizationSchema = z.object({
   id: z.string().min(1),
   displayName: z.string(),
+  role: z.enum(["OWNER", "ADMIN", "MEMBER"]).optional(),
 });
 export const WorkspaceOrganizationsSchema = z.array(
   WorkspaceOrganizationSchema,

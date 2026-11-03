@@ -1,11 +1,14 @@
 openapi: 3.1.0
 info:
-  title: Bubllio Core application access
+  title: Bubllio Core organization members and application access
   version: 1.0.0-draft
   description: >-
-    Core workspace and application entry-grant contract. The app backend calls
-    the access endpoint with the user's bearer token before serving tenant data.
-    Core validates the token and derives its subject; callers cannot supply one.
+    Core workspace, member invitation, and application entry-grant contract.
+    The app backend calls the access endpoint with the user's bearer token before
+    serving tenant data. Core validates the token and derives its subject;
+    callers cannot supply one. Invitation links are owned by Keycloak and are
+    never returned by this API. This member-management slice is technical alpha;
+    invitation retention and provider permission gates remain open.
 servers:
   - url: http://127.0.0.1:3100
     description: Local development
@@ -79,7 +82,7 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/Application" }
+                items: { $ref: "#/components/schemas/CatalogApplication" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/OrganizationHidden" }
@@ -140,6 +143,155 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/OrganizationHidden" }
+  /api/v1/organizations/{organizationId}/invitations:
+    parameters:
+      - { $ref: "#/components/parameters/OrganizationId" }
+    get:
+      operationId: listMemberInvitations
+      summary: List pending, expired, and delivery-failed invitations for an admin
+      responses:
+        "200":
+          description: Organization invitations without links or tokens
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MemberInvitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+    post:
+      operationId: inviteOrganizationMember
+      summary: Send an identity invitation with selected Core role and application access
+      description: Pending selections confer no access until verified acceptance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitationRequest" }
+      responses:
+        "201":
+          description: Invitation intent persisted and Keycloak email requested
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberInvitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+        "409": { description: Invitation already pending or accepted }
+        "503": { description: Invitation delivery could not be confirmed }
+  /api/v1/invitations/mine:
+    get:
+      operationId: listMyPendingInvitations
+      summary: List unexpired invitations for the caller's verified email
+      responses:
+        "200":
+          description: Pending invitations for the authenticated identity only
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MyInvitation" }
+  /api/v1/invitations/{invitationId}/accept:
+    post:
+      operationId: acceptMemberInvitation
+      summary: Activate membership role and selected grants after Keycloak membership
+      description: Requires a verified exact-email match and a fresh token with the exact organization claim.
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Core access activated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [organizationId, status]
+                properties:
+                  organizationId: { type: string, format: uuid }
+                  status: { type: string, const: ACCEPTED }
+        "404": { description: No matching usable invitation }
+        "409":
+          { description: Refresh identity session or invitation already used }
+  /api/v1/organizations/{organizationId}/invitations/{invitationId}/resend:
+    post:
+      operationId: resendMemberInvitation
+      summary: Rotate and resend a pending or expired invitation
+      parameters:
+        - { $ref: "#/components/parameters/OrganizationId" }
+        - { $ref: "#/components/parameters/InvitationId" }
+      responses:
+        "201":
+          description: New provider invitation email requested
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberInvitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+  /api/v1/organizations/{organizationId}/invitations/{invitationId}:
+    delete:
+      operationId: revokeMemberInvitation
+      summary: Block Core acceptance and revoke the provider invitation
+      parameters:
+        - { $ref: "#/components/parameters/OrganizationId" }
+        - { $ref: "#/components/parameters/InvitationId" }
+      responses:
+        "200":
+          description: Invitation revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, const: REVOKED }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+        "503":
+          {
+            description: Core acceptance blocked; provider revocation needs retry,
+          }
+  /api/v1/organizations/{organizationId}/members:
+    get:
+      operationId: listOrganizationMembers
+      summary: List Core members and their active app grants for an admin
+      parameters:
+        - { $ref: "#/components/parameters/OrganizationId" }
+      responses:
+        "200":
+          description: Member directory
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Member" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
+  /api/v1/organizations/{organizationId}/members/{subject}/access:
+    put:
+      operationId: replaceMemberAccess
+      summary: Atomically replace a member's Core role and active app grants
+      description: >-
+        Owner grants may be edited only by an owner while preserving OWNER.
+        This endpoint never promotes or demotes an owner.
+      parameters:
+        - { $ref: "#/components/parameters/OrganizationId" }
+        - { $ref: "#/components/parameters/Subject" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccessSelection" }
+      responses:
+        "200":
+          description: Updated role and app grants
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberAccess" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/OrganizationHidden" }
 components:
   securitySchemes:
     oidcBearer:
@@ -165,6 +317,11 @@ components:
       required: true
       schema: { type: string, maxLength: 255 }
       description: Immutable Keycloak subject of an existing Core organization member
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
   headers:
     NoStore:
       schema: { type: string, const: no-store }
@@ -172,10 +329,11 @@ components:
     Organization:
       type: object
       additionalProperties: false
-      required: [id, displayName]
+      required: [id, displayName, role]
       properties:
         id: { type: string, format: uuid }
         displayName: { type: string }
+        role: { $ref: "#/components/schemas/OrganizationRole" }
     Application:
       type: object
       additionalProperties: false
@@ -184,6 +342,96 @@ components:
         key: { type: string }
         displayName: { type: string }
         launchUrl: { type: string, format: uri }
+    CatalogApplication:
+      type: object
+      additionalProperties: false
+      required: [key, displayName, launchUrl, selectable]
+      properties:
+        key: { type: string }
+        displayName: { type: string }
+        launchUrl: { type: string, format: uri }
+        selectable: { type: boolean }
+    OrganizationRole:
+      type: string
+      enum: [OWNER, ADMIN, MEMBER]
+    AccessSelection:
+      type: object
+      additionalProperties: false
+      required: [role, applicationKeys]
+      properties:
+        role: { $ref: "#/components/schemas/OrganizationRole" }
+        applicationKeys:
+          type: array
+          uniqueItems: true
+          maxItems: 50
+          items: { type: string, pattern: "^[a-z][a-z0-9-]{1,62}$" }
+    InvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [email, role, applicationKeys]
+      properties:
+        email: { type: string, format: email, maxLength: 320 }
+        role: { type: string, enum: [ADMIN, MEMBER] }
+        applicationKeys:
+          type: array
+          uniqueItems: true
+          maxItems: 50
+          items: { type: string, pattern: "^[a-z][a-z0-9-]{1,62}$" }
+    MemberInvitation:
+      type: object
+      required: [id, email, role, applicationKeys, status, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { type: string, enum: [ADMIN, MEMBER] }
+        applicationKeys:
+          type: array
+          items: { type: string }
+        status:
+          {
+            type: string,
+            enum:
+              [
+                PENDING,
+                EXPIRED,
+                DELIVERY_FAILED,
+                RESENDING,
+                REVOCATION_PENDING,
+              ],
+          }
+        expiresAt: { type: string, format: date-time }
+    MyInvitation:
+      type: object
+      required:
+        [id, organizationId, organizationName, role, applicationKeys, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        organizationName: { type: string }
+        role: { type: string, enum: [ADMIN, MEMBER] }
+        applicationKeys:
+          type: array
+          items: { type: string }
+        expiresAt: { type: string, format: date-time }
+    Member:
+      type: object
+      required: [subject, email, role, applicationKeys]
+      properties:
+        subject: { type: string }
+        email: { type: [string, "null"], format: email }
+        role: { $ref: "#/components/schemas/OrganizationRole" }
+        applicationKeys:
+          type: array
+          items: { type: string }
+    MemberAccess:
+      type: object
+      required: [subject, role, applicationKeys]
+      properties:
+        subject: { type: string }
+        role: { $ref: "#/components/schemas/OrganizationRole" }
+        applicationKeys:
+          type: array
+          items: { type: string }
     AccessDecision:
       type: object
       additionalProperties: false

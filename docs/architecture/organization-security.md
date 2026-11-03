@@ -168,6 +168,13 @@ it is not a grantable app, so the first owner can manage grants after setup.
 
 ## Invitation invariants
 
+The native Keycloak invitation implementation is being evaluated under
+[ADR 0014](../decisions/0014-keycloak-organization-invitation-links.md).
+That proposal changes which system owns the emailed one-use link; the
+following Core-owned-secret design remains the accepted target until the
+decision is approved. An implementation of the proposal is experimental and
+must not be described as a released security guarantee.
+
 - Core owns invitation intent, requested role, state, idempotency, and audit.
 - Invitation secrets contain at least 256 random bits, expire after 24 hours,
   are one-use, and are stored only as a digest with a safe lookup prefix.
