@@ -1,4 +1,13 @@
 {
+  "navigation": {
+    "primary": "Main navigation",
+    "workspace": "Workspace",
+    "organization": "Organization",
+    "applications": "Applications",
+    "menu": "Menu",
+    "open": "Open navigation menu",
+    "close": "Close menu"
+  },
   "setup": {
     "welcomeTitle": "Welcome to Bubllio",
     "welcomeBody": "Create your administrator account to get started. If email delivery is not ready, configure it here first so we can verify your address.",

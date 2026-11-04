@@ -1,12 +1,14 @@
-import { Alert, Button, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Paper, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { LoadingStatus, RetryAlert } from "@/components";
 import { useAuth } from "@/features/auth";
-import { useWorkspaceOrganizations } from "@/features/workspace";
+import {
+  useWorkspaceNavigation,
+  useWorkspaceOrganizations,
+} from "@/features/workspace";
 import { DashboardLayout } from "@/layouts";
-import { paths } from "@/routes";
 import { InviteMemberForm } from "../components/InviteMemberForm";
 import { MembersList } from "../components/MembersList";
 import { OrganizationInvitations } from "../components/OrganizationInvitations";
@@ -23,6 +25,7 @@ export function PeoplePage() {
     refetch: refetchOrganizations,
   } = useWorkspaceOrganizations(subject);
   const organization = organizations?.find(({ id }) => id === organizationId);
+  const navigation = useWorkspaceNavigation(organization);
   const allowed =
     organization?.role === "OWNER" || organization?.role === "ADMIN";
   const { members, invitations, catalog } = usePeople(
@@ -52,15 +55,11 @@ export function PeoplePage() {
   }
 
   return (
-    <DashboardLayout sectionLabel={t("title")} signOutLabel={t("signOut")}>
-      <Button
-        component={Link}
-        to={`${paths.home}?organization=${encodeURIComponent(organizationId)}`}
-        color="inherit"
-        sx={{ mb: 2 }}
-      >
-        {t("back")}
-      </Button>
+    <DashboardLayout
+      navigation={navigation}
+      sectionLabel={t("title")}
+      signOutLabel={t("signOut")}
+    >
       <Typography variant="h1" component="h1">
         {t("title")}
       </Typography>

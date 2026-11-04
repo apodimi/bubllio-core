@@ -1,17 +1,27 @@
-import { Box, Button, Divider, Stack, Typography } from "@mui/material";
+import { useState } from "react";
+import { Box, Button, Drawer, Stack, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import { BrandLogo, LanguageSwitcher } from "@/components";
 import { useAuth } from "@/features/auth";
+import {
+  DashboardNavigation,
+  type DashboardNavigationGroup,
+} from "./DashboardNavigation";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
+  navigation?: { contextName?: string; groups: DashboardNavigationGroup[] };
   sectionLabel: string;
   signOutLabel: string;
 }
 
 export function DashboardLayout(props: DashboardLayoutProps) {
-  const { children, sectionLabel, signOutLabel } = props;
+  const { children, navigation, sectionLabel, signOutLabel } = props;
   const { signOut } = useAuth();
+  const { t } = useTranslation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const hasNavigation = Boolean(navigation?.groups.length);
 
   return (
     <Box
@@ -33,24 +43,46 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           borderColor: "divider",
           px: 2,
           py: 3,
+          position: "sticky",
+          top: 0,
+          height: "100dvh",
+          overflowY: "auto",
         }}
       >
-        <BrandLogo />
-        <Divider sx={{ my: 3 }} />
-        <Box
-          sx={{
-            py: 1.5,
-            px: 2,
-            bgcolor: "action.selected",
-            color: "primary.main",
-            borderRadius: 1,
+        {navigation && hasNavigation ? (
+          <DashboardNavigation
+            contextName={navigation.contextName}
+            groups={navigation.groups}
+            navigationLabel={t("navigation.primary")}
+          />
+        ) : (
+          <>
+            <BrandLogo />
+            <Typography sx={{ mt: 5, px: 1.5, fontWeight: 700 }}>
+              {sectionLabel}
+            </Typography>
+          </>
+        )}
+      </Box>
+      {navigation && hasNavigation && (
+        <Drawer
+          variant="temporary"
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          sx={{ display: { xs: "block", md: "none" } }}
+          slotProps={{
+            paper: { sx: { width: 288, maxWidth: "85vw", p: 2.5 } },
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 700 }}>
-            {sectionLabel}
-          </Typography>
-        </Box>
-      </Box>
+          <DashboardNavigation
+            contextName={navigation.contextName}
+            groups={navigation.groups}
+            navigationLabel={t("navigation.primary")}
+            closeLabel={t("navigation.close")}
+            onNavigate={() => setMenuOpen(false)}
+          />
+        </Drawer>
+      )}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box
           component="header"
@@ -66,15 +98,33 @@ export function DashboardLayout(props: DashboardLayoutProps) {
             bgcolor: "background.paper",
           }}
         >
-          <Box
-            sx={{
-              display: { xs: "block", md: "none" },
-              flexShrink: 0,
-              "& .MuiTypography-root": { display: { xs: "none", sm: "block" } },
-            }}
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ display: { xs: "flex", md: "none" }, alignItems: "center" }}
           >
-            <BrandLogo />
-          </Box>
+            {hasNavigation && (
+              <Button
+                color="inherit"
+                size="small"
+                aria-label={t("navigation.open")}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(true)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                {t("navigation.menu")}
+              </Button>
+            )}
+            <Box
+              sx={{
+                "& .MuiTypography-root": {
+                  display: { xs: "none", sm: "block" },
+                },
+              }}
+            >
+              <BrandLogo />
+            </Box>
+          </Stack>
           <Typography
             sx={{
               display: { xs: "none", md: "block" },

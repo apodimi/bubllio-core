@@ -1,9 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import {
   Alert,
   Box,
-  Button,
   FormControl,
   InputLabel,
   NativeSelect,
@@ -14,10 +13,10 @@ import { LoadingStatus, RetryAlert } from "@/components";
 import { DashboardLayout } from "@/layouts";
 import { useAuth } from "@/features/auth";
 import { CoreHttpError } from "@/lib";
-import { paths } from "@/routes";
 import { PendingInvitations } from "@/features/people";
 import { WorkspaceApplicationCard } from "../components/WorkspaceApplicationCard";
 import { useWorkspaceApplications, useWorkspaceOrganizations } from "../hooks";
+import { useWorkspaceNavigation } from "../hooks/useWorkspaceNavigation";
 
 export function WorkspacePage() {
   const auth = useAuth();
@@ -39,6 +38,7 @@ export function WorkspacePage() {
   const selectedOrganization = organizations?.find(
     (organization) => organization.id === organizationId,
   );
+  const navigation = useWorkspaceNavigation(selectedOrganization);
   const {
     data: applications,
     error: applicationsError,
@@ -54,24 +54,17 @@ export function WorkspacePage() {
     (error instanceof Error && error.message === "SESSION_EXPIRED");
 
   return (
-    <DashboardLayout sectionLabel={t("workspace")} signOutLabel={t("signOut")}>
+    <DashboardLayout
+      navigation={navigation}
+      sectionLabel={t("workspace")}
+      signOutLabel={t("signOut")}
+    >
       <Typography variant="h1" component="h1">
         {t("applications")}
       </Typography>
       <Typography color="text.secondary" sx={{ mt: 1 }}>
         {t("subtitle")}
       </Typography>
-      {(selectedOrganization?.role === "OWNER" ||
-        selectedOrganization?.role === "ADMIN") && (
-        <Button
-          component={Link}
-          to={paths.people.replace(":organizationId", organizationId)}
-          variant="outlined"
-          sx={{ mt: 3 }}
-        >
-          {t("peopleAccess")}
-        </Button>
-      )}
       {organizations && organizations.length > 0 && (
         <FormControl
           size="small"
