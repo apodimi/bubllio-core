@@ -6,12 +6,16 @@ import { BrandLogo, LanguageSwitcher } from "@/components";
 import { useAuth } from "@/features/auth";
 import {
   DashboardNavigation,
+  type DashboardNavigationContext,
   type DashboardNavigationGroup,
 } from "./DashboardNavigation";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  navigation?: { contextName?: string; groups: DashboardNavigationGroup[] };
+  navigation?: {
+    context?: DashboardNavigationContext;
+    groups: DashboardNavigationGroup[];
+  };
   sectionLabel: string;
   signOutLabel: string;
 }
@@ -51,7 +55,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
       >
         {navigation && hasNavigation ? (
           <DashboardNavigation
-            contextName={navigation.contextName}
+            context={navigation.context}
             groups={navigation.groups}
             navigationLabel={t("navigation.primary")}
           />
@@ -75,7 +79,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           }}
         >
           <DashboardNavigation
-            contextName={navigation.contextName}
+            context={navigation.context}
             groups={navigation.groups}
             navigationLabel={t("navigation.primary")}
             closeLabel={t("navigation.close")}
@@ -127,14 +131,18 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           </Stack>
           <Typography
             sx={{
-              display: { xs: "none", md: "block" },
+              display: { xs: "none", md: hasNavigation ? "none" : "block" },
               fontFamily: "Manrope, Inter, sans-serif",
               fontWeight: 700,
             }}
           >
             {sectionLabel}
           </Typography>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: "center", ml: "auto" }}
+          >
             <LanguageSwitcher />
             <Button color="inherit" size="small" onClick={() => void signOut()}>
               {signOutLabel}

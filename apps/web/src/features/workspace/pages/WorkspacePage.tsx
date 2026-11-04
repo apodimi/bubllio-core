@@ -1,27 +1,22 @@
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
-import {
-  Alert,
-  Box,
-  FormControl,
-  InputLabel,
-  NativeSelect,
-  Typography,
-} from "@mui/material";
+import { Alert, Box, Typography } from "@mui/material";
 
 import { LoadingStatus, RetryAlert } from "@/components";
 import { DashboardLayout } from "@/layouts";
 import { useAuth } from "@/features/auth";
 import { CoreHttpError } from "@/lib";
+import { paths } from "@/routes";
 import { PendingInvitations } from "@/features/people";
 import { WorkspaceApplicationCard } from "../components/WorkspaceApplicationCard";
+import { WorkspaceEmptyApplications } from "../components/WorkspaceEmptyApplications";
 import { useWorkspaceApplications, useWorkspaceOrganizations } from "../hooks";
 import { useWorkspaceNavigation } from "../hooks/useWorkspaceNavigation";
 
 export function WorkspacePage() {
   const auth = useAuth();
   const { t } = useTranslation("translation", { keyPrefix: "workspace" });
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const selectedOrganizationId = searchParams.get("organization") ?? "";
   const {
     data: organizations,
@@ -38,7 +33,10 @@ export function WorkspacePage() {
   const selectedOrganization = organizations?.find(
     (organization) => organization.id === organizationId,
   );
-  const navigation = useWorkspaceNavigation(selectedOrganization);
+  const navigation = useWorkspaceNavigation(
+    selectedOrganization,
+    organizations,
+  );
   const {
     data: applications,
     error: applicationsError,
@@ -52,90 +50,89 @@ export function WorkspacePage() {
   const sessionExpired =
     (error instanceof CoreHttpError && error.status === 401) ||
     (error instanceof Error && error.message === "SESSION_EXPIRED");
+  const canManageAccess =
+    selectedOrganization?.role === "OWNER" ||
+    selectedOrganization?.role === "ADMIN";
+  const manageAccessUrl = canManageAccess
+    ? paths.people.replace(
+        ":organizationId",
+        encodeURIComponent(organizationId),
+      )
+    : undefined;
+
+  function retry() {
+    if (organizationsFailed) {
+      void refetchOrganizations();
+
+      return;
+    }
+    void refetchApplications();
+  }
+
+  let applicationsContent: React.ReactNode;
+  if (error) {
+    applicationsContent = (
+      <RetryAlert
+        message={t(sessionExpired ? "sessionExpired" : "error")}
+        retryLabel={t("retry")}
+        onRetry={retry}
+        smallAction
+      />
+    );
+  } else if (loading) {
+    applicationsContent = <LoadingStatus label={t("loading")} />;
+  } else if (organizations?.length === 0) {
+    applicationsContent = (
+      <Alert severity="info">
+        <Typography variant="h6">{t("emptyOrganizations")}</Typography>
+        <Typography variant="body2">{t("emptyOrganizationsHelp")}</Typography>
+      </Alert>
+    );
+  } else if (applications?.length === 0) {
+    applicationsContent = (
+      <WorkspaceEmptyApplications manageAccessUrl={manageAccessUrl} />
+    );
+  } else {
+    applicationsContent = (
+      <>
+        <Typography color="text.secondary" sx={{ mb: 3 }}>
+          {t("subtitle")}
+        </Typography>
+        <Box
+          component="ul"
+          aria-label={t("applications")}
+          sx={{
+            listStyle: "none",
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
+            gap: 3,
+            p: 0,
+            m: 0,
+          }}
+        >
+          {applications?.map((application) => (
+            <WorkspaceApplicationCard
+              key={application.key}
+              application={application}
+              organizationId={organizationId}
+            />
+          ))}
+        </Box>
+      </>
+    );
+  }
 
   return (
     <DashboardLayout
       navigation={navigation}
-      sectionLabel={t("workspace")}
+      sectionLabel={t("applications")}
       signOutLabel={t("signOut")}
     >
       <Typography variant="h1" component="h1">
         {t("applications")}
       </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
-        {t("subtitle")}
-      </Typography>
-      {organizations && organizations.length > 0 && (
-        <FormControl
-          size="small"
-          sx={{ mt: 4, minWidth: { xs: "100%", sm: 320 } }}
-        >
-          <InputLabel id="organization-label">
-            {t("chooseOrganization")}
-          </InputLabel>
-          <NativeSelect
-            id="organization-select"
-            value={organizationId}
-            inputProps={{ "aria-labelledby": "organization-label" }}
-            onChange={(event) =>
-              setSearchParams({ organization: event.target.value })
-            }
-          >
-            {organizations.map((organization) => (
-              <option key={organization.id} value={organization.id}>
-                {organization.displayName}
-              </option>
-            ))}
-          </NativeSelect>
-        </FormControl>
-      )}
-      <Box sx={{ mt: 4 }}>
-        {error ? (
-          <RetryAlert
-            message={t(sessionExpired ? "sessionExpired" : "error")}
-            retryLabel={t("retry")}
-            onRetry={() =>
-              void (organizationsFailed
-                ? refetchOrganizations()
-                : refetchApplications())
-            }
-            smallAction
-          />
-        ) : loading ? (
-          <LoadingStatus label={t("loading")} />
-        ) : organizations?.length === 0 ? (
-          <Alert severity="info">
-            <Typography variant="h6">{t("emptyOrganizations")}</Typography>
-            <Typography variant="body2">
-              {t("emptyOrganizationsHelp")}
-            </Typography>
-          </Alert>
-        ) : applications?.length === 0 ? (
-          <Alert severity="info">{t("emptyApps")}</Alert>
-        ) : (
-          <Box
-            component="ul"
-            aria-label={t("applications")}
-            sx={{
-              listStyle: "none",
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
-              gap: 3,
-              p: 0,
-              m: 0,
-            }}
-          >
-            {applications?.map((application) => (
-              <WorkspaceApplicationCard
-                key={application.key}
-                application={application}
-                organizationId={organizationId}
-              />
-            ))}
-          </Box>
-        )}
-      </Box>
+      <Box sx={{ mt: 4 }}>{applicationsContent}</Box>
       <PendingInvitations />
     </DashboardLayout>
   );

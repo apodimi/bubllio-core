@@ -4,6 +4,8 @@ import {
   List,
   ListItemButton,
   ListItemText,
+  MenuItem,
+  TextField,
   Typography,
 } from "@mui/material";
 import { Link, useLocation } from "react-router";
@@ -15,17 +17,24 @@ export interface DashboardNavigationGroup {
   items: { label: string; to: string }[];
 }
 
+export interface DashboardNavigationContext {
+  id: string;
+  name: string;
+  label: string;
+  options: { id: string; name: string }[];
+  onChange: (id: string) => void;
+}
+
 interface DashboardNavigationProps {
   closeLabel?: string;
-  contextName?: string;
+  context?: DashboardNavigationContext;
   groups: DashboardNavigationGroup[];
   navigationLabel: string;
   onNavigate?: () => void;
 }
 
 export function DashboardNavigation(props: DashboardNavigationProps) {
-  const { closeLabel, contextName, groups, navigationLabel, onNavigate } =
-    props;
+  const { closeLabel, context, groups, navigationLabel, onNavigate } = props;
   const { pathname } = useLocation();
 
   return (
@@ -39,19 +48,39 @@ export function DashboardNavigation(props: DashboardNavigationProps) {
       )}
       <BrandLogo />
 
-      {contextName && (
-        <Typography
-          variant="body2"
-          sx={{ mt: 4, px: 1.5, fontWeight: 700, overflowWrap: "anywhere" }}
-        >
-          {contextName}
-        </Typography>
-      )}
+      {context &&
+        (context.options.length > 1 ? (
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label={context.label}
+            value={context.id}
+            onChange={(event) => {
+              context.onChange(event.target.value);
+              onNavigate?.();
+            }}
+            sx={{ mt: 4 }}
+          >
+            {context.options.map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : (
+          <Typography
+            variant="body2"
+            sx={{ mt: 4, px: 1.5, fontWeight: 700, overflowWrap: "anywhere" }}
+          >
+            {context.name}
+          </Typography>
+        ))}
 
       <Box
         component="nav"
         aria-label={navigationLabel}
-        sx={{ mt: contextName ? 3 : 5 }}
+        sx={{ mt: context ? 3 : 5 }}
       >
         {groups.map((group) => (
           <Box key={group.label} sx={{ mb: 3 }}>

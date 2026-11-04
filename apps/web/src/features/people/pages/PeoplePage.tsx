@@ -25,7 +25,7 @@ export function PeoplePage() {
     refetch: refetchOrganizations,
   } = useWorkspaceOrganizations(subject);
   const organization = organizations?.find(({ id }) => id === organizationId);
-  const navigation = useWorkspaceNavigation(organization);
+  const navigation = useWorkspaceNavigation(organization, organizations);
   const allowed =
     organization?.role === "OWNER" || organization?.role === "ADMIN";
   const { members, invitations, catalog } = usePeople(
