@@ -465,7 +465,8 @@ test("workspace switches organizations and shows only their granted apps", async
   await expect(
     page.getByRole("link", { name: "Board Open application" }),
   ).toHaveCount(0);
-  await page.getByLabel("Organization").selectOption(projectOrganizationId);
+  await page.getByRole("combobox", { name: "Choose organization" }).click();
+  await page.getByRole("option", { name: "Projects" }).click();
   await expect(
     page.getByRole("link", { name: "Board Open application" }),
   ).toBeVisible();
