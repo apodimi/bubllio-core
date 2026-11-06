@@ -49,6 +49,11 @@ workspace and access-decision contract. The Core endpoints are implemented;
 the CRM `develop` branch now has an isolated, additive consumer trial. Production
 CRM adoption and the reusable application adapter are still pending.
 
+For a local CRM trial, set `CORE_APPLICATION_MANIFEST_PATH` to
+`infrastructure/local/application-manifest.crm.example.json` (use an absolute
+path when running the API outside this checkout). This example registers CRM
+with its local Vite URL; it does not install or grant the app automatically.
+
 1. The application ships a stable app key and reviewed integration metadata.
    A deployment operator supplies its exact audience, launch URL, and compatible
    contract version through the installation manifest; Core reconciles that

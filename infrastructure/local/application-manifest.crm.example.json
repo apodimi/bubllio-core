@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1",
+  "applications": [
+    {
+      "key": "crm",
+      "displayName": "CRM",
+      "launchUrl": "http://127.0.0.1:5173",
+      "audience": "bubllio-crm-api",
+      "contractVersion": "1"
+    }
+  ]
+}
