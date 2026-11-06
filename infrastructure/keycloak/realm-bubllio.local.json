@@ -195,6 +195,13 @@
       "protocol": "openid-connect"
     },
     {
+      "clientId": "bubllio-crm-api",
+      "name": "Bubllio CRM API",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    },
+    {
       "clientId": "bubllio-core-web",
       "name": "Bubllio Core Web",
       "enabled": true,
@@ -232,12 +239,39 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
+      "defaultClientScopes": ["basic", "profile", "email", "organization"],
       "redirectUris": ["http://127.0.0.1:5173/*"],
       "webOrigins": ["http://127.0.0.1:5173"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://127.0.0.1:5173/*"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "crm-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "bubllio-crm-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "core-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "bubllio-core-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "bubllio-board-web",

@@ -46,7 +46,8 @@ application integration adapter and CRM adoption are still pending.
 ADR 0009 defines the authority. Core now publishes the
 [`core-access-v1.openapi.yaml`](../contracts/core-access-v1.openapi.yaml)
 workspace and access-decision contract. The Core endpoints are implemented;
-application adapters and CRM adoption are still pending.
+the CRM `develop` branch now has an isolated, additive consumer trial. Production
+CRM adoption and the reusable application adapter are still pending.
 
 1. The application ships a stable app key and reviewed integration metadata.
    A deployment operator supplies its exact audience, launch URL, and compatible
