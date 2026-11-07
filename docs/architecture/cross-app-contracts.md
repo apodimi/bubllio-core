@@ -46,8 +46,8 @@ application integration adapter and CRM adoption are still pending.
 ADR 0009 defines the authority. Core now publishes the
 [`core-access-v1.openapi.yaml`](../contracts/core-access-v1.openapi.yaml)
 workspace and access-decision contract. The Core endpoints are implemented;
-the CRM `develop` branch now has an isolated, additive consumer trial. Production
-CRM adoption and the reusable application adapter are still pending.
+the CRM `develop` branch now requires Core and Keycloak for product access. The
+live CRM release and reusable application adapter have not migrated yet.
 
 For a local CRM trial, set `CORE_APPLICATION_MANIFEST_PATH` to
 `infrastructure/local/application-manifest.crm.example.json` (use an absolute
